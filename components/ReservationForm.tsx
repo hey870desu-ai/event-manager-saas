@@ -1,0 +1,270 @@
+// 📂 components/ReservationForm.tsx
+// 📝 修正版: 「会社名」「事業所名」の強制表示を削除し、基本4項目のみに
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare } from "lucide-react"; // アイコン整理
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+type TenantData = {
+  name: string;
+  themeColor?: string;
+};
+
+type CustomField = {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "select" | "checkbox";
+  options?: string[];
+  required: boolean;
+};
+
+type Props = {
+  tenantId: string;
+  eventId: string;
+  event: any; 
+  tenantData?: TenantData;
+  onSuccess?: (id: string) => void;
+};
+
+export default function ReservationForm({ tenantId, eventId, event, tenantData, onSuccess }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+  
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const themeColor = tenantData?.themeColor || "#f97316";
+
+  const customFields: CustomField[] = event.customFields || [];
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setStatus("loading");
+    setErrorMessage("");
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      
+      const customAnswers: {[key: string]: any} = {};
+      customFields.forEach(field => {
+        if (field.type === "checkbox") {
+           customAnswers[field.label] = formData.getAll(field.id);
+        } else {
+           customAnswers[field.label] = formData.get(field.id)?.toString() || "";
+        }
+      });
+
+      const reservationData = {
+        tenantId,
+        eventId,
+        eventTitle: event.title,
+        
+        // 基本情報（4項目のみ）
+        name: formData.get("name")?.toString() || "",
+        email: formData.get("email")?.toString() || "",
+        phone: formData.get("phone")?.toString() || "",
+        
+        // ★削除: company, department はここには含めず、customAnswersに入るようにする
+        
+        type: formData.get("type")?.toString() || "offline",
+        customAnswers: customAnswers,
+        notes: formData.get("notes")?.toString() || "", // 備考欄は固定で残す
+        
+        status: "confirmed",
+        createdAt: serverTimestamp(),
+        emailed: false,
+        checkedIn: false,
+      };
+
+      const docRef = await addDoc(collection(db, "events", eventId, "reservations"), reservationData);
+
+      // メール送信処理
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: reservationData.name,
+            email: reservationData.email,
+            // company: reservationData.company, // ← 削除
+            type: reservationData.type,
+            eventTitle: event.title,
+            eventDate: event.date,
+            eventTime: `${event.startTime} - ${event.endTime}`,
+            venueName: event.venueName,
+            zoomUrl: event.zoomUrl,
+            meetingId: event.meetingId,
+            zoomPasscode: event.zoomPasscode,
+            reservationId: docRef.id,
+            tenantName: tenantData?.name,
+            themeColor: tenantData?.themeColor,
+            customAnswers: customAnswers // ★追加: カスタム回答もメールに含める
+          }),
+        });
+      } catch (mailError) { console.error("Mail error:", mailError); }
+
+      setStatus("success");
+      if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
+      
+    } catch (error) {
+      console.error("Error:", error);
+      setErrorMessage("エラーが発生しました。");
+      setStatus("error");
+    }
+  };
+
+  if (!mounted) return null;
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)} style={{ background: themeColor }} className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] hover:opacity-90">
+        <span className="text-xl tracking-wide">参加する</span>
+        <div className="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform"><ChevronRight size={20} /></div>
+      </button>
+
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 font-sans">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsOpen(false)} />
+
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden ring-1 ring-white/10">
+            {status === "success" && !onSuccess ? (
+               <div className="h-full flex items-center justify-center p-10 min-h-[400px]">
+                 <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 mb-6"><CheckCircle size={40} /></div>
+                    <h3 className="text-2xl font-bold text-white mb-3">お申し込み完了</h3>
+                    <p className="text-slate-300 mb-8">受付メールをお送りしました。</p>
+                    <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="px-8 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white">閉じる</button>
+                 </div>
+               </div>
+            ) : (
+              <>
+                <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0f111a]/95 backdrop-blur z-10 sticky top-0">
+                  <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                    <span className="w-1 h-6 rounded-full" style={{ background: themeColor }}></span> 参加申し込みフォーム
+                  </h2>
+                  <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full"><X size={24} /></button>
+                </div>
+
+                <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#0f111a]">
+                  <form onSubmit={handleSubmit} className="space-y-8">
+                    
+                    {/* ▼▼▼ 基本情報（必須3項目のみに修正） ▼▼▼ */}
+                    <div className="space-y-6">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">基本情報</h3>
+                      
+                      {/* お名前 & メールアドレス */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><User size={14} style={{color: themeColor}}/> お名前 <span className="text-red-400">*</span></label>
+                          <input type="text" name="name" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Mail size={14} style={{color: themeColor}}/> メールアドレス <span className="text-red-400">*</span></label>
+                          <input type="email" name="email" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                        </div>
+                      </div>
+
+                      {/* 電話番号のみ（会社名は削除） */}
+                      <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Phone size={14} style={{color: themeColor}}/> 電話番号 <span className="text-red-400">*</span></label>
+                          <input type="tel" name="phone" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                      </div>
+                    </div>
+                    {/* ▲▲▲ 修正完了 ▲▲▲ */}
+
+                    {/* 参加形式 */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">参加形式</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <label className="cursor-pointer relative group">
+                          <input type="radio" name="type" value="offline" defaultChecked className="peer sr-only" />
+                          <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/50 text-center transition-all hover:bg-slate-800 peer-checked:bg-opacity-20 peer-checked:border-opacity-100" style={{ borderColor: 'var(--tw-border-opacity)', '--tw-border-opacity': '0.3' } as any}>
+                            <span className="block font-bold text-white mb-1">会場参加</span>
+                            <div className="absolute inset-0 border-2 rounded-xl opacity-0 peer-checked:opacity-100 pointer-events-none" style={{ borderColor: themeColor }}></div>
+                          </div>
+                        </label>
+                        <label className="cursor-pointer relative group">
+                          <input type="radio" name="type" value="online" className="peer sr-only" />
+                          <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/50 text-center transition-all hover:bg-slate-800 peer-checked:bg-opacity-20 peer-checked:border-opacity-100">
+                            <span className="block font-bold text-white mb-1">オンライン</span>
+                            <div className="absolute inset-0 border-2 rounded-xl opacity-0 peer-checked:opacity-100 pointer-events-none" style={{ borderColor: themeColor }}></div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* カスタム質問エリア */}
+                    {customFields.length > 0 && (
+                      <div className="space-y-6">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">アンケート</h3>
+                        {customFields.map((field) => (
+                          <div key={field.id} className="space-y-3">
+                            <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5">
+                              <List size={14} style={{color: themeColor}}/> {field.label} 
+                              {field.required && <span className="text-red-400">*</span>}
+                            </label>
+
+                            {field.type === "text" && (
+                              <input type="text" name={field.id} required={field.required} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            )}
+
+                            {field.type === "textarea" && (
+                              <textarea name={field.id} required={field.required} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none min-h-[80px]" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            )}
+
+                            {field.type === "select" && (
+                              <select name={field.id} required={field.required} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'}>
+                                <option value="">選択してください</option>
+                                {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                              </select>
+                            )}
+
+                            {field.type === "checkbox" && (
+                              <div className="grid grid-cols-2 gap-3">
+                                {field.options?.map(opt => (
+                                  <label key={opt} className="flex items-center gap-2 p-3 rounded-lg border border-transparent hover:bg-slate-800 cursor-pointer transition-colors bg-slate-900">
+                                    <input type="checkbox" name={field.id} value={opt} className="w-4 h-4 rounded border-slate-600 bg-slate-800" style={{ accentColor: themeColor }} />
+                                    <span className="text-sm text-slate-300">{opt}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 備考（固定） */}
+                    <div className="space-y-2 pt-4 border-t border-slate-800">
+                       <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><MessageSquare size={14} style={{color: themeColor}}/> ご要望・備考 (任意)</label>
+                       <textarea name="notes" placeholder="その他、ご質問などがございましたらご記入ください。" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none min-h-[100px]" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                    </div>
+
+                    {status === "error" && (
+                      <div className="p-4 bg-red-900/30 text-red-200 text-sm rounded-lg border border-red-500/30 flex items-start gap-3">
+                        <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                        <div><p className="font-bold">エラーが発生しました</p><p>{errorMessage}</p></div>
+                      </div>
+                    )}
+
+                    <div className="pt-8 border-t border-slate-800 mt-8">
+                      <button type="submit" disabled={status === "loading"} style={{ background: themeColor }} className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90">
+                        {status === "loading" ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <>上記の内容で申し込む <Send size={18} /></>}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}

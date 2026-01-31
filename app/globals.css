@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+/* 背景：介事連カラー × DX感（上品に、うっすらゆらゆら） */
+.blob {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.16;          /* ← 明るすぎる場合は 0.14 に */
+  animation: float 20s linear infinite; /* ← 静かめに */
+}
+
+/* 介事連ブルー（信頼） */
+.blob-1 {
+  background: #2563eb; /* blue-600 */
+  top: -10%;
+  left: -10%;
+}
+
+/* DXグリーン（成長） */
+.blob-2 {
+  background: #10b981; /* emerald-500 */
+  bottom: -15%;
+  right: -10%;
+  animation-duration: 26s;
+}
+
+/* 未来のクリーンブルー（空気感） */
+.blob-3 {
+  background: #60a5fa; /* sky-400 */
+  top: 40%;
+  left: 50%;
+  animation-duration: 32s;
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.05);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
