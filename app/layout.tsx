@@ -13,13 +13,43 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // ▼ 新ドメインを設定（これ重要！）
+  metadataBase: new URL("https://event-manager.app"),
+
   title: {
     template: '%s | Event Manager', 
     default: 'Event Manager SaaS',
   },
-  description: "イベント申し込み・管理システムです。",
+  description: "イベント管理の「面倒」をゼロにする。スマホで完結する申し込み・管理システム。",
+  
   icons: {
-    icon: '/icon.webp',
+    icon: '/icon.webp', // ブラウザタブ用
+  },
+
+  openGraph: {
+    title: "Event Manager SaaS",
+    description: "スマホで完結！イベント申し込み・管理システム。",
+    siteName: "Event Manager SaaS",
+    url: "https://event-manager.app",
+    images: [
+      {
+        // ▼ ここを実際のファイル名に変更しました！
+        url: "/icon.webp", 
+        width: 256,
+        height: 256,
+        alt: "Event Manager Logo",
+      },
+    ],
+    locale: "ja_JP",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary",
+    title: "Event Manager SaaS",
+    description: "スマホで完結！イベント申し込み・管理システム。",
+    // ▼ ここも変更！
+    images: ["/icon.webp"],
   },
 };
 
@@ -29,8 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      {/* ▼ ここに suppressHydrationWarning={true} を足しました！これで赤画面は消えます */}
+    <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}

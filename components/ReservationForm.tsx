@@ -5,7 +5,8 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare } from "lucide-react"; // アイコン整理
+import { useParams } from "next/navigation";
+import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard } from "lucide-react"; 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -22,24 +23,48 @@ type CustomField = {
   required: boolean;
 };
 
+// ▼▼▼ 修正1: tenantId と eventId に「?」をつけて省略可能にする ▼▼▼
 type Props = {
-  tenantId: string;
-  eventId: string;
+  tenantId?: string;
+  eventId?: string;
   event: any; 
   tenantData?: TenantData;
+  tenant?: any;
   onSuccess?: (id: string) => void;
 };
 
-export default function ReservationForm({ tenantId, eventId, event, tenantData, onSuccess }: Props) {
+export default function ReservationForm({ 
+  tenantId, 
+  eventId, 
+  event, 
+  tenantData, 
+  onSuccess, 
+  tenant 
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [participationType, setParticipationType] = useState("offline");
   
+  // 1. フックとパラメータ
+  const params = useParams();
+
+  // 2. safeTenant を最初に定義！ (これがないと下でエラーになります)
+  const safeTenant = tenantData || tenant;
+  
+  // 3. IDの定義 (重複していたのを1つにまとめました)
+  const safeEventId = eventId || event?.id || (params?.event as string);
+  const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
+
+  // 4. 価格計算
+  const priceStr = event.price || "無料";
+  const isPaid = priceStr !== "無料" && !isNaN(Number(priceStr));
+  const priceAmount = isPaid ? Number(priceStr) : 0;
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const themeColor = tenantData?.themeColor || "#f97316";
-
+  const themeColor = safeTenant?.themeColor || "#f97316";
   const customFields: CustomField[] = event.customFields || [];
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -63,25 +88,49 @@ export default function ReservationForm({ tenantId, eventId, event, tenantData, 
         tenantId,
         eventId,
         eventTitle: event.title,
-        
-        // 基本情報（4項目のみ）
         name: formData.get("name")?.toString() || "",
         email: formData.get("email")?.toString() || "",
         phone: formData.get("phone")?.toString() || "",
-        
-        // ★削除: company, department はここには含めず、customAnswersに入るようにする
-        
-        type: formData.get("type")?.toString() || "offline",
+        type: participationType,
         customAnswers: customAnswers,
-        notes: formData.get("notes")?.toString() || "", // 備考欄は固定で残す
+        notes: formData.get("notes")?.toString() || "",
         
-        status: "confirmed",
+        // ★修正: 有料なら「支払い待ち」、無料なら「確定」
+        status: isPaid ? "payment_pending" : "confirmed", 
         createdAt: serverTimestamp(),
         emailed: false,
         checkedIn: false,
+        price: isPaid ? priceAmount : 0, // 価格も保存
       };
 
-      const docRef = await addDoc(collection(db, "events", eventId, "reservations"), reservationData);
+      if (!safeEventId) throw new Error("Event ID is missing");
+      
+      // 1. まずFirestoreに保存
+      const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
+
+      // ▼▼▼ 追加: 有料イベントの場合 ▼▼▼
+      if (isPaid) {
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: safeEventId,
+            tenantId: safeTenantId,
+            price: priceAmount,
+            title: event.title,
+            origin: window.location.origin,
+            reservationId: docRef.id, 
+            email: reservationData.email
+          }),
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (data.url) {
+          window.location.href = data.url; // Stripeへ移動
+          return; 
+        }
+      }
 
       // メール送信処理
       try {
@@ -101,8 +150,9 @@ export default function ReservationForm({ tenantId, eventId, event, tenantData, 
             meetingId: event.meetingId,
             zoomPasscode: event.zoomPasscode,
             reservationId: docRef.id,
-            tenantName: tenantData?.name,
+            tenantName: safeTenant?.orgName || safeTenant?.name,
             themeColor: tenantData?.themeColor,
+            replyTo: safeTenant?.ownerEmail,
             customAnswers: customAnswers // ★追加: カスタム回答もメールに含める
           }),
         });
@@ -177,35 +227,16 @@ export default function ReservationForm({ tenantId, eventId, event, tenantData, 
                     </div>
                     {/* ▲▲▲ 修正完了 ▲▲▲ */}
 
-                    {/* 参加形式 */}
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">参加形式</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <label className="cursor-pointer relative group">
-                          <input type="radio" name="type" value="offline" defaultChecked className="peer sr-only" />
-                          <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/50 text-center transition-all hover:bg-slate-800 peer-checked:bg-opacity-20 peer-checked:border-opacity-100" style={{ borderColor: 'var(--tw-border-opacity)', '--tw-border-opacity': '0.3' } as any}>
-                            <span className="block font-bold text-white mb-1">会場参加</span>
-                            <div className="absolute inset-0 border-2 rounded-xl opacity-0 peer-checked:opacity-100 pointer-events-none" style={{ borderColor: themeColor }}></div>
-                          </div>
-                        </label>
-                        <label className="cursor-pointer relative group">
-                          <input type="radio" name="type" value="online" className="peer sr-only" />
-                          <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/50 text-center transition-all hover:bg-slate-800 peer-checked:bg-opacity-20 peer-checked:border-opacity-100">
-                            <span className="block font-bold text-white mb-1">オンライン</span>
-                            <div className="absolute inset-0 border-2 rounded-xl opacity-0 peer-checked:opacity-100 pointer-events-none" style={{ borderColor: themeColor }}></div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* カスタム質問エリア */}
+                    {/* ▼▼▼ 修正版: 垣根（線と文字）を完全に削除 ▼▼▼ */}
                     {customFields.length > 0 && (
-                      <div className="space-y-6">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">アンケート</h3>
+                      <div className="space-y-6 mt-6">
+                        
+                        {/* 🗑️ ここにあった <h3>アンケート</h3> と border を削除しました */}
+
                         {customFields.map((field) => (
                           <div key={field.id} className="space-y-3">
                             <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5">
-                              <List size={14} style={{color: themeColor}}/> {field.label} 
+                              <span style={{color: themeColor}}>■</span> {field.label} 
                               {field.required && <span className="text-red-400">*</span>}
                             </label>
 
@@ -238,6 +269,54 @@ export default function ReservationForm({ tenantId, eventId, event, tenantData, 
                         ))}
                       </div>
                     )}
+                    {/* ▲▲▲ 修正完了 ▲▲▲ */}
+
+                    {/* 参加形式 */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">参加形式</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* 会場参加ボタン */}
+                        <div 
+                          onClick={() => setParticipationType("offline")}
+                          className={`
+                            cursor-pointer relative p-4 rounded-xl border text-center transition-all group
+                            ${participationType === "offline" ? "bg-slate-800/80" : "bg-slate-900 hover:bg-slate-800/50"}
+                          `}
+                          // 選択中はテーマカラー、未選択はグレーの枠線
+                          style={{ borderColor: participationType === "offline" ? themeColor : '#334155' }}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                             <span className={`font-bold ${participationType === "offline" ? "text-white" : "text-slate-400"}`}>会場参加</span>
+                          </div>
+                          {participationType === "offline" && (
+                            <div className="absolute top-2 right-2 text-emerald-400">
+                              <CheckCircle size={16} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* オンラインボタン */}
+                        <div 
+                          onClick={() => setParticipationType("online")}
+                          className={`
+                            cursor-pointer relative p-4 rounded-xl border text-center transition-all group
+                            ${participationType === "online" ? "bg-slate-800/80" : "bg-slate-900 hover:bg-slate-800/50"}
+                          `}
+                          style={{ borderColor: participationType === "online" ? themeColor : '#334155' }}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                             <span className={`font-bold ${participationType === "online" ? "text-white" : "text-slate-400"}`}>オンライン</span>
+                          </div>
+                          {participationType === "online" && (
+                            <div className="absolute top-2 right-2 text-emerald-400">
+                              <CheckCircle size={16} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+
 
                     {/* 備考（固定） */}
                     <div className="space-y-2 pt-4 border-t border-slate-800">
@@ -253,10 +332,22 @@ export default function ReservationForm({ tenantId, eventId, event, tenantData, 
                     )}
 
                     <div className="pt-8 border-t border-slate-800 mt-8">
-                      <button type="submit" disabled={status === "loading"} style={{ background: themeColor }} className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90">
-                        {status === "loading" ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <>上記の内容で申し込む <Send size={18} /></>}
-                      </button>
-                    </div>
+  {/* 👇 ここから差し替え */}
+  <button type="submit" disabled={status === "loading"} style={{ background: themeColor }} className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90">
+    {status === "loading" ? (
+      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+    ) : (
+      // ▼▼▼ ここで表示を切り替え ▼▼▼
+      isPaid ? (
+        <>{priceAmount.toLocaleString()}円で支払う <CreditCard size={18} /></>
+      ) : (
+        <>上記の内容で申し込む <Send size={18} /></>
+      )
+      // ▲▲▲ ここまで ▲▲▲
+    )}
+  </button>
+  {/* 👆 ここまで */}
+</div>
                   </form>
                 </div>
               </>

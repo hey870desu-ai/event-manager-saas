@@ -6,7 +6,8 @@ import { auth, db, storage } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase } from "lucide-react";
+import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase, MessageSquare, ArrowUp, ArrowDown,Palette, 
+  CheckCircle, Building2, Smile } from "lucide-react";
 import { fetchTenantData, type Tenant } from "../lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -20,6 +21,7 @@ type CustomField = {
   required: boolean;
 };
 
+
 type Props = {
   event?: any;
   onSuccess: () => void;
@@ -31,9 +33,21 @@ type TimeSlot = {
   label: string;
 };
 
+type Lecturer = {
+  id: string;
+  name: string;
+  title: string;
+  profile: string;
+  image: string;
+};
+
 export default function EventForm({ event, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploadingLecturer, setUploadingLecturer] = useState(false);
+  // ★追加: 今編集しているイベントのIDを管理する（新規作成後の連続保存対策）
+  const [currentEventId, setCurrentEventId] = useState<string | null>(event?.id || null);
+  // ★追加: アンケート用の質問箱を作る
+  const [surveyFields, setSurveyFields] = useState<CustomField[]>(event?.surveyFields || []);
   const [uploadingOgp, setUploadingOgp] = useState(false);
   
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -65,9 +79,9 @@ export default function EventForm({ event, onSuccess }: Props) {
   ]);
 
   const [formData, setFormData] = useState({
-    tenantId: "demo",
-    branchTag: "本部",
-    organizer: "主催者情報読み込み中...",
+    tenantId: "",
+    branchTag: "",
+    organizer: "",
 
     title: "",
     date: "",
@@ -97,10 +111,46 @@ export default function EventForm({ event, onSuccess }: Props) {
     zoomGuideUrl: "",
     
     ogpImage: "",
+
+    theme: "dark",
     
     replyTemplateId: "default",
     adminTemplateId: "default",
   });
+
+  // ★追加：複数講師の管理
+  const [lecturers, setLecturers] = useState<Lecturer[]>([]);
+
+  // ★追加：講師リスト操作用の関数群
+  const addLecturer = () => {
+    setLecturers([...lecturers, { id: Math.random().toString(36), name: "", title: "", profile: "", image: "" }]);
+  };
+
+  const updateLecturer = (index: number, field: keyof Lecturer, value: string) => {
+    const newLecturers = [...lecturers];
+    newLecturers[index] = { ...newLecturers[index], [field]: value };
+    setLecturers(newLecturers);
+  };
+
+  const removeLecturer = (index: number) => {
+    if (confirm("この講師情報を削除しますか？")) {
+      setLecturers(lecturers.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleLecturerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const fileId = Math.random().toString(36).substring(2);
+      const storageRef = ref(storage, `uploads/lecturers/${fileId}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      updateLecturer(index, "image", downloadURL);
+    } catch (error) {
+      console.error(error); alert("画像のアップロードに失敗しました。");
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -142,7 +192,7 @@ export default function EventForm({ event, onSuccess }: Props) {
     return () => unsubscribe();
   }, [event]);
 
-  useEffect(() => {
+useEffect(() => {
     if (event) {
       setFormData({
         tenantId: event.tenantId || "demo",
@@ -172,9 +222,23 @@ export default function EventForm({ event, onSuccess }: Props) {
         zoomPasscode: event.zoomPasscode || "",
         zoomGuideUrl: event.zoomGuideUrl || "",
         ogpImage: event.ogpImage || "",
+        theme: event.theme || "dark",
         replyTemplateId: event.replyTemplateId || "default",
         adminTemplateId: event.adminTemplateId || "default",
       });
+      // ★追加：講師リストの読み込み
+      if (event.lecturers && Array.isArray(event.lecturers)) {
+        setLecturers(event.lecturers);
+      } else if (event.lecturer) {
+        // 古いデータがある場合は、それを1人目の講師としてリストに入れる
+        setLecturers([{
+          id: "legacy",
+          name: event.lecturer,
+          title: event.lecturerTitle || "",
+          profile: event.lecturerProfile || "",
+          image: event.lecturerImage || ""
+        }]);
+      }
 
       if (event.timeTable) {
         const lines = event.timeTable.split('\n');
@@ -188,17 +252,30 @@ export default function EventForm({ event, onSuccess }: Props) {
         if (parsedSlots.length > 0) setTimeSlots(parsedSlots);
       }
 
-      // 編集モードの場合：保存されている質問があればそれを優先する
+      // ▼▼▼ ここから下を修正・追加しました ▼▼▼
+
+      // 1. 申し込みフォーム (customFields) の読み込み
       if (event.customFields && Array.isArray(event.customFields) && event.customFields.length > 0) {
         setCustomFields(event.customFields.map((f: any) => ({
           ...f,
-          optionsString: f.options ? f.options.join(",") : ""
+          // ★修正: カンマではなく「改行(\n)」でつなぐ
+          optionsString: f.options ? f.options.join("\n") : ""
         })));
       } else if (event.id) {
-        // 編集モードだがカスタム質問がない場合は空にする（勝手にデフォルトを追加しない）
         setCustomFields([]);
       }
-      // ※ eventがない（新規作成）場合は、useStateの初期値（会社名・部署）が使われる
+
+      // 2. アンケート (surveyFields) の読み込み
+      // ★追加: これがないと保存したアンケートが表示されません
+      if (event.surveyFields && Array.isArray(event.surveyFields) && event.surveyFields.length > 0) {
+        setSurveyFields(event.surveyFields.map((f: any) => ({
+          ...f,
+          // ★修正: ここも「改行(\n)」でつなぐ
+          optionsString: f.options ? f.options.join("\n") : ""
+        })));
+      }
+      // ▲▲▲ 修正ここまで ▲▲▲
+
     }
   }, [event]);
 
@@ -227,6 +304,33 @@ export default function EventForm({ event, onSuccess }: Props) {
     setCustomFields([...customFields, newField]);
   };
   
+   // ★追加: 質問の順番を入れ替える関数
+   const moveCustomField = (index: number, direction: 'up' | 'down') => {
+    const newFields = [...customFields];
+    
+    if (direction === 'up') {
+      if (index === 0) return; // 一番上なら何もしない
+      // ひとつ前の要素と入れ替え
+      [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
+    } else {
+      if (index === newFields.length - 1) return; // 一番下なら何もしない
+      // ひとつ後の要素と入れ替え
+      [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+    }
+    
+    setCustomFields(newFields);
+  };
+  const moveSurveyField = (index: number, direction: 'up' | 'down') => {
+    const newFields = [...surveyFields];
+    if (direction === 'up') {
+      if (index === 0) return; // 一番上なら何もしない
+      [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
+    } else {
+      if (index === newFields.length - 1) return; // 一番下なら何もしない
+      [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+    }
+    setSurveyFields(newFields);
+  };
   const updateCustomField = (index: number, field: keyof CustomField, value: any) => {
     const updated = [...customFields];
     updated[index] = { ...updated[index], [field]: value };
@@ -292,8 +396,15 @@ export default function EventForm({ event, onSuccess }: Props) {
     setFormData(prev => ({ ...prev, [field]: "" }));
   };
 
+// 📂 components/EventForm.tsx の handleSubmit を書き換え
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.tenantId || formData.tenantId === "demo") {
+    alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
+    return;
+  }
     setLoading(true);
 
     try {
@@ -302,10 +413,11 @@ export default function EventForm({ event, onSuccess }: Props) {
         .map(slot => `${slot.start} - ${slot.end || "未定"} : ${slot.label}`)
         .join("\n");
 
+      // カスタムフィールドの整形
       const formattedCustomFields = customFields.map(f => {
         let options: string[] = [];
         if (f.type === "select" || f.type === "checkbox") {
-           options = f.optionsString.split(",").map(s => s.trim()).filter(s => s !== "");
+           options = f.optionsString.split(/\n|,|、/).map(s => s.trim()).filter(s => s !== "");
         }
         return {
            id: f.id,
@@ -316,29 +428,68 @@ export default function EventForm({ event, onSuccess }: Props) {
         };
       }).filter(f => f.label !== "");
 
+      // アンケートフィールドの整形
+      const formattedSurveyFields = surveyFields.map(f => {
+        let options: string[] = [];
+        if (f.type === "select" || f.type === "checkbox") {
+           options = f.optionsString.split(/\n|,|、/).map(s => s.trim()).filter(s => s !== "");
+        }
+        return {
+           id: f.id,
+           label: f.label,
+           type: f.type,
+           required: f.required,
+           options: options
+        };
+      }).filter(f => f.label !== "");
+
+      // 👇 この3行を挿入してください（これで formatFields が使えるようになります）
+      const formatFields = (fields: CustomField[]) => fields.map(f => ({
+        ...f, options: (f.type==="select"||f.type==="checkbox") ? f.optionsString.split(/\n|,|、/).map(s=>s.trim()).filter(s=>s!=="") : []
+      })).filter(f => f.label !== "");
+
       const savePayload = {
         ...formData,
         timeTable: formattedTimeTable,
-        customFields: formattedCustomFields,
+        customFields: formatFields(customFields),
+        surveyFields: formatFields(surveyFields),
         time: `${formData.startTime} - ${formData.endTime}`,
         location: formData.venueName,
         updatedAt: new Date(),
-        branchTag: formData.branchTag || "本部", 
+        branchTag: formData.branchTag || "本部",
+        
+        // ★追加：講師リストを保存
+        lecturers: lecturers,
+        // 互換性のため、1人目のデータを古いフィールドにも入れておく
+        lecturer: lecturers[0]?.name || "",
+        lecturerTitle: lecturers[0]?.title || "",
+        lecturerProfile: lecturers[0]?.profile || "",
+        lecturerImage: lecturers[0]?.image || "",
       };
 
-      if (event?.id) {
-        await updateDoc(doc(db, "events", event.id), savePayload);
+      // ★修正: currentEventId を見て判定する
+      if (currentEventId) {
+        // 更新 (Update)
+        await updateDoc(doc(db, "events", currentEventId), savePayload);
+        alert("更新しました！"); // 画面は閉じずにアラートだけ出す
       } else {
+        // 新規作成 (Create)
         const newEvent = {
           ...savePayload,
           createdAt: new Date(),
           slug: Math.random().toString(36).substring(2, 8),
           views: 0
         };
-        await addDoc(collection(db, "events"), newEvent);
+        const docRef = await addDoc(collection(db, "events"), newEvent);
+        
+        // ★重要: 新規作成したら、そのIDをセットして「編集モード」に切り替える
+        setCurrentEventId(docRef.id);
+        
+        alert("イベントを作成しました！続けて編集できます。"); 
       }
-      onSuccess();
-      alert("保存しました！");
+      
+      // onSuccess(); // 👈 これを削除したので、画面が勝手に閉じなくなります！
+
     } catch (error) {
       console.error("保存エラー:", error);
       alert("保存に失敗しました。");
@@ -370,14 +521,26 @@ export default function EventForm({ event, onSuccess }: Props) {
         }
       `}} />
 
-      {/* 0. 支部設定・ステータス */}
+      {/* 0. 支部設定・ステータス（修正版） */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 bg-slate-900/50 p-5 rounded-xl border border-indigo-500/20 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+          
+          {/* ▼▼▼ 修正: ラベルを「主催名」に変更 ▼▼▼ */}
           <label className="block text-xs text-indigo-400 font-bold mb-2 flex items-center gap-2">
-            <Globe size={14}/> 主催支部 ({tenantData?.name || "Loading..."})
+            <Globe size={14}/> 主催名 
+            <span className="text-white">
+              {/* ▼▼▼ 修正: orgName(MBS)があればそれを優先表示、なければnameを表示 ▼▼▼ */}
+              {tenantData ? (
+                // @ts-ignore (型定義にorgNameがない場合の回避策)
+                `(${tenantData.orgName || tenantData.name})`
+              ) : (
+                <span className="animate-pulse opacity-50">(読み込み中...)</span>
+              )}
+            </span>
             {!isSuperAdmin && <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 flex items-center gap-1"><Lock size={10}/> 固定</span>}
           </label>
+
           <div className="flex flex-col md:flex-row gap-4">
             <select 
               name="branchTag" 
@@ -386,15 +549,26 @@ export default function EventForm({ event, onSuccess }: Props) {
               disabled={!isSuperAdmin} 
               className={`bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none font-bold flex-1 ${!isSuperAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <option value={tenantData?.name || "-"}>{tenantData?.name || "-"}</option>
+              {/* ▼▼▼ 修正: 選択肢の表示もMBS優先に変更 ▼▼▼ */}
+              <option value={tenantData?.name || "-"}>
+                {/* @ts-ignore */}
+                {(tenantData?.orgName || tenantData?.name) || "-"}
+              </option>
+              
               {safeBranches.map((branch) => (
                 <option key={branch} value={branch}>
-                  {branch}
+                  {/* ▼▼▼ 修正: 「本部」なら会社名(orgName)を表示する ▼▼▼ */}
+                  {branch === "本部" 
+                    // @ts-ignore (型定義エラー回避)
+                    ? (tenantData?.orgName || tenantData?.name || branch) 
+                    : branch}
                 </option>
               ))}
             </select>
           </div>
         </div>
+        
+        {/* 右側のステータス選択はそのまま */}
         <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800">
            <label className="block text-xs text-slate-400 font-bold mb-2">公開ステータス</label>
            <select name="status" value={formData.status} onChange={handleChange} className={`w-full border border-slate-700 rounded-lg p-3 font-bold outline-none cursor-pointer transition-colors ${formData.status === 'published' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50' : 'bg-slate-950 text-slate-400'}`}>
@@ -419,8 +593,149 @@ export default function EventForm({ event, onSuccess }: Props) {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
              <div className="md:col-span-2"><label className="block text-xs text-slate-500 mb-2">定員</label><input type="text" name="capacity" value={formData.capacity} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-             <div className="md:col-span-2"><label className="block text-xs text-slate-500 mb-2">参加費</label><input type="text" name="price" value={formData.price} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
+             {/* ▼▼▼ 修正: 参加費（有料・無料切り替え） ▼▼▼ */}
+<div className="md:col-span-2">
+  <label className="block text-xs text-slate-500 mb-2 font-bold flex items-center gap-2">
+    参加費 <span className="text-[10px] font-normal text-slate-400 bg-slate-800 px-1.5 rounded border border-slate-700">税込</span>
+  </label>
+  
+  <div className="space-y-3">
+    {/* 切り替えスイッチ */}
+    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-700 w-fit">
+      <button
+        type="button"
+        onClick={() => setFormData(prev => ({ ...prev, price: "無料" }))}
+        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+          formData.price === "無料" 
+            ? 'bg-slate-700 text-white shadow shadow-black/50' 
+            : 'text-slate-500 hover:text-slate-300'
+        }`}
+      >
+        無料
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          // もし「無料」だったら初期値(1000)を入れる。すでに数値ならそのまま
+          const currentVal = (formData.price === "無料" || formData.price === "") ? "1000" : formData.price;
+          setFormData(prev => ({ ...prev, price: currentVal }));
+        }}
+        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+          formData.price !== "無料" 
+            ? 'bg-indigo-600 text-white shadow shadow-indigo-900/50' 
+            : 'text-slate-500 hover:text-slate-300'
+        }`}
+      >
+        有料
+      </button>
+    </div>
+
+    {/* 入力エリア (有料のときだけ表示) */}
+    {formData.price !== "無料" ? (
+      <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+        <div className="relative flex items-center gap-2">
+           <span className="absolute left-3 text-slate-500 font-mono">¥</span>
+           <input
+             type="number"
+             value={formData.price}
+             onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+             className="w-full bg-slate-950 border border-slate-700 rounded-lg py-3 pl-8 pr-10 text-white focus:border-indigo-500 outline-none font-mono text-lg font-bold"
+             placeholder="3000"
+             min="0"
+           />
+           <span className="absolute right-3 text-sm text-slate-400 font-bold pointer-events-none">円</span>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+          ※ Stripe手数料 (3.6%) が差し引かれます
+        </p>
+      </div>
+    ) : (
+      <div className="text-xs text-slate-500 py-2 animate-in fade-in bg-slate-900/30 px-3 rounded border border-slate-800/50 border-dashed">
+        ※ イベントページには「参加費：無料」と表示されます
+      </div>
+    )}
+  </div>
+</div>
+{/* ▲▲▲ 修正ここまで ▲▲▲ */}
           </div>
+        </div>
+      </div>
+
+      {/* ★★★ デザインテーマ設定 (3パターン) ★★★ */}
+      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
+        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
+          <Palette size={20} className="text-pink-400"/> デザインテーマ
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* 1. Dark (Tech) */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'dark' 
+              ? 'bg-slate-900 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' 
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="dark" checked={formData.theme === 'dark'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-slate-900 border border-slate-700 rounded-lg flex flex-col gap-1 p-2 shadow-inner">
+               <div className="w-full h-1.5 bg-slate-700 rounded-full mb-1"></div>
+               <div className="w-2/3 h-1.5 bg-slate-700 rounded-full"></div>
+               <div className="mt-auto w-full h-6 bg-indigo-900/50 rounded flex items-center justify-center">
+                 <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+               </div>
+            </div>
+            <div>
+               <div className="font-bold text-white text-sm">Tech (Dark)</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">ハッカソン・勉強会向け</div>
+            </div>
+            {formData.theme === 'dark' && <div className="absolute top-2 right-2 text-indigo-500"><CheckCircle size={16}/></div>}
+          </label>
+
+          {/* 2. Corporate (Business/Light) */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'corporate' 
+              ? 'bg-slate-100 border-indigo-500 shadow-[0_0_15px_rgba(255,255,255,0.2)]' 
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="corporate" checked={formData.theme === 'corporate'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-white border border-slate-200 rounded-lg flex flex-col gap-1 p-2 shadow-inner relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-slate-200"></div>
+               <div className="w-full h-1.5 bg-slate-200 rounded-full mb-1 mt-2"></div>
+               <div className="w-2/3 h-1.5 bg-slate-200 rounded-full"></div>
+               <div className="mt-auto w-full h-6 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                  Entry
+               </div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'corporate' ? 'text-slate-900' : 'text-slate-300'}`}>Corporate (White)</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">セミナー・企業向け</div>
+            </div>
+            {formData.theme === 'corporate' && <div className="absolute top-2 right-2 text-indigo-500"><CheckCircle size={16}/></div>}
+          </label>
+
+          {/* 3. Pop (Friendly) ※準備中 */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'pop' 
+              ? 'bg-orange-50 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' 
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="pop" checked={formData.theme === 'pop'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-orange-100 border-2 border-orange-200 rounded-lg flex flex-col gap-1 p-2 shadow-inner border-dashed relative">
+               <div className="w-full h-1.5 bg-orange-300 rounded-full mb-1"></div>
+               <div className="w-2/3 h-1.5 bg-orange-300 rounded-full"></div>
+               <div className="absolute bottom-2 right-2"><Smile size={16} className="text-orange-400"/></div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'pop' ? 'text-orange-900' : 'text-slate-300'}`}>Pop (Friendly)</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">地域イベント・祭り向け</div>
+            </div>
+            {formData.theme === 'pop' && <div className="absolute top-2 right-2 text-orange-500"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 
@@ -436,38 +751,65 @@ export default function EventForm({ event, onSuccess }: Props) {
         </div>
       </div>
 
-      {/* 3. 講師・内容 */}
+      {/* 3. 講師・内容（複数対応版） */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
-        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><User size={20} className="text-pink-400"/> 講師・内容・タイムテーブル</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-          <div className="space-y-4">
-            <div><label className="block text-xs text-slate-500 mb-2">講師名</label><input type="text" name="lecturer" value={formData.lecturer} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-            <div><label className="block text-xs text-slate-500 mb-2">肩書</label><input type="text" name="lecturerTitle" value={formData.lecturerTitle} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-            <div className="bg-slate-950 border border-slate-700 border-dashed rounded-lg p-4">
-              <label className="block text-xs text-slate-500 mb-3 flex items-center gap-2"><ImageIcon size={14}/> 講師写真</label>
-              <div className="flex items-start gap-4">
-                <div className="shrink-0 w-24 h-32 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden relative flex items-center justify-center">
-                  {formData.lecturerImage ? <img src={formData.lecturerImage} alt="Preview" className="w-full h-full object-cover" /> : <User className="text-slate-700" size={32} />}
-                  {uploadingLecturer && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/></div>}
-                </div>
-                <div className="flex-1 space-y-2">
-                   {!formData.lecturerImage ? (
-                      <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors">
-                        <Upload size={14} /> 写真を選ぶ
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'lecturerImage')} />
+        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><User size={20} className="text-pink-400"/> 講師・登壇者設定</h3>
+        
+        {/* ▼▼▼ ここから：講師リスト（何人でも追加可能） ▼▼▼ */}
+        <div className="space-y-6 mb-6">
+          {lecturers.length === 0 && <div className="text-center py-6 border border-dashed border-slate-700 rounded-lg text-slate-500 text-sm">講師情報が登録されていません</div>}
+          
+          {lecturers.map((lec, index) => (
+            <div key={index} className="bg-slate-950 border border-slate-700 rounded-xl p-4 md:p-6 relative group">
+              {/* 削除ボタン */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                 <button type="button" onClick={() => removeLecturer(index)} className="p-2 bg-slate-900 hover:bg-red-900/50 text-slate-500 hover:text-red-400 rounded-lg transition-colors"><Trash2 size={16}/></button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                {/* 左側：講師写真 */}
+                <div className="md:col-span-3 lg:col-span-2">
+                   <div className="w-full aspect-[3/4] bg-slate-900 rounded-lg border border-slate-800 overflow-hidden relative flex items-center justify-center group/img">
+                      {lec.image ? <img src={lec.image} alt={lec.name} className="w-full h-full object-cover"/> : <User className="text-slate-700" size={32}/>}
+                      <label className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                         <span className="text-xs text-white font-bold flex items-center gap-1"><Upload size={12}/> 変更</span>
+                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLecturerImageUpload(e, index)} />
                       </label>
-                   ) : (
-                      <button type="button" onClick={() => handleRemoveImage('lecturerImage')} className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-xs rounded border border-red-500/30 transition-colors"><X size={14} /> 削除して変更</button>
-                   )}
+                   </div>
+                </div>
+                
+                {/* 右側：入力欄 */}
+                <div className="md:col-span-9 lg:col-span-10 space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+                     <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">氏名</label>
+                        <input type="text" value={lec.name} onChange={(e) => updateLecturer(index, "name", e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white" placeholder="氏名"/>
+                     </div>
+                     <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">肩書</label>
+                        <input type="text" value={lec.title} onChange={(e) => updateLecturer(index, "title", e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white" placeholder="役職など"/>
+                     </div>
+                   </div>
+                   <div>
+                      <label className="text-[10px] text-slate-500 block mb-1">プロフィール</label>
+                      <textarea value={lec.profile} onChange={(e) => updateLecturer(index, "profile", e.target.value)} rows={3} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm" placeholder="経歴など"/>
+                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div><label className="block text-xs text-slate-500 mb-2">プロフィール</label><textarea name="lecturerProfile" value={formData.lecturerProfile} onChange={handleChange} rows={8} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white resize-none" /></div>
+          ))}
+          
+          <button type="button" onClick={addLecturer} className="w-full py-3 border-2 border-dashed border-slate-700 hover:border-pink-500/50 hover:bg-pink-900/10 rounded-xl text-slate-400 hover:text-pink-400 font-bold flex items-center justify-center gap-2 transition-all">
+             <Plus size={16}/> 登壇者を追加する
+          </button>
         </div>
+        {/* ▲▲▲ ここまで：講師リスト ▲▲▲ */}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           <div><label className="block text-xs text-slate-500 mb-2 flex items-center gap-1"><AlignLeft size={14}/> 概要 (HTML可)</label><textarea name="content" value={formData.content} onChange={handleChange} rows={8} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm" /></div>
+
+        {/* ▼▼▼ ここから下は今まで通り（概要とタイムテーブル） ▼▼▼ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-800">
+           <div><label className="block text-xs text-slate-500 mb-2 flex items-center gap-1"><AlignLeft size={14}/> イベント概要 (HTML可)</label><textarea name="content" value={formData.content} onChange={handleChange} rows={8} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm" /></div>
+           
            <div className="bg-slate-950 rounded-lg border border-slate-800 p-4">
               <label className="block text-xs text-slate-500 mb-3 flex items-center gap-1"><Layout size={14}/> タイムテーブル構成</label>
               <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
@@ -485,7 +827,6 @@ export default function EventForm({ event, onSuccess }: Props) {
            </div>
         </div>
       </div>
-
 {/* 📂 components/EventForm.tsx の表示部分 */}
 
 {/* ★★★ 4. アンケート設定 (固定項目表示 + 便利ボタン) ★★★ */}
@@ -541,8 +882,14 @@ export default function EventForm({ event, onSuccess }: Props) {
                 <div className="md:col-span-3">
                    {(field.type === "select" || field.type === "checkbox") ? (
                       <div>
-                         <label className="text-[10px] text-slate-500 block mb-1">選択肢 (カンマ区切り)</label>
-                         <input type="text" value={field.optionsString} onChange={(e) => updateCustomField(index, "optionsString", e.target.value)} placeholder="はい, いいえ" className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
+                         <label className="text-[10px] text-slate-500 block mb-1">選択肢 (改行で区切ってください)</label>
+                         <textarea 
+                            rows={3} 
+                            value={field.optionsString} 
+                            onChange={(e) => updateCustomField(index, "optionsString", e.target.value)} 
+                            placeholder={`選択肢A\n選択肢B\n選択肢C`} 
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y" 
+                         />
                       </div>
                    ) : (
                       <div className="h-full flex items-end pb-2">
@@ -554,8 +901,32 @@ export default function EventForm({ event, onSuccess }: Props) {
                    )}
                 </div>
                 
-                <div className="md:col-span-1 flex justify-end items-center mt-auto">
-                   <button type="button" onClick={() => removeCustomField(index)} className="p-2 text-slate-600 hover:text-red-400 bg-slate-900 hover:bg-slate-800 rounded transition-colors"><Trash2 size={16}/></button>
+                {/* ★修正: 右端のボタンエリア (↑ ↓ 削除) */}
+                <div className="md:col-span-1 flex flex-col justify-center items-center gap-1 mt-auto">
+                   {/* ▲ 上へボタン */}
+                   <button 
+                     type="button" 
+                     onClick={() => moveCustomField(index, 'up')}
+                     disabled={index === 0}
+                     className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                   >
+                     <ArrowUp size={14}/>
+                   </button>
+                   
+                   {/* ▼ 下へボタン */}
+                   <button 
+                     type="button" 
+                     onClick={() => moveCustomField(index, 'down')}
+                     disabled={index === customFields.length - 1}
+                     className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                   >
+                     <ArrowDown size={14}/>
+                   </button>
+
+                   {/* 🗑️ 削除ボタン */}
+                   <button type="button" onClick={() => removeCustomField(index)} className="p-1.5 mt-1 text-slate-600 hover:text-red-400 bg-slate-900 hover:bg-slate-800 rounded transition-colors">
+                     <Trash2 size={16}/>
+                   </button>
                 </div>
               </div>
 
@@ -582,6 +953,145 @@ export default function EventForm({ event, onSuccess }: Props) {
         </div>
       </div>
 
+      {/* ================================================================= */}
+      {/* ★追加: アンケート設定エリア (申し込みフォーム設定の下に追加) */}
+      {/* ================================================================= */}
+      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800 mt-6">
+        <h3 className="text-white font-bold flex items-center gap-2 mb-2 text-lg">
+          <MessageSquare size={20} className="text-emerald-400"/> イベント終了後アンケート
+        </h3>
+        <p className="text-xs text-slate-500 mb-6">イベント終了後に回答してもらうアンケート項目を設定できます。</p>
+
+        <div className="space-y-4">
+          {surveyFields.length === 0 && (
+             <div className="text-center py-8 text-slate-600 text-sm border border-dashed border-slate-800 rounded-lg">
+                アンケート項目は設定されていません
+             </div>
+          )}
+
+{/* ▼▼▼ ステップ2：ここを書き換えます ▼▼▼ */}
+          {surveyFields.map((field, index) => (
+            <div key={index} className="bg-slate-950 border border-slate-700 rounded-lg p-4 flex flex-col md:flex-row gap-4 items-start md:items-center relative group">
+              {/* ドラッグ用グリップアイコン（装飾） */}
+              <div className="flex items-center text-slate-600 cursor-move"><GripVertical size={16}/></div>
+              
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
+                {/* 質問文の入力欄 */}
+                <div className="md:col-span-5">
+                   <label className="text-[10px] text-slate-500 block mb-1">質問文</label>
+                   <input 
+                     type="text" 
+                     value={field.label} 
+                     onChange={(e) => {
+                        const newFields = [...surveyFields];
+                        newFields[index].label = e.target.value;
+                        setSurveyFields(newFields);
+                     }} 
+                     placeholder="例: 本日の感想をお聞かせください" 
+                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" 
+                   />
+                </div>
+                
+                {/* 回答タイプの選択 */}
+                <div className="md:col-span-3">
+                   <label className="text-[10px] text-slate-500 block mb-1">回答タイプ</label>
+                   <select 
+                     value={field.type} 
+                     onChange={(e) => {
+                        const newFields = [...surveyFields];
+                        newFields[index].type = e.target.value as any;
+                        setSurveyFields(newFields);
+                     }} 
+                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none"
+                   >
+                     <option value="text">自由入力 (1行)</option>
+                     <option value="textarea">自由入力 (複数行)</option>
+                     <option value="select">選択肢 (プルダウン)</option>
+                     <option value="checkbox">複数選択 (チェックボックス)</option>
+                   </select>
+                </div>
+
+                {/* 選択肢 または 必須チェック */}
+                <div className="md:col-span-3">
+                   {(field.type === "select" || field.type === "checkbox") ? (
+                      <div>
+                         <label className="text-[10px] text-slate-500 block mb-1">選択肢 (改行区切り)</label>
+                         <textarea 
+                            rows={1} 
+                            value={field.optionsString || ""} 
+                            onChange={(e) => {
+                               const newFields = [...surveyFields];
+                               newFields[index].optionsString = e.target.value;
+                               setSurveyFields(newFields);
+                            }} 
+                            placeholder={`選択肢A\n選択肢B`} 
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]" 
+                         />
+                      </div>
+                   ) : (
+                      <div className="h-full flex items-end pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                           <input 
+                             type="checkbox" 
+                             checked={field.required} 
+                             onChange={(e) => {
+                                const newFields = [...surveyFields];
+                                newFields[index].required = e.target.checked;
+                                setSurveyFields(newFields);
+                             }} 
+                             className="rounded bg-slate-800 border-slate-600 text-purple-500 focus:ring-purple-500" 
+                           />
+                           <span className="text-xs text-slate-400">必須にする</span>
+                        </label>
+                      </div>
+                   )}
+                </div>
+                
+                {/* ★ここがポイント: 右端のボタンエリア (↑ ↓ 削除) */}
+                <div className="md:col-span-1 flex flex-col justify-center items-center gap-1 mt-auto">
+                   {/* ▲ 上へボタン */}
+                   <button 
+                     type="button" 
+                     onClick={() => moveSurveyField(index, 'up')}
+                     disabled={index === 0}
+                     className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                   >
+                     <ArrowUp size={14}/>
+                   </button>
+                   
+                   {/* ▼ 下へボタン */}
+                   <button 
+                     type="button" 
+                     onClick={() => moveSurveyField(index, 'down')}
+                     disabled={index === surveyFields.length - 1}
+                     className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                   >
+                     <ArrowDown size={14}/>
+                   </button>
+
+                   {/* 🗑️ 削除ボタン */}
+                   <button 
+                     type="button" 
+                     onClick={() => {
+                        const newFields = [...surveyFields];
+                        newFields.splice(index, 1);
+                        setSurveyFields(newFields);
+                     }} 
+                     className="p-1.5 mt-1 text-slate-600 hover:text-red-400 bg-slate-900 hover:bg-slate-800 rounded transition-colors"
+                   >
+                     <Trash2 size={16}/>
+                   </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button type="button" onClick={() => setSurveyFields([...surveyFields, { id: Math.random().toString(36), label: "", type: "text", options: [], optionsString: "", required: false }])} className="w-full py-3 border-2 border-dashed border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex items-center justify-center gap-2 text-sm font-bold">
+             <Plus size={16}/> アンケート質問を追加
+          </button>
+        </div>
+      </div>
+
       {/* 5. Zoom設定 */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
         <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><Video size={20} className="text-cyan-400"/> 参加形式・Zoom</h3>
@@ -592,6 +1102,35 @@ export default function EventForm({ event, onSuccess }: Props) {
         {formData.hasOnline && (
           <div className="bg-cyan-950/20 p-5 rounded-xl border border-cyan-900/30 space-y-4 animate-in fade-in">
              <div className="text-xs text-cyan-400 font-bold mb-2 flex items-center gap-2"><Mail size={14}/> 返信メール用（非公開）</div>
+             {/* ★ここに追加！: クリック一発便利ボタンエリア */}
+             <div className="flex flex-wrap gap-3 mb-4 pb-4 border-b border-cyan-900/30">
+                {/* Google Meetを一発作成 */}
+                <a 
+                  href="https://meet.google.com/new" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs bg-white text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 flex items-center gap-2 transition-colors font-bold shadow-sm"
+                  title="クリックすると新しい会議室が即座に作られます"
+                >
+                  <img src="https://www.gstatic.com/meet/icons/logo_24px_v2_2x.png" alt="Meet" className="w-4 h-4"/>
+                  Meetを新規作成
+                </a>
+
+                {/* Zoomのスケジュール画面へ */}
+                <a 
+                  href="https://zoom.us/meeting/schedule" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs bg-[#2D8CFF] text-white px-3 py-2 rounded-lg hover:bg-[#1E74E3] flex items-center gap-2 transition-colors font-bold shadow-sm"
+                >
+                  <Video size={16} fill="currentColor" className="text-white"/>
+                  Zoom設定画面へ
+                </a>
+                
+                <span className="text-[10px] text-slate-500 flex items-center pt-1">
+                   ※ここから作成して、URLを下にコピペしてください
+                </span>
+             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div><label className="block text-xs text-slate-500 mb-2">Zoom URL</label><input type="text" name="zoomUrl" value={formData.zoomUrl} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm" /></div>
                 <div><label className="block text-xs text-slate-500 mb-2">手順URL</label><input type="text" name="zoomGuideUrl" value={formData.zoomGuideUrl} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm" /></div>

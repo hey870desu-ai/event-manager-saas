@@ -106,6 +106,33 @@ export default function AnalyticsPage() {
     { name: '会場参加', value: offlineCount },
   ];
 
+// ▼▼▼ ここから追加 ▼▼▼
+  // イベントごとの詳細データを計算（PVとCVRもここで算出！）
+  const detailedEventStats = filteredEvents.map(event => {
+    const eventRes = filteredReservations.filter(r => r.eventId === event.id);
+    // 売上計算
+    const revenue = eventRes.reduce((acc, cur) => {
+       const price = parseInt(cur.price?.replace(/[^0-9]/g, '') || "0", 10);
+       return acc + (isNaN(price) ? 0 : price);
+    }, 0);
+    const online = eventRes.filter(r => r.type === 'online').length;
+    const offline = eventRes.filter(r => r.type === 'offline').length;
+
+    return {
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      branch: event.branchTag || "-",
+      total: eventRes.length,
+      online,
+      offline,
+      revenue,
+      pageViews: event.pageViews || 0,     // ★ここでPVを取得
+      cvr: event.pageViews ? ((eventRes.length / event.pageViews) * 100).toFixed(1) : "0.0" // ★ここでCVR計算
+    };
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // ▲▲▲ ここまで追加 ▲▲▲
+
   if (loading) return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-slate-400">Loading analytics...</div>;
 
   return (
@@ -200,6 +227,37 @@ export default function AnalyticsPage() {
                </PieChart>
              </ResponsiveContainer>
            </div>
+        </div>
+      </div>
+      <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden mt-8">
+        <div className="p-6 border-b border-slate-800">
+            <h3 className="text-lg font-bold text-white">イベント別 パフォーマンス詳細</h3>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-400">
+                <thead className="bg-slate-900/80 uppercase text-xs font-medium text-slate-300">
+                    <tr>
+                        <th className="px-6 py-4">イベント名</th>
+                        <th className="px-6 py-4">開催日</th>
+                        <th className="px-6 py-4 text-center">PV</th>   {/* ★PV */}
+                        <th className="px-6 py-4 text-center">CVR</th>  {/* ★CVR */}
+                        <th className="px-6 py-4 text-right">合計参加者</th>
+                        <th className="px-6 py-4 text-right">推定売上</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                    {detailedEventStats.map((event) => (
+                        <tr key={event.id} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="px-6 py-4 font-medium text-white">{event.title}</td>
+                            <td className="px-6 py-4">{event.date}</td>
+                            <td className="px-6 py-4 text-center text-slate-300">{event.pageViews}</td> {/* ★PV表示 */}
+                            <td className="px-6 py-4 text-center text-emerald-400">{event.cvr}%</td>    {/* ★CVR表示 */}
+                            <td className="px-6 py-4 text-right font-bold text-white">{event.total}</td>
+                            <td className="px-6 py-4 text-right font-mono text-emerald-400">¥{event.revenue.toLocaleString()}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
       </div>
     </div>

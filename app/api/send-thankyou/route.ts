@@ -1,13 +1,11 @@
 // 📂 app/api/send-thankyou/route.ts
-// 📝 役割: 管理画面からの個別差し込み送信 (Resend対応版)
+// 📝 役割: 管理画面からの個別差し込み送信 & 予約配信登録 (Resend対応版)
 
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
+import { adminDb } from '@/lib/firebase-admin';
 
-// ★ Resendの初期化 (ここが変わりました)
-const resend = new Resend(process.env.RESEND_API_KEY);
 
-// GoogleカレンダーURL生成 (便利な機能なのでそのまま残します)
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
   try {
     const cleanDate = dateStr.replace(/-/g, ''); 
@@ -49,18 +47,45 @@ export async function POST(request: Request) {
     const { 
        recipients, subject, body: baseBody, 
        eventTitle, eventDate, venueName,
-       tenantName, senderName
+       tenantName, senderName,
+       scheduledAt 
     } = body;
 
-    // 表示用の差出人名を決定
-    const displaySender = senderName || tenantName || "イベント事務局";
-    
-    // ★ 送信元の設定
-    // Resendでドメイン認証するまでは "onboarding@resend.dev" しか使えません
-    // 本番運用時は "noreply@your-domain.com" などに変更してください
-    const fromAddress = "onboarding@resend.dev"; 
+    // ---------------------------------------------------------
+    // 🅰️ パターンA：予約配信（scheduledAt がある場合）
+    // ---------------------------------------------------------
+    if (scheduledAt) {
+      console.log("📅 予約配信として保存します:", scheduledAt);
 
-    // カレンダーURL生成
+      // ★修正ポイント: undefined を防ぐ
+      // tenantName が無ければ senderName を使い、それでも無ければ null を入れる
+      const safeTenantName = tenantName || senderName || null;
+      const safeSenderName = senderName || "イベント事務局";
+
+      await adminDb.collection('mail_queue').add({
+        recipients,
+        subject,
+        body: baseBody, 
+        senderName: safeSenderName,
+        tenantName: safeTenantName, // ★ここが修正されました
+        eventTitle: eventTitle || null,
+        eventDate: eventDate || null,
+        venueName: venueName || null,
+        scheduledAt: new Date(scheduledAt),
+        status: 'pending', 
+        createdAt: new Date(),
+      });
+
+      return NextResponse.json({ success: true, message: 'Reservation saved' });
+    }
+
+    // ---------------------------------------------------------
+    // 🅱️ パターンB：即時配信
+    // ---------------------------------------------------------
+
+    const displaySender = senderName || tenantName || "イベント事務局";
+    const fromAddress = "info@send.hana-hiro.com"; 
+
     const calendarUrl = createGoogleCalendarUrl(
       `【${displaySender}】${eventTitle}`, 
       eventDate || "", 
@@ -68,7 +93,6 @@ export async function POST(request: Request) {
       `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`
     );
 
-    // 共通スタイル (デザインはそのまま維持)
     const styles = {
       body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
       container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);",
@@ -82,13 +106,22 @@ export async function POST(request: Request) {
       calendarLink: "display: inline-block; font-size: 12px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 6px; background-color: #f0f9ff; font-weight: bold;",
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
     };
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
 
-    // ★ 個別送信ループ処理 (Resend版)
-    // 順番に送っていきます
     for (const recipient of recipients) {
       
-      // 宛名差し込みロジック
       let personalBody = baseBody;
+
+      // ★ここに追加！: {email} という文字を、その人の本当のメアドに書き換えます
+      personalBody = personalBody.replace(/{email}/g, recipient.email);
+
+      // 元々の処理（お名前の差し込み）
       if (personalBody.includes("参加者各位")) {
         personalBody = personalBody.replace(/参加者各位/g, `${recipient.name} 様`);
       } else {
@@ -131,9 +164,8 @@ export async function POST(request: Request) {
         </html>
       `;
 
-      // ★ Resendで送信実行
-      await resend.emails.send({
-        from: `${displaySender} <${fromAddress}>`,
+      await transporter.sendMail({
+        from: `"${displaySender}" <${process.env.GMAIL_USER}>`,
         to: recipient.email, 
         subject: subject,
         html: htmlContent,
@@ -143,7 +175,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
-    console.error('Resend Email Error:', error);
+    console.error('Email Send Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

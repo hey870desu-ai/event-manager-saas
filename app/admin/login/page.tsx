@@ -42,12 +42,13 @@ export default function LoginPage() {
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
+        // 会員なら管理画面へ
         console.log("Login successful:", user.email);
         router.push("/admin"); 
       } else {
-        console.warn("Unauthorized access attempt:", user.email);
-        await signOut(auth); 
-        setError("アクセス権限がありません。管理者に招待を依頼してください。");
+        // ★ 未登録ならオンボーディング画面へご案内！
+        console.log("新規ユーザーです。登録画面へ移動します。");
+        router.push("/onboarding");
       }
 
     } catch (err: any) {

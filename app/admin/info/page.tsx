@@ -40,26 +40,45 @@ export default function InfoPage() {
       if (!currentUser) { router.push("/admin/login"); return; }
       setUser(currentUser);
 
-      // (A) ユーザーのテナントIDを取得
-      let tid = "demo";
-      const userDoc = await getDoc(doc(db, "admin_users", currentUser.email!));
-      if (userDoc.exists()) {
-        tid = userDoc.data().tenantId || "demo";
-      } else if (currentUser.email === SUPER_ADMIN_EMAIL) {
-        tid = "super_admin"; // 特権
-      }
-      setMyTenantId(tid);
+      try {
+        // (A) ユーザーのテナントIDを取得
+        let tid = "demo";
+        const userDoc = await getDoc(doc(db, "admin_users", currentUser.email!));
+        
+        if (userDoc.exists()) {
+          tid = userDoc.data().tenantId || "demo";
+        } else if (currentUser.email === SUPER_ADMIN_EMAIL) {
+          tid = "super_admin"; // 特権
+        }
+        setMyTenantId(tid);
 
-      // (B) テナント名取得
-      if (tid !== "super_admin") {
-         const tSnap = await getDoc(doc(db, "tenants", tid));
-         if (tSnap.exists()) setMyTenantName(tSnap.data().name);
-      } else {
-         setMyTenantName("システム管理者");
-      }
+        // (B) テナント名取得
+        if (tid !== "super_admin" && tid !== "demo") {
+           try {
+             const tSnap = await getDoc(doc(db, "tenants", tid));
+             if (tSnap.exists()) {
+               setMyTenantName(tSnap.data().name || tid);
+             } else {
+               setMyTenantName(tid);
+             }
+           } catch(e) { console.log("Tenant fetch error", e); }
+        } else if (tid === "super_admin") {
+           setMyTenantName("システム管理者");
+        } else {
+           setMyTenantName("デモ環境");
+        }
 
-      // (C) ニュースの初回取得（これは全ユーザー共通）
-      fetchFirstBatchNews();
+        // (C) ニュースの初回取得（エラーでも止まらないようにする）
+        try {
+           await fetchFirstBatchNews();
+        } catch (e) { console.log("News fetch error", e); }
+
+      } catch (e) {
+        console.error("初期化エラー:", e);
+      } finally {
+        // ★★★ これが修正の肝です！何があっても必ずローディングを終わらせる ★★★
+        setLoading(false);
+      }
     });
     return () => unsubscribe();
   }, [router]);
@@ -98,12 +117,18 @@ export default function InfoPage() {
   // --- ニュース機能（以下変更なし） ---
 
   const fetchFirstBatchNews = async () => {
-    const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(10));
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as NewsItem[];
-    setNewsList(data);
-    setLastDoc(snapshot.docs[snapshot.docs.length - 1]); 
-    setHasMore(snapshot.docs.length === 10); 
+    try {
+      // コレクションがない場合や権限エラーでも止まらないようにする
+      const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(10));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as NewsItem[];
+      setNewsList(data);
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1]); 
+      setHasMore(snapshot.docs.length === 10); 
+    } catch (e) {
+      console.log("News fetch error (ignore):", e);
+      setNewsList([]); // エラーなら空でOK
+    }
   };
 
   const fetchMoreNews = async () => {

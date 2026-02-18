@@ -7,18 +7,21 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
-import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc } from "firebase/firestore";
-import EventForm from "@/components/old_EventForm";
+import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
+import EventForm from "@/components/EventForm";
+import Link from "next/link"; // ★ Linkコンポーネントを追加
+import StripeConnectButton from "@/components/admin/StripeConnectButton";
+import { where } from "firebase/firestore";
 
 // ★相対パスのまま維持
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode } from "lucide-react";
+import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star, MessageSquare, Clock, FileText, Shield, CreditCard } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
-type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any; };
+type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[]; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
 type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean; };
 
@@ -85,6 +88,8 @@ export default function AdminDashboard() {
   const [tenantList, setTenantList] = useState<Tenant[]>([]);
 
   const [counts, setCounts] = useState<{[key:string]: number}>({});
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrEvent, setQrEvent] = useState<EventData | null>(null);
 
   // Modals
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -114,7 +119,42 @@ export default function AdminDashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  // ▼▼▼ 追加：複製機能のロジック ▼▼▼
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
+    e.stopPropagation();
+    if (!confirm('このイベントを複製しますか？\n（タイトルに「のコピー」が付き、下書き状態で作成されます）')) return;
+    
+    setDuplicatingId(event.id);
+    try {
+      // IDと作成日以外のデータをコピー
+      const { id, createdAt, ...eventData } = event; 
+      
+      await addDoc(collection(db, 'events'), {
+        ...eventData,
+        title: `${eventData.title} のコピー`, // タイトルを変更
+        status: 'draft', // ステータスは下書きに戻す
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Duplicate error:", error);
+      alert("複製に失敗しました");
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+  // ▲▲▲ 追加ここまで ▲▲▲
+
   const router = useRouter();
+  // ★追加： 「本部」という名前を、会社名（署名）に書き換える関数
+  const formatBranchName = (bName: string) => {
+    // もし名前が「本部」で、かつ署名名(orgName)が設定されていたら、署名名を表示
+    if (bName === "本部" && orgName) return orgName;
+    return bName;
+  };
 
   // ★安全装置: 変なデータが来てもエラーにしない関数
   const safeStr = (val: any) => {
@@ -161,9 +201,8 @@ export default function AdminDashboard() {
              setCurrentUserTenant("super_admin");
              setIsSuperAdminMode(true);
           } else {
-             setPermissionError(true); 
-             setLoading(false); 
-             await signOut(auth);
+             router.push("/onboarding");
+             return;
           }
         }
       }
@@ -172,30 +211,42 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [router]);
 
-  useEffect(() => {
-    if (!user) return;
-    
-    const unsub1 = onSnapshot(query(collection(db, "events")), (s) => {
+useEffect(() => {
+    if (!user || !currentUserTenant) return; // テナントID確定まで待つ
+
+    // 1. イベント取得（スーパー管理者は全件、それ以外は自分のテナントのみ）
+    const eventQuery = isSuperAdminMode 
+      ? query(collection(db, "events"))
+      : query(collection(db, "events"), where("tenantId", "==", currentUserTenant));
+
+    const unsub1 = onSnapshot(eventQuery, (s) => {
       const d = s.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EventData[];
       d.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       setEvents(d); 
     });
 
-    const unsub2 = onSnapshot(query(collection(db, "admin_users")), (s) => setAdminUsers(s.docs.map(d => d.data() as AdminUser)));
+    // 2. 管理者一覧取得（同上）
+    const adminQuery = isSuperAdminMode
+      ? query(collection(db, "admin_users"))
+      : query(collection(db, "admin_users"), where("tenantId", "==", currentUserTenant));
 
-    const unsub3 = onSnapshot(doc(db, "settings", "config"), (doc) => {
-      if (doc.exists() && doc.data().orgName) {
-        setOrgName(doc.data().orgName);
-        setEditingOrgName(doc.data().orgName);
-      } else {
-        const defaultName = "Event Manager";
-        setOrgName(defaultName);
-        setEditingOrgName(defaultName);
+    const unsub2 = onSnapshot(adminQuery, (s) => setAdminUsers(s.docs.map(d => d.data() as AdminUser)));
+
+    // 3. 設定（署名・組織名）の取得 ★ここが重要！
+    // 共通の "settings/config" ではなく、自分のテナント情報を参照するように変更
+    const unsub3 = onSnapshot(doc(db, "tenants", currentUserTenant), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // データがあればそれをセット。なければ "Event Manager" などのデフォルト値
+        const name = data.orgName || data.name || "Event Manager"; // orgName(署名用)優先、なければテナント名
+        setOrgName(name);
+        setEditingOrgName(name);
       }
     });
 
     return () => { unsub1(); unsub2(); unsub3(); };
-  }, [user]);
+  }, [user, currentUserTenant, isSuperAdminMode]); // 依存配列に currentUserTenant を追加
+// ▲▲▲ 修正ここまで ▲▲▲
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -222,6 +273,18 @@ export default function AdminDashboard() {
       setParticipants(loadedData);
     });
   }, [isParticipantsOpen, currentEventForList]);
+
+  useEffect(() => {
+    if (!isFeedbackOpen || !currentEventForList) return;
+    
+    // フィードバック（回答）をリアルタイム取得
+    const q = query(collection(db, "events", currentEventForList.id, "feedbacks"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+       setFeedbacks(data);
+    });
+    return () => unsubscribe();
+  }, [isFeedbackOpen, currentEventForList]);
 
   // Actions
   const handleLogout = async () => { await signOut(auth); router.push("/"); };
@@ -271,9 +334,15 @@ export default function AdminDashboard() {
   
   const handleSaveOrgName = async () => {
     try {
-      await setDoc(doc(db, "settings", "config"), { orgName: editingOrgName }, { merge: true });
+      // 共通設定ではなく、自分のテナント情報に「署名用名称(orgName)」として保存
+      await updateDoc(doc(db, "tenants", currentUserTenant), { 
+        orgName: editingOrgName 
+      });
       alert("団体名・署名を保存しました！\nメールテンプレートに反映されます。");
-    } catch (e) { alert("保存に失敗しました"); console.error(e); }
+    } catch (e) { 
+      alert("保存に失敗しました"); 
+      console.error(e); 
+    }
   };
 
   const openMailModal = () => {
@@ -364,6 +433,59 @@ export default function AdminDashboard() {
       } catch(e) { alert("失敗"); } finally { setDownloadingId(null); }
   };
 
+// ... (export default function の中にある downloadFeedbackCSV をこれに書き換え) ...
+
+  const downloadFeedbackCSV = () => {
+    if (!feedbacks || feedbacks.length === 0) return alert("データがありません");
+    
+    // 1. 全回答から「質問の項目名」をすべて洗い出す (重複なし)
+    // 順番を揃えるため、イベント設定に保存されているsurveyFieldsがあればそれを優先、なければ回答データから抽出
+    let questionKeys: string[] = [];
+    
+    if (currentEventForList?.surveyFields && Array.isArray(currentEventForList.surveyFields)) {
+      questionKeys = currentEventForList.surveyFields.map((f: any) => f.label);
+    } else {
+      questionKeys = Array.from(new Set(feedbacks.flatMap(f => Object.keys(f.answers || {}))));
+    }
+
+    // 2. CSVのヘッダー行を作成 (日時, 評価, [質問1], [質問2]...)
+    const headers = ["回答日時", "評価(1-5)", ...questionKeys];
+    
+    // 3. データをCSV行に変換
+    const csvRows = feedbacks.map(fb => {
+      // 日付
+      const date = fb.createdAt?.toDate ? fb.createdAt.toDate().toLocaleString() : "";
+      
+      // 各質問への回答を取り出す
+      const answerColumns = questionKeys.map(key => {
+        const val = fb.answers?.[key];
+        // 配列なら結合、文字ならエスケープ処理
+        let cellData = "";
+        if (Array.isArray(val)) {
+          cellData = val.join(" / "); // 複数回答はスラッシュ区切り
+        } else if (val) {
+          cellData = String(val);
+        }
+        // CSVで崩れないようにダブルクォートで囲み、中のダブルクォートは2つ重ねる
+        return `"${cellData.replace(/"/g, '""')}"`;
+      });
+
+      return [
+        `"${date}"`,
+        fb.rating,
+        ...answerColumns
+      ].join(",");
+    });
+
+    // 4. 全部つなげてBlobにする
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `アンケート結果_${currentEventForList?.title || "data"}.csv`;
+    link.click();
+  };
+
   const copyEmails = (type: "checked-in" | "all") => {
     const t = type==="checked-in"?participants.filter(p=>p.checkedIn):participants;
     if(!t.length)alert("対象なし"); else {navigator.clipboard.writeText(t.map(p=>p.email).join(", ")); alert("コピー完了");}
@@ -381,53 +503,122 @@ export default function AdminDashboard() {
     setNewAdminBranch(bname);
   };
 
-  const filteredEvents = events.filter(ev => {
-    if (isSuperAdminMode) return true; 
-    return ev.tenantId === currentUserTenant; 
-  });
+  const filteredEvents = events;
   
   const targetCount = mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length;
+
+  const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
+  const isFreePlan = currentTenantData?.plan === 'free';
 
   if (permissionError) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><ShieldAlert className="text-red-500 w-16 mb-4"/><p>権限がありません</p></div>;
   if (loading || !user) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div></div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
-      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-slate-50 text-slate-600 font-sans">
+      {/* ▼▼▼ 1. このスタイル定義を追加してください ▼▼▼ */}
+      <style>{`
+        @keyframes burnEffect {
+          0% { background-position: 0% 50%; box-shadow: 0 0 5px rgba(249, 115, 22, 0.5); }
+          50% { background-position: 100% 50%; box-shadow: 0 0 20px rgba(220, 38, 38, 0.8), 0 0 10px rgba(251, 191, 36, 0.6); transform: scale(1.02); }
+          100% { background-position: 0% 50%; box-shadow: 0 0 5px rgba(249, 115, 22, 0.5); }
+        }
+        .btn-fire {
+          background: linear-gradient(90deg, #f59e0b, #ef4444, #f97316); /* 黄→赤→オレンジ */
+          background-size: 200% 200%; /* グラデーションを伸ばして動かす */
+          animation: burnEffect 2s infinite ease-in-out; /* 2秒かけてメラメラ動く */
+          border: none; /* 枠線を消す */
+        }
+      `}</style>
+      {/* ▲▲▲ 追加ここまで ▲▲▲ */}
+      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center gap-4">
+          
+          {/* 左側：ロゴとインフォメーション */}
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2">
-              <BarChart3 className="text-indigo-500"/>
-              <h1 className="text-xl font-bold text-white hidden sm:block">Event Manager</h1>
+              {/* アイコンをインディゴからオレンジ（炎）に変更 */}
+              <BarChart3 className="text-orange-500 drop-shadow-sm"/>
+              {/* タイトル文字を白から黒系に変更 */}
+              <h1 className="text-xl font-bold text-slate-800 hidden sm:block tracking-tight">Event Manager</h1>
             </div>
-            <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-orange-600/90 hover:text-white text-slate-300 rounded-full transition-all text-xs font-bold border border-slate-700">
+            <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-full transition-all text-xs font-bold border border-slate-200">
               <Megaphone size={14} /> <span className="hidden md:inline">Information</span>
             </button>
           </div>
-          <div className="flex gap-4">
-             <button onClick={() => router.push("/admin/marketing")} className="flex items-center gap-2 px-3 py-1.5 bg-violet-900/30 hover:bg-violet-600 border border-violet-500/30 text-violet-400 hover:text-white rounded-lg transition-all text-xs font-bold">
-               <Mail size={16}/> <span className="hidden md:inline">メールマーケティング</span>
+
+          {/* 右側：メニューボタン群（スマホで横スクロール可能） */}
+          <div className="flex gap-3 overflow-x-auto py-2 px-1 hide-scrollbar -mr-4 pr-4 md:mr-0 md:pr-0 w-full justify-end items-center">
+             
+             {/* メールマーケティング */}
+             <button onClick={() => router.push("/admin/marketing")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
+               <Mail size={16}/> <span className="hidden lg:inline">メールマーケティング</span>
             </button>
-            <button onClick={() => router.push("/admin/analytics")} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/30 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white rounded-lg transition-all text-xs font-bold">
-               <BarChart2 size={16}/> <span className="hidden md:inline">分析・データ管理</span>
+            
+            {/* 分析・データ管理 */}
+            <button onClick={() => router.push("/admin/analytics")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
+               <BarChart2 size={16}/> <span className="hidden lg:inline">分析・データ管理</span>
             </button>
-            <button onClick={() => router.push("/admin/scan")} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/30 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-400 hover:text-white rounded-lg transition-all text-xs font-bold animate-pulse hover:animate-none">
-               <ScanBarcode size={16}/> <span className="hidden md:inline">当日受付・QR</span>
+            
+            {/* 当日受付・QR */}
+            <button onClick={() => router.push("/admin/scan")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
+               <ScanBarcode size={16}/> <span className="hidden lg:inline">当日受付・QR</span>
             </button>
 
-            <button onClick={()=>setIsSettingsOpen(true)}><Settings/></button>
-            <button onClick={handleLogout}><LogOut/></button>
+            {/* お問い合わせ管理 (スーパー管理者のみ) */}
+            {isSuperAdminMode && (
+              <button 
+                onClick={() => router.push("/admin/contacts")} 
+                className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
+              >
+                 <MessageSquare size={16}/> 
+                 <span className="hidden lg:inline">お問い合わせ管理</span>
+              </button>
+            )}
+
+            {/* 契約・請求ボタン */}
+            <button onClick={() => router.push("/dashboard")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
+               <CreditCard size={16}/> <span className="hidden lg:inline">契約・請求</span>
+            </button>
+
+            {/* 設定・ログアウト */}
+            <button onClick={()=>setIsSettingsOpen(true)} className="shrink-0 p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"><Settings size={20}/></button>
+            <button onClick={handleLogout} className="shrink-0 p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-500 transition-colors"><LogOut size={20}/></button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+{/* ▼▼▼ 修正：黒背景をやめ、清潔感のある薄いエメラルドグリーンに変更 ▼▼▼ */}
+{user?.email === SUPER_ADMIN_EMAIL && (
+  <div className="mb-8 p-5 bg-emerald-50/60 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm animate-in fade-in">
+    <div>
+      <h3 className="text-emerald-800 font-bold flex items-center gap-2 text-lg">
+        <Shield size={22} className="text-emerald-600"/> スーパー管理者エリア
+      </h3>
+      <p className="text-emerald-600/80 text-sm mt-1">新規テナントの契約・発行などの管理業務はこちらから</p>
+    </div>
+    <Link 
+      href="/super-admin"
+      className="bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:shadow-md whitespace-nowrap"
+    >
+      管理コンソールへ移動
+    </Link>
+  </div>
+)}
+{/* ▲▲▲ 追加ここまで ▲▲▲ */}
+        {/* ▼▼▼ 修正：ボタンを水色グラデーションに変更 ▼▼▼ */}
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-white">Events</h2>
-          <button onClick={() => { setSelectedEvent(null); setIsEventModalOpen(true); }} className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex gap-2"><Plus/> 新規イベント</button>
+          <h2 className="text-2xl font-bold text-slate-800">Events</h2>
+          <button 
+            onClick={() => { setSelectedEvent(null); setIsEventModalOpen(true); }} 
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center"
+          >
+            <Plus size={20} strokeWidth={3}/> 新規イベント
+          </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* グリッドをやめて、縦積みのリストにする (max-w-6xl で幅広に) */}
+<div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {filteredEvents.map((ev) => {
             const isPublished = ev.status === 'published';
             // ★安全装置: テナント名が取れない場合のガード
@@ -442,103 +633,162 @@ export default function AdminDashboard() {
               key={ev.id} 
               onClick={()=>{setSelectedEvent(ev);setIsEventModalOpen(true);}} 
               className={`
-                relative group flex flex-col h-full rounded-2xl overflow-hidden transition-all duration-500 cursor-pointer
+                relative group flex flex-col h-full rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer border
                 ${isPublished 
-                  ? "bg-slate-900/80 border border-emerald-500/50 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)] hover:shadow-[0_0_50px_-10px_rgba(16,185,129,0.5)]" 
-                  : "bg-slate-900 border border-slate-800 hover:border-indigo-500/50"
+                  /* 公開中：枠線を少し濃くし、影を強調 */
+                  ? "bg-white border-orange-400/50 shadow-md hover:shadow-xl hover:border-orange-500 ring-1 ring-orange-100" 
+                  : "bg-white border-slate-300 shadow-sm hover:shadow-md hover:border-slate-400"
                 }
               `}
             >
-              {isPublished && (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-50 pointer-events-none" />
-              )}
-
-              <div className={`h-1 w-full absolute top-0 z-10 ${isPublished ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-slate-700'}`}/>
+              {/* ▼▼▼ 修正：黄色〜淡いオレンジの優しいグラデーションに変更 ▼▼▼ */}
+<div className={`h-2 w-full absolute top-0 z-10 ${isPublished ? 'bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 shadow-sm' : 'bg-slate-300'}`}/>
               
               <div className="p-6 flex-1 relative z-10">
                 <div className="flex justify-between mb-4">
                   <div className="flex gap-2">
-                    <span className={`
-                      text-xs px-2 py-0.5 rounded-full border flex items-center gap-1
-                      ${isPublished 
-                        ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/30 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
-                        : "border-slate-700 text-slate-400"
-                      }
-                    `}>
-                      {isPublished ? '公開中' : '下書き'}
-                    </span>
+                    {/* ▼▼▼ 修正：公開中の時だけ btn-fire を適用 ▼▼▼ */}
+<span className={`
+  text-xs px-3 py-0.5 rounded-full flex items-center gap-1 font-bold tracking-wide
+  ${isPublished 
+    /* 公開中：メラメラ燃えるエフェクト（枠線なし） */
+    ? "btn-fire text-white shadow-md" 
+    /* 下書き：グレー背景＋枠線あり */
+    : "bg-slate-100 text-slate-500 border border-slate-300"
+  }
+`}>
+  {isPublished ? '公開中' : '下書き'}
+</span>
                     
                     {isSuperAdminMode && (
-                       <span className="text-[10px] bg-slate-800 text-indigo-300 px-2 py-0.5 rounded flex items-center gap-1 border border-slate-700 truncate max-w-[150px]">
-                         <Tag size={10}/> 
+                       /* ▼▼▼ 修正：テナント名を「ネイビー背景・白文字」に変更 ▼▼▼ */
+                       <span className="text-[10px] bg-slate-800 text-white px-3 py-0.5 rounded flex items-center gap-1 border border-slate-700 truncate max-w-[150px] shadow-sm">
+                         <Tag size={10} className="text-slate-300"/> 
                          {displayLabel}
                        </span>
                     )}
                   </div>
-                  <button onClick={(e)=>handleDelete(e,ev.id)} className="text-slate-500 hover:text-red-400 transition-colors" title="削除">
-                      <Trash2 size={18}/>
-                  </button>
+                  {/* ▼▼▼ ここに変更！ゴミ箱の左に複製ボタンを追加 ▼▼▼ */}
+                  <div className="flex items-center gap-1">
+                    {/* 複製ボタン */}
+                    <button 
+                      onClick={(e)=>handleDuplicate(e,ev)} 
+                      disabled={duplicatingId===ev.id}
+                      className="text-slate-400 hover:text-orange-600 transition-colors bg-white rounded-full p-1.5 hover:bg-orange-50" 
+                      title="イベントを複製"
+                    >
+                        {duplicatingId===ev.id ? (
+                          <div className="animate-spin w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full"/>
+                        ) : (
+                          <Copy size={18}/>
+                        )}
+                    </button>
+
+                    {/* 削除ボタン（既存） */}
+                    <button 
+                      onClick={(e)=>handleDelete(e,ev.id)} 
+                      className="text-slate-400 hover:text-red-600 transition-colors bg-white rounded-full p-1.5 hover:bg-red-50" 
+                      title="削除"
+                    >
+                        <Trash2 size={18}/>
+                    </button>
+                  </div>
+                  {/* ▲▲▲ ここまで ▲▲▲ */}
                 </div>
                 
-                <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-indigo-400 transition-colors">{ev.title}</h3>
+                {/* ★ここが重要！文字色を text-white から text-slate-900 (黒) に変更 */ }
+                <h3 className="text-xl font-bold text-slate-900 mb-3 line-clamp-2 group-hover:text-orange-600 transition-colors leading-snug">
+                  {ev.title}
+                </h3>
                 
-                <div className="text-sm text-slate-400 flex flex-col gap-1">
+                <div className="text-sm text-slate-600 flex flex-col gap-1.5 font-medium">
                   <span className="flex gap-2 items-center">
-                    <Calendar size={14} className={isPublished ? "text-emerald-500" : "text-slate-500"}/>
+                    <Calendar size={16} className={isPublished ? "text-orange-600" : "text-slate-400"}/>
                     {ev.date}
                   </span>
                   <span className="flex gap-2 items-center">
-                    <MapPin size={14} className={isPublished ? "text-emerald-500" : "text-slate-500"}/>
+                    <MapPin size={16} className={isPublished ? "text-orange-600" : "text-slate-400"}/>
                     {safeStr(ev.venueName)||"場所未定"}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-slate-900/50 px-4 py-3 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0 relative z-10" onClick={e=>e.stopPropagation()}>
+              {/* ▼▼▼ 修正：背景をグレーからベージュ（bg-orange-50）に変更 ▼▼▼ */}
+<div className="bg-orange-50 px-5 py-4 border-t border-orange-100 flex flex-wrap md:flex-nowrap justify-between items-center gap-4 relative z-10" onClick={e=>e.stopPropagation()}>
                 
-                <div className="flex w-full md:w-auto items-center justify-between md:justify-start gap-3">
+                {/* 左側：参加者ボタン（ここをグラデーションボタン化！） */}
+                <div className="flex items-center gap-3 w-full md:w-auto">
                   <button 
                       onClick={(e)=>{e.stopPropagation();setCurrentEventForList(ev);setIsParticipantsOpen(true);}} 
-                      className="flex gap-2 text-xs bg-slate-800 hover:bg-orange-600 hover:text-white px-3 py-1.5 rounded-lg text-slate-300 transition-colors border border-slate-700 hover:border-orange-500"
-                      title="参加者リストを開く"
+                      /* ▼▼▼ 修正：黄色〜淡いオレンジのグラデーションに変更（ホバー時は少し濃く） ▼▼▼ */
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 hover:from-amber-300 hover:via-orange-400 hover:to-orange-500 text-[#051e34] px-6 py-2.5 rounded-lg transition-all border-none text-sm font-bold shadow-md hover:shadow-lg active:scale-95"
+                      title="参加者リスト"
                   >
-                      <ListChecks size={14}/> 参加者
+                      <ListChecks size={18} className="text-[#051e34]"/> 
+                      <span>参加者リスト</span>
                   </button>
                   
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500 text-black font-bold text-xs shadow-lg shadow-cyan-500/20">
-                     <Users size={12} className="text-black/70"/>
-                     <span>{counts[ev.id] || 0}名</span>
+                  {/* 人数バッジ：導火線エフェクト（火花2本バージョン！） */}
+                  <div className="relative group rounded-full p-[2px] overflow-hidden">
+                    {/* ▼火花のアニメーション（2つの火花が追いかけっこ） */}
+                    <div className="absolute inset-[-100%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_35%,#fbbf24_45%,#ef4444_50%,transparent_50%,transparent_85%,#fbbf24_95%,#ef4444_100%)]" />
+                    
+                    {/* ▼前面の白いプレート */}
+                    <div className="relative flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-slate-700 font-bold text-xs shadow-sm">
+                       <Users size={14} className="text-slate-500"/>
+                       <span>{counts[ev.id] || 0}名</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex w-full md:w-auto items-center gap-2 border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
+                {/* 右側：アクションボタン群（文字と枠を濃く） */}
+                <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                   
+                   {/* 共通スタイル：border-slate-300, text-slate-600 に変更 */}
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); setQrEvent(ev); setIsQrModalOpen(true); }}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
+                   >
+                       <QrCode size={18}/>
+                       <span className="hidden lg:inline">QR表示</span>
+                   </button>
+
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); setCurrentEventForList(ev); setIsFeedbackOpen(true); }}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
+                   >
+                       <MessageSquare size={18}/>
+                       <span className="hidden lg:inline">結果</span>
+                   </button>
+
                    <button 
                      onClick={(e)=>handleDownloadCSV(e,ev.id,ev.title)} 
                      disabled={downloadingId===ev.id} 
-                     className="flex-1 md:flex-none md:w-10 flex justify-center items-center py-3 md:py-2 bg-slate-800 hover:bg-emerald-600 hover:text-white rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-emerald-500" 
-                     title="CSVをダウンロード"
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
-                       {downloadingId===ev.id?<div className="animate-spin w-4 h-4 border-2 border-white rounded-full border-t-transparent"/>:<FileDown size={18}/>}
+                       {downloadingId===ev.id?<div className="animate-spin w-4 h-4 border-2 border-blue-500 rounded-full border-t-transparent"/>:<FileDown size={18}/>}
+                       <span className="hidden lg:inline">CSV</span>
                    </button>
                    
                    <button 
                      onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);setCopiedId(ev.id);setTimeout(()=>setCopiedId(null),2000);}} 
-                     className="flex-1 md:flex-none md:w-10 flex justify-center items-center py-3 md:py-2 bg-slate-800 hover:bg-indigo-600 hover:text-white rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-indigo-500" 
-                     title="URLをコピー"
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
-                       {copiedId===ev.id?<Check size={18}/>:<Share2 size={18}/>}
+                       {copiedId===ev.id?<Check size={18} className="text-emerald-500"/>:<Share2 size={18}/>}
+                       <span className="hidden lg:inline">URL</span>
                    </button>
                    
                    <a 
                      href={`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`} 
                      target="_blank" 
-                     className="flex-1 md:flex-none md:w-10 flex justify-center items-center py-3 md:py-2 bg-slate-800 hover:bg-indigo-600 hover:text-white rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-indigo-500" 
-                     title="公開ページを見る"
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-slate-100 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
                        <ExternalLink size={18}/>
+                       <span className="hidden lg:inline">公開P</span>
                    </a>
                 </div>
               </div>
+              {/* ▲▲▲ 差し替えここまで ▲▲▲ */}
             </div>
             );
           })}
@@ -619,6 +869,257 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* ★追加: アンケートQRモーダル */}
+      {isQrModalOpen && qrEvent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" onClick={() => setIsQrModalOpen(false)}>
+          <div className="bg-white text-slate-900 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 relative" onClick={e => e.stopPropagation()}>
+             <button onClick={() => setIsQrModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2"><X size={24}/></button>
+             
+             <h3 className="text-xl font-bold mb-1">アンケートのお願い</h3>
+             <p className="text-slate-500 text-xs mb-6">{qrEvent.title}</p>
+             
+             <div className="bg-white p-2 rounded-xl border-2 border-slate-100 inline-block mb-6 shadow-inner">
+               {/* QRコード生成APIを使って画像を表示 */}
+               <img 
+                 src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${window.location.origin}/t/${qrEvent.tenantId || "default"}/e/${qrEvent.id}/survey`)}`} 
+                 alt="Survey QR" 
+                 className="w-64 h-64 object-contain"
+               />
+             </div>
+             
+             <div className="bg-slate-50 p-4 rounded-xl text-left">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Answer URL</p>
+                <p className="text-xs text-slate-600 break-all font-mono select-all">
+                  {`${window.location.origin}/t/${qrEvent.tenantId || "default"}/e/${qrEvent.id}/survey`}
+                </p>
+             </div>
+
+             <div className="mt-6">
+                <p className="text-sm font-bold text-slate-700">こちらのQRコードを読み取って<br/>回答にご協力ください</p>
+             </div>
+          </div>
+        </div>
+      )}
+      
+{/* ★修正: アンケート結果分析モーダル（日本語・回答率付き） */}
+      {isFeedbackOpen && currentEventForList && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsFeedbackOpen(false)} />
+          
+          <div className="relative w-full max-w-5xl h-[85vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* ヘッダー */}
+            <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#131625] shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="text-indigo-400" size={24}/> 
+                  アンケート集計・分析
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">{currentEventForList.title}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                   onClick={downloadFeedbackCSV}
+                   className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition-colors"
+                 >
+                   <FileText size={16}/> <span className="hidden sm:inline">CSV出力</span>
+                 </button>
+                <button onClick={() => setIsFeedbackOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                  <X size={24}/>
+                </button>
+              </div>
+            </div>
+
+            {/* メインコンテンツ */}
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#0f111a]">
+              
+              {feedbacks.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4 opacity-50">
+                  <MessageSquare size={48} strokeWidth={1} />
+                  <p>まだ回答がありません</p>
+                </div>
+              ) : (
+                <div className="space-y-10">
+                  
+                  {/* 1. スコアボード (日本語化 & 回答率追加) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    {/* 回答数 & 回答率 */}
+                    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex items-center gap-4">
+                      <div className="p-3 bg-blue-500/10 text-blue-400 rounded-lg"><Users size={24}/></div>
+                      <div>
+                        <div className="text-xs text-slate-400 font-bold uppercase">回答数 / 参加者</div>
+                        <div className="text-2xl font-bold text-white flex items-end gap-2">
+                          {feedbacks.length}
+                          <span className="text-sm text-slate-500 mb-1">件</span>
+                          
+                          {/* 回答率の計算: (回答数 / 参加者数) * 100 */}
+                          <span className="text-sm text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/30 mb-1 ml-auto">
+                            回答率 {counts[currentEventForList.id] ? Math.round((feedbacks.length / counts[currentEventForList.id]) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 平均満足度 */}
+                    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex items-center gap-4">
+                      <div className="p-3 bg-yellow-500/10 text-yellow-400 rounded-lg"><Star size={24} fill="currentColor"/></div>
+                      <div>
+                        <div className="text-xs text-slate-400 font-bold uppercase">平均満足度</div>
+                        <div className="text-2xl font-bold text-white">
+                          {(feedbacks.reduce((acc, f) => acc + (f.rating || 0), 0) / feedbacks.length).toFixed(1)}
+                          <span className="text-sm text-slate-500 ml-1">/ 5.0</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 最終回答日時 */}
+                    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex items-center gap-4">
+                      <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><Clock size={24}/></div>
+                      <div>
+                        <div className="text-xs text-slate-400 font-bold uppercase">最終回答日時</div>
+                        <div className="text-sm font-bold text-white mt-1">
+                          {feedbacks[0]?.createdAt?.toDate ? feedbacks[0].createdAt.toDate().toLocaleString() : "---"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. 満足度分布グラフ */}
+                  <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-xl">
+                    <h3 className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><Star size={16} className="text-yellow-400"/> 満足度の内訳</h3>
+                    <div className="space-y-3">
+                      {[5, 4, 3, 2, 1].map(star => {
+                        const count = feedbacks.filter(f => f.rating === star).length;
+                        const percent = (count / feedbacks.length) * 100;
+                        return (
+                          <div key={star} className="flex items-center gap-3 text-xs">
+                            <span className="w-8 font-bold text-slate-400 flex justify-end gap-1">{star} <Star size={12} className="mt-0.5"/></span>
+                            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-yellow-500 rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
+                            </div>
+                            <span className="w-10 text-right text-slate-300">{count}件</span>
+                            <span className="w-12 text-right text-slate-500">({percent.toFixed(0)}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 3. 質問ごとの自動集計 */}
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+                       <ListChecks size={20} className="text-emerald-400"/> 質問別レポート
+                    </h3>
+                    
+                    {Array.from(new Set(feedbacks.flatMap(f => Object.keys(f.answers || {})))).map((questionKey) => {
+                      
+                      const aggregates: {[key: string]: number} = {};
+                      let textAnswers: string[] = [];
+                      let isTextType = false;
+
+                      feedbacks.forEach(f => {
+                         const val = f.answers?.[questionKey];
+                         if (!val) return;
+
+                         if (Array.isArray(val)) {
+                           val.forEach(v => { aggregates[v] = (aggregates[v] || 0) + 1; });
+                         } else if (String(val).length > 20) { // 少し長めの回答はテキスト扱い
+                           isTextType = true;
+                           textAnswers.push(String(val));
+                         } else {
+                           aggregates[String(val)] = (aggregates[String(val)] || 0) + 1;
+                         }
+                      });
+
+                      const sortedAggregates = Object.entries(aggregates).sort((a, b) => b[1] - a[1]);
+
+                      return (
+                        <div key={questionKey} className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                           <h4 className="font-bold text-indigo-300 text-sm mb-4 flex gap-2">
+                             <span className="bg-indigo-500/10 px-2 py-0.5 rounded text-indigo-400">Q</span> {questionKey}
+                           </h4>
+
+                           {isTextType ? (
+                             <div className="bg-slate-950 rounded-lg p-3 max-h-40 overflow-y-auto custom-scrollbar space-y-2 border border-slate-800/50">
+                                {textAnswers.map((txt, idx) => (
+                                  <div key={idx} className="text-xs text-slate-300 border-b border-slate-800/50 last:border-0 pb-2 last:pb-0">
+                                    {txt}
+                                  </div>
+                                ))}
+                                {textAnswers.length === 0 && <p className="text-xs text-slate-600">回答なし</p>}
+                             </div>
+                           ) : (
+                             <div className="space-y-3">
+                                {sortedAggregates.map(([label, count]) => {
+                                  const percent = (count / feedbacks.length) * 100;
+                                  return (
+                                    <div key={label} className="group">
+                                      <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-slate-200 font-bold">{label}</span>
+                                        <span className="text-slate-400">{count}件 ({percent.toFixed(1)}%)</span>
+                                      </div>
+                                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 group-hover:bg-emerald-400" style={{ width: `${percent}%` }}></div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {sortedAggregates.length === 0 && <p className="text-xs text-slate-600">回答なし</p>}
+                             </div>
+                           )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 4. 個別の回答一覧 (新着順) */}
+                  <div className="pt-8 border-t border-slate-800">
+                    <h3 className="text-sm font-bold text-slate-400 mb-4">個別の回答一覧（新着順）</h3>
+                    <div className="grid grid-cols-1 gap-4 opacity-90 hover:opacity-100 transition-opacity">
+                      {feedbacks.map((fb, i) => (
+                        <div key={i} className="bg-slate-900/30 border border-slate-800 p-4 rounded-lg flex flex-col md:flex-row gap-4 text-xs">
+                           
+                           {/* 日時と評価 */}
+                           <div className="w-32 shrink-0 text-slate-500">
+                             <div className="mb-1 font-mono">
+                               {fb.createdAt?.toDate ? fb.createdAt.toDate().toLocaleString() : "---"}
+                             </div>
+                             {/* 星評価 */}
+                             <div className="flex text-yellow-500">
+                               {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star 
+                                    key={s} 
+                                    size={10} 
+                                    fill={(fb.rating || 0) >= s ? "currentColor" : "none"} 
+                                    className={(fb.rating || 0) >= s ? "" : "text-slate-800"} 
+                                  />
+                               ))}
+                             </div>
+                           </div>
+                           
+                           {/* 回答内容（ここに名前も表示されます） */}
+                           <div className="flex-1 space-y-2">
+                             {Object.entries(fb.answers || {}).map(([k, v]) => (
+                               <div key={k} className="flex flex-col sm:flex-row gap-1 sm:gap-2 border-b border-slate-800/30 last:border-0 pb-1 last:pb-0">
+                                 <span className="text-indigo-400/80 font-bold shrink-0 min-w-[100px]">{k}:</span>
+                                 <span className="text-slate-200 break-all">{Array.isArray(v) ? v.join(", ") : String(v)}</span>
+                               </div>
+                             ))}
+                           </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* メール送信モーダル */}
       {isMailModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
@@ -679,6 +1180,8 @@ export default function AdminDashboard() {
            <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
              <div className="flex justify-between mb-4 border-b border-slate-800 pb-3"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={22}/> 設定</h2><button onClick={()=>setIsSettingsOpen(false)}><X/></button></div>
              <div className="space-y-6 overflow-y-auto pr-1">
+               
+               {/* 1. 署名設定（全員共通） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
                  <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2"><Building2 size={16}/> 署名・表示名設定</h3>
                  <p className="text-xs text-slate-500 mb-2">メールの署名などに使われます。</p>
@@ -687,60 +1190,139 @@ export default function AdminDashboard() {
                    <button onClick={handleSaveOrgName} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">保存</button>
                  </div>
                </div>
+               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-4">
+                 <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2">
+                   <CreditCard size={16}/> 決済機能連携
+                 </h3>
+                 <StripeConnectButton 
+                   tenantId={currentUserTenant}
+                   isConnected={(tenantList.find(t => t.id === currentUserTenant) as any)?.stripeConnectEnabled || false}
+                 />
+               </div>
 
-               {isSuperAdminMode && (
-                 <>
-                   <div className="relative py-2">
-                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
-                      <div className="relative flex justify-center"><span className="bg-[#0f111a] px-2 text-xs text-slate-500">ここから下は本部限定機能</span></div>
-                   </div>
+{/* 2. スタッフ招待（全ユーザーに開放 ※ただし自分のテナント限定） */}
+               <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
+                 <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
+                    <UserPlus size={16}/> スタッフ・管理者招待
+                 </h3>
+                 
+                 {/* ▼▼▼ 条件分岐 ▼▼▼ */}
+                 {!isSuperAdminMode && isFreePlan ? (
+                    /* フリープランの場合：ロック画面を表示 */
+                    <div className="text-center py-4 bg-slate-950/50 rounded-lg border border-slate-800 border-dashed">
+                      <p className="text-xs text-slate-400 mb-2">
+                        フリープランではスタッフを追加できません。<br/>
+                        チームで管理するにはプロプランへのアップグレードが必要です。
+                      </p>
+                      <Link href="/dashboard" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline">
+                        プランを確認する &rarr;
+                      </Link>
+                    </div>
+                 ) : (
+                    /* 有料プラン または スーパー管理者の場合 */
+                    isSuperAdminMode ? (
+                       // スーパー管理者の場合：全テナントから選べる
+                       <form onSubmit={handleAddAdmin} className="space-y-2">
+                         <p className="text-xs text-orange-400 mb-1">※スーパー管理者権限で操作中</p>
+                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="追加するメールアドレス" required />
+                         <select 
+                            value={`${newAdminTenantId}::${newAdminBranch}`} 
+                            onChange={handleAdminBranchChange} 
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                          >
+                           <option value="::">（所属を選択してください）</option>
+                           {tenantList.map((tenant) => (
+                             <optgroup key={tenant.id} label={tenant.name}>
+                               {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b:any) => typeof b === 'string' ? b : []).map((branch:any) => (
+                                 <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>{branch}</option>
+                               ))}
+                             </optgroup>
+                           ))}
+                         </select>
+                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">権限付与して招待</button></div>
+                       </form>
+                    ) : (
+                       // 一般ユーザー（有料プラン）の場合：自分のテナントの支部しか選べない
+                       <form onSubmit={async (e) => {
+                          e.preventDefault();
+                          if(!newAdminEmail || !newAdminBranch) return alert("入力してください");
+                          if(!confirm(`${newAdminEmail} を招待しますか？`)) return;
+                          try {
+                            const res = await fetch('/api/admin/add', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: newAdminEmail, branchId: newAdminBranch, tenantId: currentUserTenant }),
+                            });
+                            if(res.ok) { alert("招待しました！"); setNewAdminEmail(""); }
+                            else { alert("エラーが発生しました"); }
+                          } catch(err) { alert("通信エラー"); }
+                       }} className="space-y-2">
+                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="招待するスタッフのメール" required />
+                         <select 
+                            value={newAdminBranch} 
+                            onChange={e=>setNewAdminBranch(e.target.value)} 
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                          >
+                           <option value="">（所属部門・教室を選択）</option>
+                           {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
+                              typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
+                           ))}
+                         </select>
+                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">招待する</button></div>
+                       </form>
+                    )
+                 )}
+               </div>
 
-                   <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
-                     <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2"><UserPlus size={16}/> 管理者マスター管理</h3>
-                     <form onSubmit={handleAddAdmin} className="space-y-2">
-                       <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="追加するメールアドレス" required />
-                       <select 
-                          value={`${newAdminTenantId}::${newAdminBranch}`} 
-                          onChange={handleAdminBranchChange} 
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white appearance-none cursor-pointer hover:border-indigo-500 transition-colors"
-                        >
-                         <option value="::">（所属を選択してください）</option>
-                         {tenantList.map((tenant) => (
-                           <optgroup key={tenant.id} label={tenant.name}>
-  {/* ★安全装置: ここでループする際、文字列以外が来たら除外 */}
-  {/* ↓ 修正箇所: b を (b: any) に変更してエラーを消す */}
-  {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b: any) => {
-    // 以前のデータ構造（オブジェクト）だった場合、安全に取り出すか除外する
-    if (typeof b === 'string') return b;
-    // ↓ ここで赤い波線が出ていたはずです。anyにしたので消えます
-    if (b && typeof b === 'object' && Array.isArray(b.branches)) return b.branches;
-    return [];
-  }).map((branch: any) => (
-    <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>
-      {branch}
-    </option>
-  ))}
-</optgroup>
-                         ))}
-                       </select>
-                       <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">権限付与して招待</button></div>
-                     </form>
-                   </div>
+               {/* 3. 管理者リスト表示（自分のテナントの仲間だけ見える） */}
+               <div>
+                 <h3 className="text-sm font-bold text-slate-400 mb-2">登録済みスタッフ一覧</h3>
+                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                   {adminUsers
+                     .filter(u => isSuperAdminMode || u.tenantId === currentUserTenant) // 自分の会社の仲間だけフィルタリング
+                     .map(u=>(
+                      <div key={u.email} className="flex justify-between items-center p-3 bg-slate-900 rounded-lg border border-slate-800">
+                        <div><div className="text-sm">{u.email}</div><div className="text-xs text-indigo-400">{formatBranchName(safeStr(u.branchId))}</div></div>
+                        {(isSuperAdminMode || (u.email !== user?.email && u.role !== 'owner')) && ( 
+                          <button onClick={()=>handleRemoveAdmin(u.email)} className="text-slate-500 hover:text-red-400"><Trash2 size={16}/></button> 
+                        )}
+                      </div>
+                   ))}
+                 </div>
+               </div>
 
-                   <div>
-                     <h3 className="text-sm font-bold text-slate-400 mb-2">全管理者リスト</h3>
-                     <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                       {adminUsers.map(u=>(
-                        <div key={u.email} className="flex justify-between items-center p-3 bg-slate-900 rounded-lg border border-slate-800">
-                          {/* ★安全装置: 支部IDを表示する際もsafeStrを通す */}
-                          <div><div className="text-sm">{u.email}</div><div className="text-xs text-indigo-400">{safeStr(u.branchId) || "所属未設定"}</div></div>
-                          {u.email !== user?.email && ( <button onClick={()=>handleRemoveAdmin(u.email)} className="text-slate-500 hover:text-red-400"><Trash2 size={16}/></button> )}
-                        </div>
-                      ))}
-                     </div>
-                   </div>
-                 </>
+               {/* 4. 拠点・プラン情報（ユーザーは見るだけ） */}
+               {!isSuperAdminMode && (
+                 <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 mt-4">
+                    <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase">現在のプラン・拠点</h3>
+                    <div className="text-sm text-white mb-2">
+                      プラン: <span className="font-bold text-emerald-400 uppercase">{tenantList.find(t=>t.id===currentUserTenant)?.plan || "Free"}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {tenantList.find(t=>t.id===currentUserTenant)?.branches?.map((b:any) => {
+  const targetTenant = tenantList.find(t => t.id === currentUserTenant);
+  
+  // ★ここを修正！ (targetTenant as any) をつけました
+  const displayName = (b === "本部" && targetTenant) 
+      ? ((targetTenant as any).orgName || targetTenant.name || b) 
+      : b;
+
+  return (
+    typeof b === 'string' && (
+      <span key={b} className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
+        {displayName}
+      </span>
+    )
+  );
+})}
+
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-3 pt-2 border-t border-slate-800/50">
+                      ※拠点（教室）の追加やプラン変更をご希望の場合は、本部へお問い合わせください。
+                    </p>
+                 </div>
                )}
+
              </div>
            </div>
         </div>

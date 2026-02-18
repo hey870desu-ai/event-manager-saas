@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 export type Tenant = {
   id: string;
   name: string;
+  plan?: string;
   branches: string[]; // 支部リスト
   
   // ★追加: SaaSデザイン設定 (なくてもOKなように '?' をつける)

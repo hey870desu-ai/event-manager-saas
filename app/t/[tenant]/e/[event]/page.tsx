@@ -1,6 +1,6 @@
 // 📂 場所：app/t/[tenant]/e/[event]/page.tsx
 // 📝 役割：LINE/SNS用の名刺（OGP）を動的に生成する (SaaS完全対応版)
-
+export const dynamic = "force-dynamic"; // 👈 これを1行目に追加
 import { Metadata } from "next";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -75,7 +75,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// 実際の画面表示（ここは EventClient に丸投げでOK）
-export default function EventPage() {
-  return <EventClient />;
+// 実際の画面表示（サーバーでデータを取って渡す）
+export default async function EventPage({ params }: Props) {
+  // 1. URLからIDを取り出す (Next.js 15対応)
+  const resolvedParams = await Promise.resolve(params);
+  const { tenant: tenantId, event: eventId } = resolvedParams;
+
+  // 2. サーバー側でデータを取る
+  let eventData = null;
+  let tenantData = null;
+
+  try {
+    // イベント情報の取得
+    const eventRef = doc(db, "events", eventId);
+    const eventSnap = await getDoc(eventRef);
+    if (eventSnap.exists()) {
+      eventData = { id: eventSnap.id, ...eventSnap.data() };
+    }
+
+    // テナント情報の取得
+    const tenantRef = doc(db, "tenants", tenantId);
+    const tenantSnap = await getDoc(tenantRef);
+    if (tenantSnap.exists()) {
+      tenantData = { id: tenantSnap.id, ...tenantSnap.data() };
+    }
+  } catch (error) {
+    console.error("データ取得エラー:", error);
+  }
+
+  // 3. データが見つからない場合
+  if (!eventData) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Event Not Found</div>;
+  }
+
+  // 4. データを EventClient に渡す
+  return (
+    <EventClient
+      event={eventData}
+      tenant={tenantData || { name: "Event Manager" }}
+      eventId={eventId}
+      tenantId={tenantId}
+    />
+  );
 }

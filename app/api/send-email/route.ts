@@ -1,9 +1,7 @@
 // 📂 app/api/send-email/route.ts (Resend対応版)
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-// ★ Resendの初期化
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 日付フォーマット
 function formatToJapaneseDate(dateString: string): string {
@@ -51,12 +49,12 @@ export async function POST(request: Request) {
     // ★ 送信元の設定 (重要)
     // テスト段階: "onboarding@resend.dev" 固定
     // 本番運用時: あなたが取得したドメイン (例: "noreply@event-saas.com")
-    const fromAddress = "onboarding@resend.dev"; 
+    const fromAddress = "info@send.hana-hiro.com";
 
     const isOnline = type === 'online';
     const subject = `【受講票】${eventTitle} 受付完了のお知らせ`;
     const formattedDate = formatToJapaneseDate(eventDate);
-    const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}` : "";
+    const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${reservationId}&amp;bgcolor=ffffff` : "";
 
     const calendarDetails = isOnline 
       ? `Zoom URL: ${zoomUrl}\nID: ${meetingId}\nPASS: ${zoomPasscode}\n\n※この予定はフォームから登録されました。` 
@@ -171,21 +169,33 @@ export async function POST(request: Request) {
       </html>
     `;
 
-    // ★ Resendで送信実行
-    const data = await resend.emails.send({
-      from: `${senderName} <${fromAddress}>`,
-      to: [email],
-      subject: subject,
-      html: htmlContent,
-      replyTo: "info@yourdomain.com", // 実際はお客様のメアドを入れる
+    // 🟢 追加 (Gmailでの送信部分)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
     });
 
-    if (data.error) {
-      console.error("Resend Error:", data.error);
-      return NextResponse.json({ success: false, error: data.error.message }, { status: 500 });
-    }
+    // bodyから replyTo (テナントのメアド) を受け取るようにします
+    const { replyTo } = body; 
 
-    return NextResponse.json({ success: true, id: data.data?.id });
+    await transporter.sendMail({
+      // ★ 送信者名を「テナント名」に変更（アドレスは変えられないのでそのまま）
+      from: `"${senderName}" <${process.env.GMAIL_USER}>`,
+      
+      // ★ 返信先を「テナントのアドレス」に設定！
+      replyTo: replyTo || process.env.GMAIL_USER,
+      
+      to: email,
+      subject: subject,
+      html: htmlContent,
+    });
+
+    // 🟢 成功時の返信 (Resendのdata.idは無いのでシンプルに返す)
+    return NextResponse.json({ success: true });
+
 
   } catch (error: any) {
     console.error('Email Send Error:', error);
