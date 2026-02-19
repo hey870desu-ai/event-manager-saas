@@ -123,6 +123,11 @@ export default function AdminDashboard() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   // ▼▼▼ 追加：複製機能のロジック ▼▼▼
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  // テナント情報をここで確定させる
+  const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
+  
+  // プラン判定（大文字・小文字どちらでも反応するように .toUpperCase() を追加！）
+  const isFreePlan = (currentTenantData?.plan || '').toUpperCase() === 'FREE';
 
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
     e.stopPropagation();
@@ -514,9 +519,7 @@ useEffect(() => {
   
   const targetCount = mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length;
 
-  const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
-  const isFreePlan = currentTenantData?.plan === 'free';
-
+  
   if (permissionError) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><ShieldAlert className="text-red-500 w-16 mb-4"/><p>権限がありません</p></div>;
   if (loading || !user) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div></div>;
 
