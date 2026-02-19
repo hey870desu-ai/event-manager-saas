@@ -1,4 +1,4 @@
-// 📂 app/api/checkout/route.ts (セミナー決済・手数料2%版)
+// 📂 app/api/stripe/checkout-event/route.ts
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -13,22 +13,17 @@ export async function POST(request: Request) {
       tenantId, 
       eventId, 
       eventTitle, 
-      amount,       // セミナーの金額（例：5000）
+      amount,       // セミナー作成画面で入力された金額（例：5000）
       email,        // 参加者のメールアドレス
-      stripeAccountId // ★重要：テナント側のStripeアカウントID
+      stripeAccountId // テナント側のStripeアカウントID
     } = body;
 
-    if (!stripeAccountId) {
-      return NextResponse.json({ error: 'テナントのStripe連携が完了していません' }, { status: 400 });
-    }
-
-    // --- 手数料の計算 (2.0%) ---
-    // 例：10,000円の場合、200円があなたのStripe口座に入ります
+    // 手数料 2.0% の計算（あなたの利益）
+    // Math.floor で端数を切り捨てて整数にします
     const applicationFeeAmount = Math.floor(Number(amount) * 0.02);
 
-    // Stripeの「支払い画面」を作成
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card'], // ここに 'konbini' を足せばコンビニ決済も可能です
       line_items: [
         {
           price_data: {
@@ -44,20 +39,21 @@ export async function POST(request: Request) {
       mode: 'payment', // 単発決済
       customer_email: email,
       
-      // ★ここが手数料徴収の心臓部
+      // ★ 手数料徴収の設定
       payment_intent_data: {
-        application_fee_amount: applicationFeeAmount, // あなたの手数料（2%）
+        application_fee_amount: applicationFeeAmount, // あなたの取り分 (2%)
         transfer_data: {
-          destination: stripeAccountId, // 残りの金額をテナントへ送金
+          destination: stripeAccountId, // 残りをテナントへ送金
         },
       },
 
+      // 決済成功時とキャンセル時の戻り先URL
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}`,
       
       metadata: {
-        tenantId: tenantId,
-        eventId: eventId,
+        tenantId,
+        eventId,
         type: 'event_payment'
       },
     });
@@ -66,6 +62,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Checkout Error:', error);
-    return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
