@@ -124,10 +124,19 @@ export default function AdminDashboard() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
-  // ▼ 修正後 ▼
-  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual'>('checked-in');
+  // ▼ ここから貼り付ける ▼
+  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
   const [targetParticipant, setTargetParticipant] = useState<ReservationData | null>(null);
-
+  
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const toggleSelectAll = () => {
+    if (selectedParticipantIds.length === participants.length) setSelectedParticipantIds([]);
+    else setSelectedParticipantIds(participants.map(p => p.id));
+  };
+  const toggleSelectParticipant = (id: string) => {
+    setSelectedParticipantIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]);
+  };
+  // ▲ ここまで貼り付ける ▲
   const [orgName, setOrgName] = useState("Event Manager"); 
   const [editingOrgName, setEditingOrgName] = useState(""); 
 
@@ -379,13 +388,17 @@ useEffect(() => {
     if (!currentEventForList) return;
     
     if (target) {
-       // 個別送信モード
        setTargetParticipant(target);
        setMailTargetType('individual');
        setMailSubject(`【${currentEventForList.title}】ご案内`);
        setMailBody(`${target.name} 様\n\nお世話になっております。\n${orgName}です。\n\n`);
+    } else if (selectedParticipantIds.length > 0) {
+       // ▼ 複数選択モード
+       setTargetParticipant(null);
+       setMailTargetType('selected');
+       setMailSubject(`【${currentEventForList.title}】ご案内`);
+       setMailBody(`参加者各位\n\nお世話になっております。\n${orgName}です。\n\n`);
     } else {
-       // 一括送信モード
        setTargetParticipant(null);
        setMailTargetType('checked-in'); 
        setMailSubject(MAIL_TEMPLATES.thankyou.subject);
@@ -400,21 +413,22 @@ useEffect(() => {
     setMailSubject(tmpl.subject);
     setMailBody(typeof tmpl.body === 'function' ? tmpl.body(currentEventForList.title, orgName) : tmpl.body);
     
-    // ターゲットの自動切り替え
     if (key === 'remind' || key === 'ticket') {
-       if (mailTargetType !== 'individual') setMailTargetType('all');
+       if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('all');
     } else if (key === 'thankyou') {
-       if (mailTargetType !== 'individual') setMailTargetType('checked-in');
+       if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('checked-in');
     }
   };
 
   const sendMail = async () => {
     if (!currentEventForList) return;
     
-    // ▼ 変更点1：送信対象の決定（個別モードに対応）
     let targets: ReservationData[] = [];
     if (mailTargetType === 'individual' && targetParticipant) {
        targets = [targetParticipant];
+    } else if (mailTargetType === 'selected') {
+       // ▼ チェックされた人だけを抽出
+       targets = participants.filter(p => selectedParticipantIds.includes(p.id));
     } else {
        targets = mailTargetType === 'all' ? participants : participants.filter(p => p.checkedIn);
     }
@@ -422,10 +436,9 @@ useEffect(() => {
     if (targets.length === 0) { alert("送信対象がいません。"); return; }
     if (!mailSubject || !mailBody) { alert("件名と本文を入力してください。"); return; }
     
-    // ▼ 変更点2：確認画面に出る宛名の表示（個別モードに対応）
     const targetName = mailTargetType === 'individual' 
        ? `${targetParticipant?.name} 様` 
-       : (mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】");
+       : (mailTargetType === 'selected' ? `【選択した${targets.length}名】` : (mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】"));
 
     if (!confirm(`【最終確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n\nお一人ずつ宛名（〇〇様）を入れて送信します。\n送信には少し時間がかかりますが、そのままお待ちください。\n\n本当によろしいですか？`)) return;
     
@@ -435,7 +448,6 @@ useEffect(() => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          // ▼ 変更点3：QRコード生成のために「id: p.id」を裏側に送るよう追加
           recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })), 
           subject: mailSubject, 
           body: mailBody,
@@ -444,7 +456,6 @@ useEffect(() => {
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
         }),
       });
-      // ▼ 変更点4：「全員への」という言葉を削除（個別にも送るため）
       if (res.ok) { alert("送信が完了しました！"); setIsMailModalOpen(false); } 
       else { alert("送信中にエラーが発生しました。"); }
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
@@ -575,7 +586,7 @@ useEffect(() => {
 
   const filteredEvents = events;
   
-  const targetCount = mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length;
+  const targetCount = mailTargetType === 'individual' ? 1 : (mailTargetType === 'selected' ? selectedParticipantIds.length : (mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length));
 
   
   if (permissionError) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><ShieldAlert className="text-red-500 w-16 mb-4"/><p>権限がありません</p></div>;
@@ -903,8 +914,8 @@ useEffect(() => {
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
                <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
-                 <Mail size={16}/> メール送信
-               </button>
+  <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
+</button>
             </div>
             
             <div className="flex-1 overflow-y-auto">
@@ -912,16 +923,18 @@ useEffect(() => {
                  <table className="w-full text-left border-collapse">
                    <thead className="bg-slate-900 text-xs text-slate-500 sticky top-0 z-10">
                      <tr>
+                       <th className="p-2 w-10 text-center"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={participants.length > 0 && selectedParticipantIds.length === participants.length} onChange={toggleSelectAll} /></th>
                        <th className="p-2 md:p-4 whitespace-nowrap">受付</th>
                        <th className="p-2 md:p-4">参加者情報</th>
                        <th className="hidden md:table-cell p-4">会社</th>
                        <th className="hidden md:table-cell p-4">形式</th>
-                       <th className="p-2 md:p-4 text-center">送信</th>
+                       <th className="p-2 md:p-4 text-center">個別送信</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800">
                      {participants.map(p=>(
                        <tr key={p.id} className={p.checkedIn?'bg-emerald-900/10':''}>
+                         <td className="p-2 text-center align-middle"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={selectedParticipantIds.includes(p.id)} onChange={() => toggleSelectParticipant(p.id)} /></td>
                          <td className="p-2 md:p-4 align-middle">
                            <button onClick={()=>toggleCheckIn(p)} className={`w-full md:w-auto px-2 md:px-3 py-2 md:py-1.5 rounded text-xs font-bold flex justify-center items-center gap-1 transition-all active:scale-95 ${p.checkedIn?'bg-emerald-500 text-white shadow-emerald-500/20':'bg-slate-800 text-slate-400 border border-slate-700'}`}>
                              {p.checkedIn?<Check size={16} strokeWidth={3}/>:<UserCheck size={16}/>} 
@@ -1231,13 +1244,21 @@ useEffect(() => {
              <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
                  <label className="block text-xs text-slate-400 mb-3 font-bold">送信先を選択</label>
-             {/* ▼ ここから置き換える ▼ */}
+{/* ▼ 置き換えここから ▼ */}
 {mailTargetType === 'individual' && targetParticipant ? (
    <div className="bg-indigo-900/30 border border-indigo-500 p-3 rounded-lg flex items-center gap-3">
       <div className="bg-indigo-500 text-white rounded-full p-1"><UserCheck size={16}/></div>
       <div>
          <div className="text-sm font-bold text-white">{targetParticipant.name} 様</div>
          <div className="text-xs text-indigo-300">個別送信モード</div>
+      </div>
+   </div>
+) : mailTargetType === 'selected' ? (
+   <div className="bg-orange-900/30 border border-orange-500 p-3 rounded-lg flex items-center gap-3">
+      <div className="bg-orange-500 text-white rounded-full p-1"><Check size={16}/></div>
+      <div>
+         <div className="text-sm font-bold text-white">選択した {selectedParticipantIds.length} 名</div>
+         <div className="text-xs text-orange-300">複数選択モード</div>
       </div>
    </div>
 ) : (
@@ -1252,7 +1273,7 @@ useEffect(() => {
      </label>
    </div>
 )}
-{/* ▲ ここまで置き換える ▲ */}
+{/* ▲ 置き換えここまで ▲ */}
                </div>
                <div>
                  <label className="block text-xs text-slate-500 mb-2">件名</label>
