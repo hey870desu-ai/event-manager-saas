@@ -70,6 +70,29 @@ ${orgName}
 --------------------------------------------------
 `
   },
+// ... remind: { ... } の後ろに追加
+  ticket: {
+    label: "🎟️ 当日チケット (QR)",
+    subject: "【重要】当日の受付用QRコードをお送りします",
+    body: (eventTitle: string, orgName: string) => `
+${eventTitle}
+参加者各位
+
+${orgName}です。
+いよいよ開催が近づいてまいりました。
+
+当日の受付用QRコードをお送りします。
+以下のQRコードを受付にてご提示ください。
+
+{qr}
+
+皆様のご来場を心よりお待ちしております。
+
+--------------------------------------------------
+${orgName}
+--------------------------------------------------
+`
+  },
   custom: {
     label: "手動入力（空紙）",
     subject: "",
@@ -101,7 +124,9 @@ export default function AdminDashboard() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
-  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all'>('checked-in');
+  // ▼ 修正後 ▼
+  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual'>('checked-in');
+  const [targetParticipant, setTargetParticipant] = useState<ReservationData | null>(null);
 
   const [orgName, setOrgName] = useState("Event Manager"); 
   const [editingOrgName, setEditingOrgName] = useState(""); 
@@ -350,11 +375,22 @@ useEffect(() => {
     }
   };
 
-  const openMailModal = () => {
+  const openMailModal = (target?: ReservationData) => {
     if (!currentEventForList) return;
-    setMailTargetType('checked-in'); 
-    setMailSubject(MAIL_TEMPLATES.thankyou.subject);
-    setMailBody(MAIL_TEMPLATES.thankyou.body(currentEventForList.title, orgName));
+    
+    if (target) {
+       // 個別送信モード
+       setTargetParticipant(target);
+       setMailTargetType('individual');
+       setMailSubject(`【${currentEventForList.title}】ご案内`);
+       setMailBody(`${target.name} 様\n\nお世話になっております。\n${orgName}です。\n\n`);
+    } else {
+       // 一括送信モード
+       setTargetParticipant(null);
+       setMailTargetType('checked-in'); 
+       setMailSubject(MAIL_TEMPLATES.thankyou.subject);
+       setMailBody(MAIL_TEMPLATES.thankyou.body(currentEventForList.title, orgName));
+    }
     setIsMailModalOpen(true);
   };
 
@@ -363,24 +399,44 @@ useEffect(() => {
     const tmpl = MAIL_TEMPLATES[key];
     setMailSubject(tmpl.subject);
     setMailBody(typeof tmpl.body === 'function' ? tmpl.body(currentEventForList.title, orgName) : tmpl.body);
-    if (key === 'remind') setMailTargetType('all');
-    else if (key === 'thankyou') setMailTargetType('checked-in');
+    
+    // ターゲットの自動切り替え
+    if (key === 'remind' || key === 'ticket') {
+       if (mailTargetType !== 'individual') setMailTargetType('all');
+    } else if (key === 'thankyou') {
+       if (mailTargetType !== 'individual') setMailTargetType('checked-in');
+    }
   };
 
   const sendMail = async () => {
     if (!currentEventForList) return;
-    const targets = mailTargetType === 'all' ? participants : participants.filter(p => p.checkedIn);
+    
+    // ▼ 変更点1：送信対象の決定（個別モードに対応）
+    let targets: ReservationData[] = [];
+    if (mailTargetType === 'individual' && targetParticipant) {
+       targets = [targetParticipant];
+    } else {
+       targets = mailTargetType === 'all' ? participants : participants.filter(p => p.checkedIn);
+    }
+
     if (targets.length === 0) { alert("送信対象がいません。"); return; }
     if (!mailSubject || !mailBody) { alert("件名と本文を入力してください。"); return; }
-    const targetName = mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】";
+    
+    // ▼ 変更点2：確認画面に出る宛名の表示（個別モードに対応）
+    const targetName = mailTargetType === 'individual' 
+       ? `${targetParticipant?.name} 様` 
+       : (mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】");
+
     if (!confirm(`【最終確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n\nお一人ずつ宛名（〇〇様）を入れて送信します。\n送信には少し時間がかかりますが、そのままお待ちください。\n\n本当によろしいですか？`)) return;
+    
     setSendingMail(true);
     try {
       const res = await fetch('/api/send-thankyou', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          recipients: targets.map(p => ({ name: p.name, email: p.email })), 
+          // ▼ 変更点3：QRコード生成のために「id: p.id」を裏側に送るよう追加
+          recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })), 
           subject: mailSubject, 
           body: mailBody,
           eventTitle: currentEventForList.title,
@@ -388,7 +444,8 @@ useEffect(() => {
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
         }),
       });
-      if (res.ok) { alert("全員への送信が完了しました！"); setIsMailModalOpen(false); } 
+      // ▼ 変更点4：「全員への」という言葉を削除（個別にも送るため）
+      if (res.ok) { alert("送信が完了しました！"); setIsMailModalOpen(false); } 
       else { alert("送信中にエラーが発生しました。"); }
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
   };
@@ -845,7 +902,7 @@ useEffect(() => {
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
-               <button onClick={openMailModal} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
+               <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
                  <Mail size={16}/> メール送信
                </button>
             </div>
@@ -859,6 +916,7 @@ useEffect(() => {
                        <th className="p-2 md:p-4">参加者情報</th>
                        <th className="hidden md:table-cell p-4">会社</th>
                        <th className="hidden md:table-cell p-4">形式</th>
+                       <th className="p-2 md:p-4 text-center">送信</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800">
@@ -882,6 +940,11 @@ useEffect(() => {
                          </td>
                          <td className="p-4 text-sm text-slate-300 hidden md:table-cell">{p.company}</td>
                          <td className="p-4 hidden md:table-cell"><span className={`text-xs px-2 py-1 rounded border ${p.type==='online'?'border-blue-500/30 text-blue-400':'border-orange-500/30 text-orange-400'}`}>{p.type==='online'?'Online':'Venue'}</span></td>
+                         <td className="p-2 md:p-4 text-center">
+   <button onClick={()=>openMailModal(p)} className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-colors" title="個別にメール">
+     <Mail size={16}/>
+   </button>
+</td>
                        </tr>
                      ))}
                    </tbody>
@@ -1161,22 +1224,35 @@ useEffect(() => {
                <span className="text-xs text-slate-500 py-1.5">テンプレート:</span>
                <button onClick={()=>applyTemplate('thankyou')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">御礼 (受付済)</button>
                <button onClick={()=>applyTemplate('remind')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">リマインド (全員)</button>
+               <button onClick={()=>applyTemplate('ticket')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-orange-400 border-orange-500/50 hover:bg-slate-800 hover:text-orange-300 transition-colors">🎟️ チケット (QR)</button>
                <button onClick={()=>applyTemplate('custom')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">空紙</button>
              </div>
 
              <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
                  <label className="block text-xs text-slate-400 mb-3 font-bold">送信先を選択</label>
-                 <div className="flex flex-col sm:flex-row gap-4">
-                   <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='all' ? 'bg-indigo-900/30 border-indigo-500 ring-1 ring-indigo-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
-                     <input type="radio" name="target" checked={mailTargetType==='all'} onChange={()=>setMailTargetType('all')} className="accent-indigo-500 w-5 h-5"/>
-                     <div><div className="text-sm font-bold text-white">全員に送る</div><div className="text-xs text-slate-400">未受付の人も含む ({participants.length}名)</div></div>
-                   </label>
-                   <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='checked-in' ? 'bg-emerald-900/30 border-emerald-500 ring-1 ring-emerald-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
-                     <input type="radio" name="target" checked={mailTargetType==='checked-in'} onChange={()=>setMailTargetType('checked-in')} className="accent-emerald-500 w-5 h-5"/>
-                     <div><div className="text-sm font-bold text-white">受付済のみに送る</div><div className="text-xs text-slate-400">来場した人のみ ({participants.filter(p=>p.checkedIn).length}名)</div></div>
-                   </label>
-                 </div>
+             {/* ▼ ここから置き換える ▼ */}
+{mailTargetType === 'individual' && targetParticipant ? (
+   <div className="bg-indigo-900/30 border border-indigo-500 p-3 rounded-lg flex items-center gap-3">
+      <div className="bg-indigo-500 text-white rounded-full p-1"><UserCheck size={16}/></div>
+      <div>
+         <div className="text-sm font-bold text-white">{targetParticipant.name} 様</div>
+         <div className="text-xs text-indigo-300">個別送信モード</div>
+      </div>
+   </div>
+) : (
+   <div className="flex flex-col sm:flex-row gap-4">
+     <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='all' ? 'bg-indigo-900/30 border-indigo-500 ring-1 ring-indigo-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
+       <input type="radio" name="target" checked={mailTargetType==='all'} onChange={()=>setMailTargetType('all')} className="accent-indigo-500 w-5 h-5"/>
+       <div><div className="text-sm font-bold text-white">全員に送る</div><div className="text-xs text-slate-400">未受付の人も含む ({participants.length}名)</div></div>
+     </label>
+     <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='checked-in' ? 'bg-emerald-900/30 border-emerald-500 ring-1 ring-emerald-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
+       <input type="radio" name="target" checked={mailTargetType==='checked-in'} onChange={()=>setMailTargetType('checked-in')} className="accent-emerald-500 w-5 h-5"/>
+       <div><div className="text-sm font-bold text-white">受付済のみに送る</div><div className="text-xs text-slate-400">来場した人のみ ({participants.filter(p=>p.checkedIn).length}名)</div></div>
+     </label>
+   </div>
+)}
+{/* ▲ ここまで置き換える ▲ */}
                </div>
                <div>
                  <label className="block text-xs text-slate-500 mb-2">件名</label>
