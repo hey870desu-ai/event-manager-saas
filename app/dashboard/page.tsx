@@ -62,7 +62,7 @@ export default function TenantBillingPage() {
     if(!tenant || !user) return;
     
     // 確認ダイアログ
-    if(!confirm("Proプラン（月額3,300円）の申し込み画面へ移動しますか？")) return;
+    if(!confirm("スタンダードプラン（月額3,300円）の申し込み画面へ移動しますか？")) return;
 
     setLoading(true); // 読み込み中にする
 
@@ -148,7 +148,7 @@ export default function TenantBillingPage() {
                    className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
                  >
                    <Sparkles size={14} className="text-yellow-300 animate-pulse"/> 
-                   Proにアップグレード
+スタンダードにアップグレード
                  </button>
                ) : (
                  <div className="text-xs text-emerald-400 flex items-center gap-1 font-bold">
