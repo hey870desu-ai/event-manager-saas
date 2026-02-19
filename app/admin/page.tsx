@@ -388,8 +388,15 @@ useEffect(() => {
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
   };
 
-  const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => { 
-      e.stopPropagation(); 
+  const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
+     e.stopPropagation();
+  // 無料プランならここでストップ！
+  if (isFreePlan) {
+    alert("🔒 CSVダウンロードは【プロプラン限定】機能です。\n\n参加者リストをExcelで管理するには、\nプランのアップグレードをご検討ください！");
+    return;
+  }
+  // ▲▲▲ 追加ここまで ▲▲▲ 
+       
       setDownloadingId(eventId);
       const formatPhone = (input: any) => {
         if (!input) return "";
