@@ -395,12 +395,10 @@ useEffect(() => {
 
   const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
      e.stopPropagation();
-     // ▼▼▼ このアラートを追加してください ▼▼▼
-      alert(`【デバッグ情報】\n・あなたのテナントID: ${currentUserTenant}\n・認識しているプラン: ${currentTenantData?.plan}\n・判定結果(isFreePlan): ${isFreePlan}`);
-      // ▲▲▲ 追加ここまで ▲▲▲
+     
   // 無料プランならここでストップ！
   if (isFreePlan) {
-    alert("🔒 CSVダウンロードは【プロプラン限定】機能です。\n\n参加者リストをExcelで管理するには、\nプランのアップグレードをご検討ください！");
+    alert("🔒 CSVダウンロードは【スタンダードプラン以上限定】機能です。\n\n参加者リストをExcelで管理するには、\nプランのアップグレードをご検討ください！");
     return;
   }
   // ▲▲▲ 追加ここまで ▲▲▲ 
@@ -563,9 +561,15 @@ useEffect(() => {
           <div className="flex gap-3 overflow-x-auto py-2 px-1 hide-scrollbar -mr-4 pr-4 md:mr-0 md:pr-0 w-full justify-end items-center">
              
              {/* メールマーケティング */}
-             <button onClick={() => router.push("/admin/marketing")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
-               <Mail size={16}/> <span className="hidden lg:inline">メールマーケティング</span>
-            </button>
+             <button 
+  onClick={() => {
+    if (isFreePlan) return alert("🔒 メールマーケティングは【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
+    router.push("/admin/marketing");
+  }}
+  className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
+>
+  <Mail size={16}/> <span className="hidden lg:inline">メールマーケティング</span>
+</button>
             
             {/* 分析・データ管理 */}
             <button onClick={() => router.push("/admin/analytics")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
@@ -759,7 +763,12 @@ useEffect(() => {
                    
                    {/* 共通スタイル：border-slate-300, text-slate-600 に変更 */}
                    <button 
-                     onClick={(e) => { e.stopPropagation(); setQrEvent(ev); setIsQrModalOpen(true); }}
+                     onClick={(e) => { 
+  e.stopPropagation(); 
+  if (isFreePlan) return alert("🔒 アンケートQR表示は【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
+  setQrEvent(ev); 
+  setIsQrModalOpen(true); 
+}}
                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
                        <QrCode size={18}/>
@@ -767,7 +776,12 @@ useEffect(() => {
                    </button>
 
                    <button 
-                     onClick={(e) => { e.stopPropagation(); setCurrentEventForList(ev); setIsFeedbackOpen(true); }}
+                     onClick={(e) => { 
+  e.stopPropagation(); 
+  if (isFreePlan) return alert("🔒 アンケート結果分析は【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
+  setCurrentEventForList(ev); 
+  setIsFeedbackOpen(true); 
+}}
                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
                        <MessageSquare size={18}/>
