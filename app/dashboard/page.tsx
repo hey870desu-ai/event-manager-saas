@@ -57,34 +57,35 @@ export default function TenantBillingPage() {
 
   const handleLogout = async () => { await signOut(auth); router.push("/login"); };
   
-  // ★修正: 本物の支払い処理につなぐ
+  // ★修正: アップグレード専用のAPIを叩くように変更
   const handleUpgrade = async () => {
     if(!tenant || !user) return;
     
     // 確認ダイアログ
     if(!confirm("スタンダードプラン（月額3,300円）の申し込み画面へ移動しますか？")) return;
 
-    setLoading(true); // 読み込み中にする
+    setLoading(true);
 
     try {
-      // さっき作ったAPIを呼び出す
-      const res = await fetch('/api/checkout', {
+      // 🚩 宛先を '/api/stripe/upgrade' に変更！
+      const res = await fetch('/api/stripe/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          tenantId: tenant.id,
-          userId: user.uid,
-          email: user.email 
+          tenantId: tenant.id, // 誰が
+          email: user.email    // 誰のメールアドレスで
         }),
       });
       
       const data = await res.json();
       
       if (data.url) {
-        // Stripeの画面へジャンプ！🚀
+        // Stripeの決済画面へジャンプ！
         window.location.href = data.url;
       } else {
-        alert("支払い画面の作成に失敗しました...");
+        // エラーメッセージを表示
+        console.error("API Error:", data.error);
+        alert(`エラー: ${data.error || "支払い画面の作成に失敗しました"}`);
         setLoading(false);
       }
     } catch (e) {
