@@ -26,21 +26,37 @@ export async function POST(req: Request) {
   const session = event.data.object as Stripe.Checkout.Session;
 
   // ▼▼▼ 1. SaaSプランの更新（修正版） ▼▼▼
-  // 条件：メタデータに plan が設定されており（standard または pro）、かつイベントが「完了」のとき
-  if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
+  // ▼▼▼ 1. SaaSプランの更新（修正版） ▼▼▼
+if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
     const tenantId = session.metadata.tenantId;
-    const planType = session.metadata.plan; // 'standard' か 'pro' が入ってくる
+    const planType = session.metadata.plan; 
 
     if (tenantId) {
-      console.log(`✅ SaaS Subscription Payment success! Updating tenant: ${tenantId} to ${planType}`);
       try {
+        // ① プランをFirestoreで更新
         await adminDb.collection('tenants').doc(tenantId).update({
-          plan: planType, // 💡 ここをメタデータの値（standard 等）に連動させる
+          plan: planType,
           stripeSubscriptionId: session.subscription,
           updatedAt: new Date(),
         });
+
+        // ② ★重要：ここでお礼メール送信APIを叩く！
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        await fetch(`${baseUrl}/api/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: session.customer_details?.email || session.metadata?.email,
+            name: "お客様", // 必要に応じてテナント名を取得して入れてください
+            type: 'upgrade_confirmation', // メールの種類
+            planName: planType === 'standard' ? 'スタンダードプラン' : 'プロプラン',
+          }),
+        });
+        
+        console.log("✅ Plan updated and Confirmation email sent.");
+
       } catch (e) {
-        console.error('Tenant update failed:', e);
+        console.error('Update or Email failed:', e);
       }
     }
     return NextResponse.json({ received: true });
