@@ -100,7 +100,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
             const eventSnap = await eventRef.get();
             const eData = eventSnap.data();
             
-            let tenantName = "イベント事務局";
+            let tenantName = "HANAHIRO CO.,LTD.";
             let themeColor = "";
             let replyTo = "";
 

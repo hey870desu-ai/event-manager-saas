@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo
     } = body;
 
-    const senderName = tenantName || "事務局";
+    const senderName = tenantName || "HANAHIRO CO.,LTD.";
     const brandColor = themeColor || "#3b82f6";
     const homeUrl = tenantUrl || "#";
     
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
           <div style="${styles.value}">✅ 決済完了（有効）</div>
         </div>
         <p style="${styles.greeting}">
-          本日より、すべてのプレミアム機能をご利用いただけます。<br>
+          本日より、スタンダードプランの機能をご利用いただけます。<br>
           引き続き、よろしくお願いいたします。
         </p>
       `;
@@ -149,8 +149,24 @@ export async function POST(request: Request) {
         <div style="${styles.container}">
           <div style="${styles.header}">${logoHtml}</div>
           <div style="${styles.content}">${mainHtml}</div>
-          <div style="${styles.footer}"><p>${senderName}</p></div>
-        </div>
+          
+          <div style="${styles.footer}">
+            <p style="margin: 0; font-weight: bold; font-size: 14px; color: #475569;">${senderName}</p>
+            <p style="margin-top: 4px; color: #94a3b8;">CARE DESIGN WORKS 事業部</p>
+            
+            ${tenantUrl ? `
+              <p style="margin-top: 10px;">
+                <a href="${tenantUrl}" style="${styles.footerLink}">公式サイトを見る &rarr;</a>
+              </p>
+            ` : ''}
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; opacity: 0.6; font-size: 10px; letter-spacing: 1px;">
+                © ${new Date().getFullYear()} CARE DESIGN WORKS. All Rights Reserved.
+              </p>
+            </div>
+          </div>
+          </div>
       </body>
       </html>`;
 
