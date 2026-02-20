@@ -24,6 +24,12 @@ export async function POST(request: Request) {
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
       customer_email: email,
+      // ▼▼▼ ここを追加してください ▼▼▼
+  payment_intent_data: {
+    // 💡 これが「Stripeからの領収書」を強制的に送信させる命令です
+    receipt_email: email, 
+  },
+  // ▲▲▲ ここまで ▲▲▲
       metadata: {
   tenantId: tenantId,
   plan: 'standard', // 💡 ここが standard なら、上の Webhook で standard に更新される
