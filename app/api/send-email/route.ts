@@ -1,7 +1,6 @@
-// 📂 app/api/send-email/route.ts (Resend対応版)
+// 📂 app/api/send-email/route.ts (完全統合版)
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-
 
 // 日付フォーマット
 function formatToJapaneseDate(dateString: string): string {
@@ -38,31 +37,15 @@ export async function POST(request: Request) {
       name, email, company, type, eventTitle, 
       eventDate, eventTime, venueName, 
       zoomUrl, zoomPasscode, meetingId,
-      reservationId,
-      tenantName, tenantLogo, tenantUrl, themeColor
+      reservationId, planName,
+      tenantName, tenantLogo, tenantUrl, themeColor, replyTo
     } = body;
 
-    const senderName = tenantName || "イベント事務局";
+    const senderName = tenantName || "事務局";
     const brandColor = themeColor || "#3b82f6";
     const homeUrl = tenantUrl || "#";
     
-    // ★ 送信元の設定 (重要)
-    // テスト段階: "onboarding@resend.dev" 固定
-    // 本番運用時: あなたが取得したドメイン (例: "noreply@event-saas.com")
-    const fromAddress = "info@send.hana-hiro.com";
-
-    const isOnline = type === 'online';
-    const subject = `【受講票】${eventTitle} 受付完了のお知らせ`;
-    const formattedDate = formatToJapaneseDate(eventDate);
-    const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${reservationId}&amp;bgcolor=ffffff` : "";
-
-    const calendarDetails = isOnline 
-      ? `Zoom URL: ${zoomUrl}\nID: ${meetingId}\nPASS: ${zoomPasscode}\n\n※この予定はフォームから登録されました。` 
-      : `会場: ${venueName}\n\n【受付用QRコード】\nメール内のQRコードを受付でご提示ください。\n\n※この予定はフォームから登録されました。`;
-
-    const calendarUrl = createGoogleCalendarUrl(`【${senderName}】${eventTitle}`, eventDate, eventTime, calendarDetails);
-
-    // デザインスタイル定義 (変更なし)
+    // スタイル定義
     const styles = {
       body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
       container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);",
@@ -82,121 +65,109 @@ export async function POST(request: Request) {
       footerLink: "color: " + brandColor + "; text-decoration: none; font-weight: bold;"
     };
 
-    const companyHtml = company ? `<span style="${styles.companyName}">${company}</span>` : "";
     const logoHtml = tenantLogo 
       ? `<img src="${tenantLogo}" alt="${senderName}" style="max-width: 200px; max-height: 60px; object-fit: contain;">`
       : `<span style="${styles.logoText}">${senderName}</span>`;
 
-    let accessInfo = "";
-    if (isOnline) {
-      accessInfo = `
-        <div style="background-color: #f0f9ff; border: 1px dashed #bae6fd; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
-          <h3 style="color: #0284c7; margin: 0 0 10px 0; font-size: 16px;">💻 オンライン参加情報</h3>
-          <p style="font-size: 13px; margin-bottom: 15px; color: #475569;">以下ボタンよりご入室ください（開始10分前〜）</p>
-          <a href="${zoomUrl}" style="${styles.button}">Zoomミーティングに参加する</a>
-          <div style="margin-top: 20px; text-align: left; background: #ffffff; padding: 15px; border-radius: 6px; font-size: 13px;">
-             <div style="margin-bottom: 5px;"><span style="color: #64748b;">ミーティングID:</span> <strong style="color: #334155;">${meetingId || "-"}</strong></div>
-             <div><span style="color: #64748b;">パスコード:</span> <strong style="color: #334155;">${zoomPasscode || "-"}</strong></div>
-          </div>
+    let subject = "";
+    let mainHtml = "";
+
+    // 🔄 メールの種類による条件分岐
+    if (type === 'upgrade_confirmation') {
+      // 💎 1. アップグレード完了メール
+      subject = `【重要】${planName || "スタンダード"}へのアップグレードが完了しました`;
+      mainHtml = `
+        <p style="${styles.greeting}">
+          <strong>${name || "お客様"} 様</strong><br><br>
+          いつも本システムをご利用いただき、誠にありがとうございます。<br>
+          この度、<strong>${planName || "スタンダードプラン"}</strong> へのアップグレードのお手続きが完了いたしました。
+        </p>
+        <div style="${styles.card}">
+          <div style="${styles.cardAccent}"></div>
+          <div style="${styles.label}">ご契約プラン</div>
+          <div style="${styles.value}">${planName || "スタンダード"}</div>
+          <div style="${styles.label}">月額利用料</div>
+          <div style="${styles.value}">3,300円（税込）</div>
+          <div style="${styles.label}">ステータス</div>
+          <div style="${styles.value}">✅ 決済完了（有効）</div>
         </div>
+        <p style="${styles.greeting}">
+          本日より、すべてのプレミアム機能をご利用いただけます。<br>
+          引き続き、よろしくお願いいたします。
+        </p>
       `;
     } else {
-      accessInfo = `
-        <div style="background-color: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
-          <h3 style="color: #c2410c; margin: 0 0 10px 0; font-size: 16px;">🏢 会場のご案内</h3>
-          <div style="font-size: 18px; font-weight: bold; color: #431407; margin-bottom: 8px;">${venueName || "詳細は別途ご案内"}</div>
-          ${reservationId ? `
-            <div style="margin-top: 25px; background: #ffffff; padding: 15px; border-radius: 8px; display: inline-block; border: 1px solid #fed7aa;">
-               <p style="font-size: 12px; font-weight: bold; color: #ea580c; margin: 0 0 10px 0;">▼ 当日はこのQRコードをご提示ください ▼</p>
-               <img src="${qrCodeUrl}" alt="Check-in QR" width="160" height="160" style="display: block; margin: 0 auto;">
-               <p style="font-size: 10px; color: #9a3412; margin: 5px 0 0 0; font-family: monospace;">ID: ${reservationId}</p>
+      // 🎟️ 2. イベント受講票メール（既存ロジック）
+      subject = `【受講票】${eventTitle} 受付完了のお知らせ`;
+      const isOnline = type === 'online';
+      const formattedDate = formatToJapaneseDate(eventDate);
+      const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${reservationId}&amp;bgcolor=ffffff` : "";
+      
+      const calendarDetails = isOnline 
+        ? `Zoom URL: ${zoomUrl}\nID: ${meetingId}\nPASS: ${zoomPasscode}` 
+        : `会場: ${venueName}\n\n【受付用QRコード】\nメール内のQRコードを受付でご提示ください。`;
+      const calendarUrl = createGoogleCalendarUrl(`【${senderName}】${eventTitle}`, eventDate, eventTime, calendarDetails);
+
+      let accessInfoHtml = "";
+      if (isOnline) {
+        accessInfoHtml = `
+          <div style="background-color: #f0f9ff; border: 1px dashed #bae6fd; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
+            <h3 style="color: #0284c7; margin: 0 0 10px 0; font-size: 16px;">💻 オンライン参加情報</h3>
+            <a href="${zoomUrl}" style="${styles.button}">Zoomに参加する</a>
+            <div style="margin-top: 15px; text-align: left; background: #ffffff; padding: 10px; border-radius: 6px; font-size: 13px;">
+              ID: ${meetingId || "-"} / PW: ${zoomPasscode || "-"}
             </div>
-          ` : ''}
-          <p style="font-size: 12px; color: #9a3412; margin-top: 15px;">当日は受付にて上記QRコード、またはお名刺を1枚頂戴いたします。</p>
-        </div>
-      `;
+          </div>`;
+      } else {
+        accessInfoHtml = `
+          <div style="background-color: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
+            <h3 style="color: #c2410c; margin: 0 0 10px 0; font-size: 16px;">🏢 会場案内: ${venueName}</h3>
+            ${reservationId ? `<img src="${qrCodeUrl}" width="160" height="160" style="display: block; margin: 15px auto;">` : ''}
+          </div>`;
+      }
+
+      mainHtml = `
+        <p style="${styles.greeting}">
+          <strong>${name} 様</strong><br>
+          「${eventTitle}」にお申し込みいただき、ありがとうございます。
+        </p>
+        <div style="${styles.card}">
+          <div style="${styles.cardAccent}"></div>
+          <div style="${styles.label}">イベント</div>
+          <div style="${styles.value}">${eventTitle}</div>
+          <div style="${styles.label}">日時</div>
+          <div style="${styles.value}">${formattedDate} ${eventTime}</div>
+          <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 カレンダーに追加</a>
+          ${accessInfoHtml}
+        </div>`;
     }
 
-    const htmlContent = `
+    const finalHtml = `
       <!DOCTYPE html>
       <html>
       <body style="${styles.body}">
         <div style="${styles.container}">
-          <div style="${styles.header}">
-            <p style="${styles.headerTitle}">OFFICIAL INVITATION</p>
-            <a href="${homeUrl}" target="_blank" style="text-decoration: none;">
-               ${logoHtml}
-            </a>
-          </div>
-
-          <div style="${styles.content}">
-            <p style="${styles.greeting}">
-              ${companyHtml}
-              <strong>${name} 様</strong><br><br>
-              この度は、「${eventTitle}」にお申し込みいただき、誠にありがとうございます。<br>
-              当日のご参加を心よりお待ちしております。
-            </p>
-
-            <div style="${styles.card}">
-              <div style="${styles.cardAccent}"></div>
-              <div style="${styles.label}">イベント名</div>
-              <div style="${styles.value}">${eventTitle}</div>
-              
-              <div style="${styles.label}">開催日時</div>
-              <div style="${styles.value}">${formattedDate} ${eventTime}</div>
-              <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">
-                📅 Googleカレンダーに追加
-              </a>
-              
-              <div style="margin-top: 10px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
-                <div style="${styles.label}">参加形式</div>
-                <div style="font-size: 15px; font-weight: bold; color: ${isOnline ? '#0ea5e9' : '#ea580c'}; display: flex; align-items: center; gap: 5px;">
-                  ${isOnline ? '● オンライン参加' : '● 会場参加'}
-                </div>
-              </div>
-
-              ${accessInfo}
-            </div>
-          </div>
-          
-          <div style="${styles.footer}">
-            <p style="margin: 0; font-weight: bold;">${senderName}</p>
-            ${tenantUrl ? `<p style="margin-top: 5px;"><a href="${tenantUrl}" style="${styles.footerLink}">公式サイトを見る &rarr;</a></p>` : ''}
-            <p style="margin-top: 15px; opacity: 0.5;">© ${new Date().getFullYear()} Event System.</p>
-          </div>
+          <div style="${styles.header}">${logoHtml}</div>
+          <div style="${styles.content}">${mainHtml}</div>
+          <div style="${styles.footer}"><p>${senderName}</p></div>
         </div>
       </body>
-      </html>
-    `;
+      </html>`;
 
-    // 🟢 追加 (Gmailでの送信部分)
     const transporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
-      },
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
     });
-
-    // bodyから replyTo (テナントのメアド) を受け取るようにします
-    const { replyTo } = body; 
 
     await transporter.sendMail({
-      // ★ 送信者名を「テナント名」に変更（アドレスは変えられないのでそのまま）
       from: `"${senderName}" <${process.env.GMAIL_USER}>`,
-      
-      // ★ 返信先を「テナントのアドレス」に設定！
       replyTo: replyTo || process.env.GMAIL_USER,
-      
       to: email,
       subject: subject,
-      html: htmlContent,
+      html: finalHtml,
     });
 
-    // 🟢 成功時の返信 (Resendのdata.idは無いのでシンプルに返す)
     return NextResponse.json({ success: true });
-
-
   } catch (error: any) {
     console.error('Email Send Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
