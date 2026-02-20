@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star, MessageSquare, Clock, FileText, Shield, CreditCard } from "lucide-react"; 
+import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -1314,15 +1314,37 @@ useEffect(() => {
                    <button onClick={handleSaveOrgName} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">保存</button>
                  </div>
                </div>
-               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-4">
-                 <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2">
-                   <CreditCard size={16}/> 決済機能連携
-                 </h3>
-                 <StripeConnectButton 
-                   tenantId={currentUserTenant}
-                   isConnected={(tenantList.find(t => t.id === currentUserTenant) as any)?.stripeConnectEnabled || false}
-                 />
-               </div>
+               <div className="space-y-4 mt-4">
+                  {/* ✨ 追加：システム利用料（アップグレード）への導線 */}
+                  <div className="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30">
+                    <h3 className="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
+                      <Sparkles size={16} className="text-yellow-400"/> プランのお支払い・管理
+                    </h3>
+                    <p className="text-[10px] text-slate-500 mb-3">
+                      スタンダードプランへのアップグレードや領収書の確認はこちら
+                    </p>
+                    <button 
+                      onClick={() => router.push("/dashboard")}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-indigo-500/20"
+                    >
+                      支払い管理画面を開く
+                    </button>
+                  </div>
+
+                  {/* 修正：名前を変えて、口座連携ボタンはそのまま残す */}
+                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                    <h3 className="text-sm font-bold text-slate-400 mb-2 flex items-center gap-2">
+                      <Building2 size={16}/> 【主催者用】売上受取の設定
+                    </h3>
+                    <p className="text-[10px] text-slate-500 mb-3">
+                      有料イベントの売上を受け取るための口座連携設定です
+                    </p>
+                    <StripeConnectButton 
+                      tenantId={currentUserTenant}
+                      isConnected={(tenantList.find(t => t.id === currentUserTenant) as any)?.stripeConnectEnabled || false}
+                    />
+                  </div>
+                </div>
 
 {/* 2. スタッフ招待（全ユーザーに開放 ※ただし自分のテナント限定） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
