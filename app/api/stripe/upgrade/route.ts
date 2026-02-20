@@ -25,8 +25,9 @@ export async function POST(request: Request) {
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
       customer_email: email,
       metadata: {
-        tenantId: tenantId,
-      },
+  tenantId: tenantId,
+  plan: 'standard', // 💡 ここが standard なら、上の Webhook で standard に更新される
+},
     });
 
     return NextResponse.json({ url: session.url });

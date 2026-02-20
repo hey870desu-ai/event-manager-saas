@@ -25,16 +25,18 @@ export async function POST(req: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  // ▼▼▼ 1. SaaSプランの更新（既存機能） ▼▼▼
-  // 条件：メタデータに「plan: pro」があり、かつイベントが「完了」のとき
-  if (event.type === 'checkout.session.completed' && session.metadata?.plan === 'pro') {
+  // ▼▼▼ 1. SaaSプランの更新（修正版） ▼▼▼
+  // 条件：メタデータに plan が設定されており（standard または pro）、かつイベントが「完了」のとき
+  if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
     const tenantId = session.metadata.tenantId;
+    const planType = session.metadata.plan; // 'standard' か 'pro' が入ってくる
+
     if (tenantId) {
-      console.log(`✅ SaaS Subscription Payment success! Updating tenant: ${tenantId}`);
+      console.log(`✅ SaaS Subscription Payment success! Updating tenant: ${tenantId} to ${planType}`);
       try {
         await adminDb.collection('tenants').doc(tenantId).update({
-          plan: 'pro',
-          stripeSubscriptionId: session.subscription, // サブスクIDも保存しておくと便利
+          plan: planType, // 💡 ここをメタデータの値（standard 等）に連動させる
+          stripeSubscriptionId: session.subscription,
           updatedAt: new Date(),
         });
       } catch (e) {
