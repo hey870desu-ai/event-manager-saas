@@ -586,134 +586,81 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 1. 基本情報 */}
-      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
-        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><Calendar size={20} className="text-indigo-400"/> 基本情報</h3>
-        <div className="space-y-6">
-          <div><label className="block text-xs text-slate-500 mb-2">イベント名 <span className="text-red-500">*</span></label><input required type="text" name="title" value={formData.title} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-lg text-white focus:border-indigo-500 outline-none" placeholder="例: 定例セミナー"/></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div><label className="block text-xs text-slate-500 mb-2">開催日 <span className="text-red-500">*</span></label><input required type="date" name="date" value={formData.date} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" /></div>
-            <div className="grid grid-cols-2 gap-2 md:col-span-2">
-              <div><label className="block text-xs text-slate-500 mb-2">開始</label><input type="time" name="startTime" value={formData.startTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-              <div><label className="block text-xs text-slate-500 mb-2">終了</label><input type="time" name="endTime" value={formData.endTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-            </div>
-            <div><label className="block text-xs text-slate-500 mb-2">受付開始</label><input type="time" name="openTime" value={formData.openTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-             <div className="md:col-span-2"><label className="block text-xs text-slate-500 mb-2">定員</label><input type="text" name="capacity" value={formData.capacity} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
-             {/* ▼▼▼ 修正: 参加費（有料・無料切り替え） ▼▼▼ */}
-<div className="md:col-span-2">
-  <label className="block text-xs text-slate-500 mb-2 font-bold flex items-center gap-2">
-    参加費 <span className="text-[10px] font-normal text-slate-400 bg-slate-800 px-1.5 rounded border border-slate-700">税込</span>
-  </label>
-  
-  <div className="space-y-3">
-    {/* 切り替えスイッチ */}
-    <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-700 w-fit">
-      <button
-        type="button"
-        onClick={() => setFormData(prev => ({ ...prev, price: "無料" }))}
-        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-          formData.price === "無料" 
-            ? 'bg-slate-700 text-white shadow shadow-black/50' 
-            : 'text-slate-500 hover:text-slate-300'
-        }`}
-      >
-        無料
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          // もし「無料」だったら初期値(1000)を入れる。すでに数値ならそのまま
-          const currentVal = (formData.price === "無料" || formData.price === "") ? "1000" : formData.price;
-          setFormData(prev => ({ ...prev, price: currentVal }));
-        }}
-        className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-          formData.price !== "無料" 
-            ? 'bg-indigo-600 text-white shadow shadow-indigo-900/50' 
-            : 'text-slate-500 hover:text-slate-300'
-        }`}
-      >
-        有料
-      </button>
+      {/* 1. 基本情報 (ここから) */}
+<div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
+  <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
+    <Calendar size={20} className="text-indigo-400"/> 基本情報
+  </h3>
+  <div className="space-y-6">
+    {/* イベント名 */}
+    <div>
+      <label className="block text-xs text-slate-500 mb-2">イベント名 <span className="text-red-500">*</span></label>
+      <input required type="text" name="title" value={formData.title} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-lg text-white focus:border-indigo-500 outline-none" placeholder="例: 定例セミナー"/>
     </div>
 
-    {/* 👇 ここから追加：お問い合わせ先設定 */}
-      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
-        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
-          <User size={20} className="text-indigo-400"/> お問い合わせ先設定
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-xs text-slate-500 mb-2">担当者・事務局名</label>
-            <input 
-              type="text" 
-              name="contactName" 
-              value={formData.contactName} 
-              onChange={handleChange} 
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
-              placeholder="例：事務局 塙"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-2">問い合わせメール</label>
-            <input 
-              type="email" 
-              name="contactEmail" 
-              value={formData.contactEmail} 
-              onChange={handleChange} 
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
-              placeholder="info@example.com"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-2">問い合わせ電話番号</label>
-            <input 
-              type="tel" 
-              name="contactPhone" 
-              value={formData.contactPhone} 
-              onChange={handleChange} 
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
-              placeholder="024-xxx-xxxx"
-            />
-          </div>
-        </div>
-        <p className="text-[10px] text-slate-500 mt-3">
-          ※イベントページおよび自動返信メールの署名に利用されます。未入力の場合は組織の基本情報が表示されます。
-        </p>
+    {/* 日時設定 */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div><label className="block text-xs text-slate-500 mb-2">開催日 <span className="text-red-500">*</span></label><input required type="date" name="date" value={formData.date} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" /></div>
+      <div className="grid grid-cols-2 gap-2 md:col-span-2">
+        <div><label className="block text-xs text-slate-500 mb-2">開始</label><input type="time" name="startTime" value={formData.startTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
+        <div><label className="block text-xs text-slate-500 mb-2">終了</label><input type="time" name="endTime" value={formData.endTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
+      </div>
+      <div><label className="block text-xs text-slate-500 mb-2">受付開始</label><input type="time" name="openTime" value={formData.openTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
+    </div>
+
+    {/* 定員と参加費の横並び */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div>
+        <label className="block text-xs text-slate-500 mb-2">定員</label>
+        <input type="text" name="capacity" value={formData.capacity} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" />
       </div>
 
-    {/* 入力エリア (有料のときだけ表示) */}
-    {formData.price !== "無料" ? (
-      <div className="animate-in fade-in slide-in-from-left-2 duration-300">
-        <div className="relative flex items-center gap-2">
-           <span className="absolute left-3 text-slate-500 font-mono">¥</span>
-           <input
-             type="number"
-             value={formData.price}
-             onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-             className="w-full bg-slate-950 border border-slate-700 rounded-lg py-3 pl-8 pr-10 text-white focus:border-indigo-500 outline-none font-mono text-lg font-bold"
-             placeholder="3000"
-             min="0"
-           />
-           <span className="absolute right-3 text-sm text-slate-400 font-bold pointer-events-none">円</span>
+      <div>
+        <label className="block text-xs text-slate-500 mb-2 font-bold flex items-center gap-2">参加費</label>
+        <div className="space-y-3">
+          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-700 w-fit">
+            <button type="button" onClick={() => setFormData(prev => ({ ...prev, price: "無料" }))} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${formData.price === "無料" ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>無料</button>
+            <button type="button" onClick={() => setFormData(prev => ({ ...prev, price: formData.price === "無料" ? "1000" : formData.price }))} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${formData.price !== "無料" ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>有料</button>
+          </div>
+          
+          {/* 金額入力 (有料の時のみ表示) */}
+          {formData.price !== "無料" && (
+            <div className="relative flex items-center gap-2 max-w-[200px] animate-in fade-in slide-in-from-left-2">
+              <span className="absolute left-3 text-slate-500 font-mono">¥</span>
+              <input type="number" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-3 pl-8 pr-10 text-white focus:border-indigo-500 outline-none font-mono font-bold" />
+              <span className="absolute right-3 text-sm text-slate-400 font-bold">円</span>
+            </div>
+          )}
         </div>
-        <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-          ※ Stripe手数料 (3.6%) が差し引かれます
-        </p>
       </div>
-    ) : (
-      <div className="text-xs text-slate-500 py-2 animate-in fade-in bg-slate-900/30 px-3 rounded border border-slate-800/50 border-dashed">
-        ※ イベントページには「参加費：無料」と表示されます
-      </div>
-    )}
+    </div>
   </div>
 </div>
-{/* ▲▲▲ 修正ここまで ▲▲▲ */}
-          </div>
-        </div>
-      </div>
+{/* 1. 基本情報 (ここまで) */}
 
+{/* 2. お問い合わせ先設定 (独立した新しいセクションとして配置) */}
+<div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800 mt-6">
+  <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
+    <User size={20} className="text-indigo-400"/> お問い合わせ先設定
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+    <div className="space-y-2">
+      <label className="block text-xs text-slate-500 font-bold">担当者・事務局名</label>
+      <input type="text" name="contactName" value={formData.contactName} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none" placeholder="例：事務局 塙" />
+    </div>
+    <div className="space-y-2">
+      <label className="block text-xs text-slate-500 font-bold">問い合わせメール</label>
+      <input type="email" name="contactEmail" value={formData.contactEmail} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none" placeholder="info@example.com" />
+    </div>
+    <div className="space-y-2 md:col-span-1">
+      <label className="block text-xs text-slate-500 font-bold">問い合わせ電話番号</label>
+      <input type="tel" name="contactPhone" value={formData.contactPhone} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none" placeholder="024-xxx-xxxx" />
+    </div>
+  </div>
+  <p className="text-[10px] text-slate-500 mt-4 border-t border-slate-800 pt-4">
+    ※ここに入力した情報は、イベントページおよび自動返信メールの署名に反映されます。
+  </p>
+</div>
       {/* ★★★ デザインテーマ設定 (3パターン) ★★★ */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
         <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
