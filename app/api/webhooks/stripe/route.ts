@@ -85,15 +85,16 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
           const reservationSnap = await reservationRef.get();
           const rData = reservationSnap.data();
 
-          // まだ「confirmed」になっていない場合のみ処理を実行
-          if (reservationSnap.exists && rData?.status !== 'confirmed') {
+          // まだ「confirmed」になっておらず、かつ「メール送信済み」でもない場合のみ
+          if (reservationSnap.exists && rData?.status !== 'confirmed' && !rData?.emailed) {
             
-            // A. ステータスを「確定」に更新
+            // A. ステータスを「確定」に更新し、同時に「メール送信済み」フラグを立てる
             await reservationRef.update({
               status: 'confirmed',
               paymentStatus: 'paid',
               paidAt: new Date(),
               stripeSessionId: session.id,
+              emailed: true, // ★ ここにこの1行を追加！
             });
 
             // B. メール送信に必要なデータを集める
