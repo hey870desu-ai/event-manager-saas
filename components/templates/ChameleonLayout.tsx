@@ -57,13 +57,22 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
 
   const { full, week } = formatDate(event.date);
   const lecturersList = event.lecturers || (event.lecturer ? [{ name: event.lecturer, title: event.lecturerTitle, image: event.lecturerImage, profile: event.lecturerProfile }] : []);
-  // ▼▼▼ ここから追加 ▼▼▼
-  const handleShareTwitter = () => {
+// --- SNSシェア用ハンドラー ---
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+
+  const handleShareX = () => {
     const shareText = `${event.title} | イベント申し込み`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
   };
-  // ▼▼▼ この1行を handleCopyLink のすぐ上に追加してください ▼▼▼
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+
+  const handleShareFB = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+  };
+
+  const handleShareLINE = () => {
+    window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`, '_blank');
+  };
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
@@ -97,7 +106,12 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
         <div className="relative mb-12 group">
           <div className="absolute inset-0 rounded-[2.5rem] md:rounded-[4rem] translate-y-4 blur-2xl opacity-30 transition-transform group-hover:translate-y-6" style={{ backgroundColor: dynamicColor }}></div>
           <div className="relative bg-white p-2 md:p-4 rounded-[2.5rem] md:rounded-[4rem] shadow-2xl">
-            <img ref={imgRef} src={event.ogpImage} className="w-full aspect-video object-cover rounded-[2rem] md:rounded-[3.5rem]" alt="Event Thumbnail" />
+            <img 
+  ref={imgRef} 
+  src={event.ogpImage} 
+  className="relative w-full h-auto max-h-[60vh] object-contain rounded-[2rem] md:rounded-[3.5rem]" 
+  alt="Event Thumbnail" 
+/>
           </div>
         </div>
 
@@ -108,10 +122,34 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border border-slate-100 font-bold text-xs uppercase tracking-widest text-slate-500">
               <Sparkles size={14} style={{ color: dynamicColor }} /> {tenant?.name}
             </div>
-            <div className="flex gap-2">
-               <button onClick={handleShareTwitter} className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors"><Twitter size={18}/></button>
-               <button onClick={handleCopyLink} className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors" style={{ color: copied ? dynamicColor : 'inherit' }}><LinkIcon size={18}/></button>
-            </div>
+            <div className="flex flex-wrap gap-3">
+  {/* X */}
+  <button onClick={handleShareX} className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+    <Twitter size={18}/>
+  </button>
+
+  {/* LINE */}
+  <button onClick={handleShareLINE} className="w-10 h-10 rounded-full bg-[#06C755] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+      <path d="M12 2c-5.522 0-10 3.91-10 8.73 0 2.82 1.515 5.33 3.896 7l-.585 2.14c-.067.245.163.456.387.357l2.527-1.12c.594.16 1.22.25 1.775.25 5.522 0 10-3.91 10-8.73s-4.478-8.73-10-8.73z"/>
+    </svg>
+  </button>
+
+  {/* FB */}
+  <button onClick={handleShareFB} className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm">
+    <Facebook size={18}/>
+  </button>
+
+  {/* Copy */}
+  <button 
+    onClick={handleCopyLink} 
+    className="h-10 px-4 rounded-full border-2 flex items-center gap-2 font-bold transition-all shadow-sm bg-white text-xs" 
+    style={{ borderColor: copied ? dynamicColor : '#f1f5f9', color: copied ? dynamicColor : '#64748b' }}
+  >
+    {copied ? <Check size={14}/> : <Copy size={14}/>}
+    <span>{copied ? "OK" : "Link"}</span>
+  </button>
+</div>
           </div>
           <h1 className="text-3xl md:text-6xl font-black text-slate-900 leading-[1.1] mb-6">{event.title}</h1>
           {event.subtitle && <p className="text-lg md:text-2xl font-medium text-slate-500 leading-relaxed border-l-4 pl-6" style={{ borderColor: dynamicColor }}>{event.subtitle}</p>}
