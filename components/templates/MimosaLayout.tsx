@@ -172,6 +172,13 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
                   <div>
                     <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-3">会場 & アクセス</div>
                     <h3 className="text-xl font-black text-slate-900 mb-3">{event.venueName}</h3>
+                    {/* ★住所テキストを追加 */}
+  {event.venueAddress && (
+    <p className="text-sm font-bold text-slate-600 mb-3 flex items-start gap-2">
+      <MapPin size={16} className="text-yellow-500 shrink-0 mt-0.5" />
+      <span>{event.venueAddress}</span>
+    </p>
+  )}
                     {event.venueAccess && (
                       <div className="text-sm font-bold text-slate-500 mb-4 bg-[#FCF9EE] p-4 rounded-2xl border-l-4 border-yellow-400">
                         {event.venueAccess}

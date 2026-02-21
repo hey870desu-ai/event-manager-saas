@@ -251,6 +251,14 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">会場 & アクセス</p>
                     <h3 className="text-xl font-black text-slate-900 mb-3 text-center md:text-left">{event.venueName}</h3>
+
+                    {/* ★住所テキストを追加 */}
+  {event.venueAddress && (
+    <p className="text-sm font-bold text-slate-600 mb-4 text-center md:text-left px-4 md:px-0 flex items-center justify-center md:justify-start gap-2">
+      <MapPin size={16} style={{ color: dynamicColor }} className="shrink-0" />
+      <span>{event.venueAddress}</span>
+    </p>
+  )}
                     
                     {/* ★アクセス情報の表示 */}
                     {event.venueAccess && (
