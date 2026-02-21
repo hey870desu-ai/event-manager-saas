@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Clock, MapPin, User, Sparkles, 
   CheckCircle2, Share2, Check, ExternalLink, 
-  Music, PartyPopper,Twitter, Facebook, Link as LinkIcon
+  Music, PartyPopper,Twitter, Facebook, Link as LinkIcon, Mail, Phone
 } from "lucide-react";
 
 type Props = {
@@ -253,6 +253,36 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
               >
                  Google Map <ExternalLink size={14} className="inline"/>
               </a>
+
+              {/* マップ用 <a> タグの </div> の直後に挿入 */}
+          <div className="bg-white rounded-[2.5rem] border-4 border-slate-900 shadow-[8px_8px_0px_0px_#F472B6] p-8 space-y-6 mt-10 transform -rotate-1">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 bg-yellow-400 border-2 border-slate-900 rounded-full animate-ping"></div>
+              <h3 className="font-black text-slate-900 text-lg uppercase tracking-tighter">Contact Us!</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-slate-100 p-3 rounded-xl border-2 border-slate-900">
+                <p className="text-[10px] font-black text-slate-400 uppercase">担当スタッフ</p>
+                <p className="font-black text-slate-800">{event.contactName || tenant?.name || "運営チーム"}</p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {event.contactEmail && (
+                  <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-4 bg-cyan-400 border-4 border-slate-900 rounded-2xl text-xs font-black text-slate-900 hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
+                    <Mail size={18} />
+                    <span className="truncate">{event.contactEmail}</span>
+                  </a>
+                )}
+                {event.contactPhone && (
+                  <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-4 bg-pink-400 border-4 border-slate-900 rounded-2xl text-xs font-black text-white hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
+                    <Phone size={18} />
+                    {event.contactPhone}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
            </div>
 
            {/* シェア */}
