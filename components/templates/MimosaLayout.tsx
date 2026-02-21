@@ -86,17 +86,28 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
 
       <div className="relative z-10 container mx-auto px-0 md:px-4 pt-12 md:pt-24 max-w-6xl">
 
-        {/* ヘッダー */}
-        <div className="text-center mb-24 px-4">
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-yellow-200 shadow-sm mb-6">
-            <Sparkles size={14} className="text-yellow-500" />
-            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name || tenantId}</span>
-          </div>
-          <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[1.3] mb-8 max-w-6xl mx-auto break-words md:break-normal px-4">
+        {/* --- ヘッダー：タイトルとテナント名の順序入れ替え --- */}
+<div className="text-center mb-24 px-4">
+  
+  {/* 1. タイトルを最上部に（PCで1行、スマホで安全に） */}
+  <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[1.3] mb-6 max-w-6xl mx-auto break-words md:break-normal">
     {event.title}
   </h1>
-          {event.subtitle && <p className="text-slate-500 md:text-lg max-w-3xl mx-auto">{event.subtitle}</p>}
-        </div>
+
+  {/* 2. テナント名をその下に（上品なライン装飾） */}
+  <div className="flex items-center justify-center gap-3 mb-10 text-slate-400 font-bold tracking-[0.4em] uppercase text-[10px]">
+    <div className="w-10 h-[1px] bg-yellow-400/30"></div>
+    <span className="px-2">{tenant?.name || tenantId}</span>
+    <div className="w-10 h-[1px] bg-yellow-400/30"></div>
+  </div>
+
+  {/* 3. サブタイトル */}
+  {event.subtitle && (
+    <p className="text-slate-500 md:text-lg max-w-3xl mx-auto font-medium leading-relaxed">
+      {event.subtitle}
+    </p>
+  )}
+</div>
 
         {/* 2カラムレイアウト */}
         <div className={`bg-white/70 backdrop-blur-xl border-y md:border md:rounded-[3rem] grid grid-cols-1 lg:grid-cols-2 shadow-2xl border-white`}>
