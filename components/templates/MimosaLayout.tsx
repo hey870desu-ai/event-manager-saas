@@ -87,12 +87,14 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
       <div className="relative z-10 container mx-auto px-0 md:px-4 pt-12 md:pt-24 max-w-6xl">
 
         {/* ヘッダー */}
-        <div className="text-center mb-12 px-4">
+        <div className="text-center mb-24 px-4">
           <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-yellow-200 shadow-sm mb-6">
             <Sparkles size={14} className="text-yellow-500" />
             <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name || tenantId}</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-6">{event.title}</h1>
+          <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-[1.2] mb-8 max-w-4xl mx-auto break-keep">
+    {event.title}
+  </h1>
           {event.subtitle && <p className="text-slate-500 md:text-lg max-w-3xl mx-auto">{event.subtitle}</p>}
         </div>
 
@@ -194,7 +196,13 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
                   <div className="grid grid-cols-2 gap-4 border-t border-yellow-50 pt-8">
                     <div className="text-center">
                       <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">参加費</p>
-                      <div className="text-xl font-black text-slate-900">{event.price ? `${Number(event.price).toLocaleString()}円` : "無料"}</div>
+                      <div className="text-xl font-black text-slate-900">
+  {(!event.price || event.price === "0" || event.price === "無料") 
+    ? "無料" 
+    : isNaN(Number(event.price)) 
+      ? event.price 
+      : `${Number(event.price).toLocaleString()}円`}
+</div>
                     </div>
                     <div className="text-center border-l border-yellow-50">
                       <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">定員</p>
@@ -209,16 +217,33 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
                 </div>
               </div>
 
-              {/* お問い合わせカード */}
-              <div className="bg-white rounded-[2.5rem] p-8 border border-yellow-100 shadow-sm">
-                <h3 className="font-black text-slate-900 flex items-center gap-2 mb-6 text-sm uppercase tracking-widest">
-                  <div className="w-1.5 h-6 rounded-full bg-yellow-400"></div> お問い合わせ
-                </h3>
-                <div className="space-y-4">
-                  <div className="text-xs font-bold text-slate-400">主催者: {event.contactName || tenant?.name}</div>
-                  {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-[#FCF9EE] rounded-xl text-xs font-bold text-slate-600 truncate"><Mail size={16} className="text-yellow-500"/>{event.contactEmail}</a>}
-                  {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-[#FCF9EE] rounded-xl text-xs font-bold text-slate-600"><Phone size={16} className="text-yellow-500"/>{event.contactPhone}</a>}
-                </div>
+              
+            </div>
+          </div>
+        </div>
+        {/* お問い合わせ（下の蓋） */}
+        <div className="mt-20 max-w-2xl mx-auto px-4">
+          <div className="bg-white rounded-[3rem] p-10 border border-yellow-100 shadow-xl text-center space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400 opacity-50"></div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-1.5 h-6 rounded-full bg-yellow-400 shadow-[0_0_10px_#FFE000]"></div>
+              <h3 className="font-black text-slate-900 text-lg uppercase tracking-widest">お問い合わせ</h3>
+            </div>
+            <div className="space-y-4">
+              <p className="font-black text-slate-800 text-lg">{event.contactName || tenant?.name || "運営事務局"}</p>
+              <div className="flex flex-wrap justify-center gap-4">
+                {event.contactEmail && (
+                  <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 px-6 py-4 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-sm font-bold text-slate-600">
+                    <Mail size={18} className="text-yellow-500" />
+                    <span>{event.contactEmail}</span>
+                  </a>
+                )}
+                {event.contactPhone && (
+                  <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 px-6 py-4 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-sm font-bold text-slate-600">
+                    <Phone size={18} className="text-yellow-500" />
+                    <span>{event.contactPhone}</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>
