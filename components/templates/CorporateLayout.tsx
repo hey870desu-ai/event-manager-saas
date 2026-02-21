@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, MapPin, User, CheckCircle2, ArrowRight, 
   Share2, Check, ExternalLink, Train, Users, Sparkles,
-  Twitter, Facebook, Link as LinkIcon // ←アイコン追加
+  Twitter, Facebook, Link as LinkIcon,Mail, Phone
 } from "lucide-react";
 
 type Props = {
@@ -242,7 +242,7 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
             <section className="space-y-12">
               <div className="inline-flex items-center gap-4">
                 <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-                <h2 className="text-lg font-black text-slate-900">登壇者</h2>
+                <h2 className="text-lg font-black text-slate-900">講師</h2>
               </div>
               <div className="grid gap-12 md:gap-16">
                 {lecturersList.map((lec: any, index: number) => (
@@ -265,6 +265,46 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
             </section>
           )}
         </div>
+        {/* 登壇者セクションの後に追加 */}
+<section className="space-y-10 pt-12 border-t border-slate-100">
+  <div className="inline-flex items-center gap-4">
+    <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
+    <h2 className="text-lg font-black text-slate-900">本イベントに関するお問い合わせ</h2>
+  </div>
+  
+  <div className="bg-slate-50 rounded-[2rem] p-8 md:p-10 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-8">
+    <div className="space-y-2">
+      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Person</p>
+      <p className="text-xl font-black text-slate-900">
+        {event.contactName || tenant?.name || "運営事務局"}
+      </p>
+    </div>
+
+    <div className="flex flex-col sm:flex-row gap-4">
+      {/* メール */}
+      {event.contactEmail && (
+        <a 
+          href={`mailto:${event.contactEmail}`} 
+          className="flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm group"
+        >
+          <Mail size={18} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
+          {event.contactEmail}
+        </a>
+      )}
+
+      {/* 電話 */}
+      {event.contactPhone && (
+        <a 
+          href={`tel:${event.contactPhone}`} 
+          className="flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm group"
+        >
+          <Phone size={18} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
+          {event.contactPhone}
+        </a>
+      )}
+    </div>
+  </div>
+</section>
 
         {/* サイドバー: 予約フォーム */}
         <div className="lg:col-span-4 space-y-10">
