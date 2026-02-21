@@ -47,6 +47,7 @@ export default function ReservationForm({
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
   const [agreed, setAgreed] = useState(false);
+  const [newReservationId, setNewReservationId] = useState("");
  // ✅ 修正後のコード（データのフラグを直接使う）
 // event.hasOffline や event.hasOnline がデータ内にあるので、それを使います
 const hasVenue = event.hasOffline === true; 
@@ -128,6 +129,8 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
       
       // 1. まずFirestoreに保存
       const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
+      // ★ これを追加
+setNewReservationId(docRef.id);
 
       // ▼▼▼ 追加: 有料イベントの場合 ▼▼▼
       if (isPaid) {
@@ -174,7 +177,13 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
             tenantName: safeTenant?.orgName || safeTenant?.name,
             themeColor: tenantData?.themeColor,
             replyTo: safeTenant?.ownerEmail,
-            customAnswers: customAnswers // ★追加: カスタム回答もメールに含める
+            customAnswers: customAnswers, // ★追加: カスタム回答もメールに含める
+
+            // ★ ここに以下の4つを追加！
+            contactName: event.contactName || safeTenant?.name || "運営事務局",
+            contactEmail: event.contactEmail || "",
+            contactPhone: event.contactPhone || "",
+            eventPrice: event.price // これで「NaN」も直ります
           }),
         });
       } catch (mailError) { console.error("Mail error:", mailError); }
@@ -204,15 +213,33 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
 
           <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden ring-1 ring-white/10">
             {status === "success" && !onSuccess ? (
-               <div className="h-full flex items-center justify-center p-10 min-h-[400px]">
-                 <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 mb-6"><CheckCircle size={40} /></div>
-                    <h3 className="text-2xl font-bold text-white mb-3">お申し込み完了</h3>
-                    <p className="text-slate-300 mb-8">受付メールをお送りしました。</p>
-                    <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="px-8 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white">閉じる</button>
-                 </div>
-               </div>
-            ) : (
+   <div className="h-full flex items-center justify-center p-6 md:p-10 min-h-[400px] overflow-y-auto">
+     <div className="text-center w-full max-w-sm mx-auto">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4"><CheckCircle size={32} /></div>
+        <h3 className="text-xl font-bold text-white mb-2">お申し込み完了</h3>
+        <p className="text-slate-400 text-sm mb-6">受付メールをお送りしました。</p>
+        
+        {/* ★ QRコードと案内セクションを追加 */}
+        <div className="bg-white p-6 rounded-3xl mb-6 shadow-xl border-4" style={{ borderColor: themeColor }}>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Check-in QR Ticket</p>
+           <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${newReservationId}`} 
+              alt="Check-in QR" 
+              className="w-40 h-40 mx-auto mb-4"
+           />
+           <div className="bg-orange-50 p-3 rounded-xl border border-orange-200">
+              <p className="text-[11px] font-bold text-orange-700 leading-relaxed">
+                【当日これを使います】<br/>
+                この画面をスクリーンショット等で保存し、<br/>
+                受付でスタッフにご提示ください。
+              </p>
+           </div>
+        </div>
+
+        <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-bold transition-colors">閉じる</button>
+     </div>
+   </div>
+) : (
               <>
                 <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0f111a]/95 backdrop-blur z-10 sticky top-0">
                   <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">

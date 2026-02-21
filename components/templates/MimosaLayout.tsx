@@ -61,6 +61,15 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
             <CheckCircle2 size={32} />
           </div>
           <h2 className="text-2xl font-black text-slate-800">お申し込み完了</h2>
+
+          {/* ★ 追加：当日の案内テキスト */}
+  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+    <p className="text-sm font-bold text-orange-700 leading-relaxed">
+      当日の受付で以下のQRコードを使用します。<br/>
+      この画面をスクリーンショット等で保存してください。
+    </p>
+  </div>
+  
           <div className="bg-[#FCF9EE]/50 rounded-3xl p-6 border border-yellow-200 text-left">
              <h3 className="text-sm font-bold text-slate-800">{event.title}</h3>
           </div>

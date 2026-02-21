@@ -454,6 +454,10 @@ useEffect(() => {
           eventTitle: currentEventForList.title,
           eventDate: currentEventForList.date,
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
+          // ★ 追加：イベントに設定されたお問い合わせ先をAPIに渡す
+        contactName: currentEventForList.contactName || orgName,
+        contactEmail: currentEventForList.contactEmail || "",
+        contactPhone: currentEventForList.contactPhone || "",
         }),
       });
       if (res.ok) { alert("送信が完了しました！"); setIsMailModalOpen(false); } 
