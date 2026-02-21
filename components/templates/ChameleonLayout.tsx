@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
   Link as LinkIcon, Facebook, CheckCircle2, Copy, 
-  Twitter, Mail, Phone, Sparkles, Users, Info, ChevronRight
+  Twitter, Mail, Phone, Sparkles, Users, Info, ChevronRight,Video
 } from "lucide-react";
 
 type Props = {
@@ -210,6 +210,28 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
 
           {/* 右：サイドバー・アクション */}
           <div className="lg:col-span-4 space-y-8">
+
+            {/* 開催形式バッジ（サイドバー内） */}
+<div className="mb-6 flex flex-wrap gap-2">
+  {event.eventFormat === "hybrid" && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+         style={{ borderColor: dynamicColor, color: dynamicColor, backgroundColor: `${dynamicColor}10` }}>
+      <Users size={16} /> ハイブリッド開催 (会場 & オンライン)
+    </div>
+  )}
+  {event.eventFormat === "online" && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+         style={{ borderColor: "#3b82f6", color: "#3b82f6", backgroundColor: "#3b82f610" }}>
+      <Video size={16} /> オンライン開催
+    </div>
+  )}
+  {event.eventFormat === "venue" && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+         style={{ borderColor: "#10b981", color: "#10b981", backgroundColor: "#10b98110" }}>
+      <MapPin size={16} /> 会場開催
+    </div>
+  )}
+</div>
             
             {/* 開催概要カード */}
             <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 sticky top-8">
