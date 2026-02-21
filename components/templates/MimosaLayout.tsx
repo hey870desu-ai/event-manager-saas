@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
-import { Calendar, Clock, MapPin, User, ShieldCheck, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, AlertTriangle, Copy, Twitter, Mail, Phone, Sparkles } from "lucide-react";
+import { Calendar, Clock, MapPin, User, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, Copy, Twitter, Mail, Phone, Sparkles } from "lucide-react";
 
 type Props = {
   event: any;
@@ -11,7 +11,7 @@ type Props = {
   tenantId: string;
 };
 
-export default function TechLayout({ event, tenant, eventId, tenantId }: Props) {
+export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props) {
   const [copied, setCopied] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState(""); 
@@ -20,15 +20,7 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
   const shareText = event ? `${event.title} | イベント申し込み` : "";
 
   const handleShareLine = () => window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`, '_blank');
-  const handleShareFB = async () => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({ title: event?.title, text: event?.title, url: shareUrl });
-        return; 
-      } catch (error) {}
-    }
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
-  };
+  const handleShareFB = () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
   const handleShareTwitter = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
 
   const handleCopyLink = () => {
@@ -53,49 +45,34 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ★ミモザ・イエローをテーマカラーに設定
-  const themeColor = "#FFE000"; 
-  const leafColor = "#8BA889"; // ミモザの葉（セージグリーン）
-
-  const theme = {
-    bg: "bg-[#0A0C0A]", // 葉の緑をわずかに混ぜた深い黒
-    text: "text-white",
-    cardBg: "bg-[#141814]/80 border-white/10 shadow-2xl ring-white/5", // カードもわずかに緑寄りに
-  };
+  // 🌼 ミモザ・カラーパレット
+  const mimosaYellow = "#FFE000"; 
+  const mimosaBeige = "#FCF9EE"; // 背景用：ごく薄いベージュ
+  const leafGreen = "#8BA889";  // 葉のグリーン（文字やアクセント用）
 
   if (submitted) {
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}`;
     return (
-      <div className="min-h-screen bg-[#FDFCF0] flex items-center justify-center p-4 font-sans text-slate-800">
-        <div className="bg-white max-w-lg w-full p-8 md:p-10 rounded-3xl shadow-xl text-center space-y-6 border border-yellow-100 animate-in zoom-in-95 duration-300">
+      <div className="min-h-screen bg-[#FCF9EE] flex items-center justify-center p-4 font-sans text-slate-800">
+        <div className="bg-white max-w-lg w-full p-8 md:p-10 rounded-[3rem] shadow-xl text-center space-y-6 border border-yellow-100 animate-in zoom-in-95 duration-300">
           <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle2 size={32} />
           </div>
           <div>
-             <h2 className="text-xl font-bold text-slate-800 mb-1">お申し込み完了</h2>
-             <p className="text-slate-500 text-xs">ご参加ありがとうございます。</p>
+             <h2 className="text-2xl font-black text-slate-800 mb-1">お申し込み完了</h2>
+             <p className="text-slate-500 font-medium">ご参加をお待ちしております。</p>
           </div>
-          <div className="bg-yellow-50/50 rounded-xl p-4 border border-yellow-100 text-left space-y-2">
-             <div className="text-[10px] text-yellow-600 font-bold uppercase tracking-widest mb-1">EVENT INFO</div>
+          <div className="bg-[#FCF9EE]/50 rounded-3xl p-6 border border-yellow-200 text-left space-y-3">
              <h3 className="text-sm font-bold text-slate-800 leading-snug">{event.title}</h3>
-             <div className="pt-2 border-t border-yellow-100/50 space-y-1.5">
-               <div className="flex items-center gap-2 text-xs text-slate-600">
-                 <Calendar size={14} className="text-yellow-500"/><span className="font-bold">{formatDate(event.date).full}</span>
-               </div>
-               <div className="flex items-center gap-2 text-xs text-slate-600">
-                 <Clock size={14} className="text-yellow-500"/><span className="font-bold">{event.startTime} - {event.endTime}</span>
-               </div>
-               <div className="flex items-start gap-2 text-xs text-slate-600">
-                 <MapPin size={14} className="mt-0.5 text-yellow-500"/><span className="font-bold">{event.venueName || "会場未定"}</span>
-               </div>
+             <div className="pt-3 border-t border-yellow-200/50 space-y-2 text-xs font-bold text-slate-600">
+               <div className="flex items-center gap-2"><Calendar size={14} className="text-yellow-500"/>{formatDate(event.date).full}</div>
+               <div className="flex items-center gap-2"><Clock size={14} className="text-yellow-500"/>{event.startTime} - {event.endTime}</div>
              </div>
           </div>
-          <div className="bg-slate-900 p-5 rounded-2xl inline-block shadow-inner relative group">
-             <div className="bg-white p-2 rounded-lg">
-                {reservationId ? <img src={qrImageUrl} alt="QR" className="w-[140px] h-[140px] object-contain"/> : <div className="w-[140px] h-[140px] bg-slate-100 flex items-center justify-center text-xs">Loading...</div>}
-             </div>
+          <div className="bg-white p-6 rounded-3xl inline-block shadow-lg border border-yellow-50">
+             <img src={qrImageUrl} alt="QR" className="w-[140px] h-[140px] object-contain"/>
           </div>
-          <div className="pt-2"><button onClick={()=>window.location.reload()} className="text-sm font-bold py-2 px-4 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200">イベントページに戻る</button></div>
+          <div className="pt-2"><button onClick={()=>window.location.reload()} className="text-sm font-bold py-3 px-8 rounded-full bg-slate-900 text-white hover:bg-slate-700 transition-colors">イベントページに戻る</button></div>
         </div>
       </div>
     );
@@ -104,105 +81,122 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
   const { full, week } = formatDate(event.date);
 
   return (
-    <div className={`min-h-screen font-sans selection:bg-yellow-400/40 pb-32 overflow-x-hidden relative ${theme.bg} ${theme.text}`}>
-      {/* 背景エフェクト（ミモザカラーの光） */}
+    <div className={`min-h-screen font-sans selection:bg-yellow-200 selection:text-yellow-900 pb-32 overflow-x-hidden relative bg-[#FCF9EE] text-slate-800`}>
+      
+      {/* 背景装飾：ふわふわしたミモザの光 */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full blur-[120px] mix-blend-screen animate-pulse opacity-10" style={{ backgroundColor: themeColor, animationDuration: '8s' }} />
-        <div className="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] rounded-full blur-[100px] mix-blend-screen opacity-10" style={{ backgroundColor: leafColor }} />
+        <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full blur-[120px] mix-blend-multiply opacity-30 animate-pulse" style={{ backgroundColor: mimosaYellow }} />
+        <div className="absolute bottom-[5%] right-[5%] w-[400px] h-[400px] rounded-full blur-[100px] mix-blend-multiply opacity-20" style={{ backgroundColor: leafGreen }} />
       </div>
 
       <div className="relative z-10 container mx-auto px-0 md:px-4 pt-12 md:pt-24 max-w-6xl">
-        <div className="text-center mb-8 fade-in px-4">
-          <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 shadow-lg">
-            {tenant?.logoUrl ? <img src={tenant.logoUrl} alt={tenant.name} className="h-5 object-contain" /> : <><Sparkles size={14} style={{ color: themeColor }} /><span className="text-xs text-slate-300 tracking-widest uppercase font-medium">Special Event</span></>}
-            <span className="text-white/20 mx-1">|</span>
-            <span className="text-xs text-white/80 uppercase tracking-widest font-bold">{tenant?.name || tenantId}</span>
+        {/* ヘッダー */}
+        <div className="text-center mb-12 px-4">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-yellow-200 shadow-sm mb-8">
+            <Sparkles size={14} className="text-yellow-500" />
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name || tenantId}</span>
           </div>
-          <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold leading-tight tracking-wide mb-6">{event.title}</h1>
-          {event.subtitle && <p className="text-slate-400 text-sm md:text-base max-w-3xl mx-auto leading-relaxed font-light tracking-wider mb-6">{event.subtitle}</p>}
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">{event.title}</h1>
+          {event.subtitle && <p className="text-slate-500 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed font-medium">{event.subtitle}</p>}
         </div>
 
-        <div className={`backdrop-blur-xl border-y md:border md:rounded-[2.5rem] overflow-visible grid grid-cols-1 lg:grid-cols-2 ring-1 ${theme.cardBg}`}>
-          <div className="p-4 md:p-10 lg:border-r border-white/5 flex flex-col relative group overflow-hidden md:rounded-tl-[2.5rem]">
-            <div className="absolute top-0 left-0 w-full h-[2px] opacity-30" style={{ backgroundImage: `linear-gradient(to right, transparent, ${themeColor}, transparent)` }}></div>
-            <div className="space-y-8 md:space-y-10 z-10 h-full flex flex-col relative">
-               <div>
-                <div className="flex items-center gap-2 font-bold tracking-[0.2em] text-xs mb-4" style={{ color: themeColor }}><User size={14} /> 講師</div>
-                <div className="bg-black/40 rounded-xl p-4 md:p-5 border border-white/5 shadow-inner flex flex-row gap-4 items-start">
-                    {event.lecturerImage && <div className="shrink-0"><img src={event.lecturerImage} alt={event.lecturer} className="w-20 h-28 md:w-24 md:h-32 rounded-lg object-cover border border-white/10"/></div>}
+        {/* 2カラムレイアウト */}
+        <div className={`bg-white/70 backdrop-blur-xl border-y md:border md:rounded-[3rem] overflow-visible grid grid-cols-1 lg:grid-cols-2 shadow-2xl shadow-yellow-900/5 border-white`}>
+          
+          {/* 左カラム：内容エリア */}
+          <div className="p-6 md:p-12 lg:border-r border-yellow-50 flex flex-col relative overflow-hidden md:rounded-tl-[3rem]">
+            <div className="space-y-12 z-10 h-full flex flex-col relative">
+               
+               {/* 講師紹介 */}
+               <section>
+                <div className="flex items-center gap-2 font-bold tracking-widest text-xs mb-6 text-yellow-600 uppercase"><User size={14} /> Lecturer</div>
+                <div className="bg-[#FAF9F2] rounded-[2rem] p-6 md:p-8 border border-yellow-100 flex flex-col sm:flex-row gap-6 items-center sm:items-start text-center sm:text-left">
+                    {event.lecturerImage && <div className="shrink-0 ring-4 ring-white shadow-md rounded-2xl overflow-hidden"><img src={event.lecturerImage} alt={event.lecturer} className="w-24 h-32 md:w-28 md:h-36 object-cover"/></div>}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg md:text-xl font-bold text-white mb-1 tracking-wide leading-tight">{event.lecturer ? `${event.lecturer} 氏` : "講師調整中"}</h3>
-                      <p className="text-xs font-medium mb-3 tracking-wider" style={{ color: themeColor }}>{event.lecturerTitle}</p>
-                      <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-wrap hidden md:block">{event.lecturerProfile}</p>
+                      <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-2">{event.lecturer ? `${event.lecturer} 氏` : "講師調整中"}</h3>
+                      <p className="text-xs font-bold text-yellow-600 mb-4 tracking-wide">{event.lecturerTitle}</p>
+                      <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{event.lecturerProfile}</p>
                     </div>
                 </div>
-              </div>
-              <div className="flex-1">
-                 <div className="flex items-center gap-2 font-bold tracking-[0.2em] text-xs mb-3" style={{ color: themeColor }}><AlignLeft size={14} /> セミナー内容</div>
-                 <div className="bg-black/20 p-4 rounded-xl border border-white/5 mb-4">
-                    <div className="text-slate-300 text-sm leading-7 whitespace-pre-wrap tracking-wide font-light">{event.content}</div>
+              </section>
+
+              {/* セミナー内容 */}
+              <section className="flex-1">
+                 <div className="flex items-center gap-2 font-bold tracking-widest text-xs mb-6 text-yellow-600 uppercase"><AlignLeft size={14} /> Information</div>
+                 <div className="prose prose-slate max-w-none">
+                    <div className="text-slate-700 text-base leading-8 whitespace-pre-wrap font-medium">{event.content}</div>
                  </div>
                  {event.timeTable && (
-                   <div className="mt-6">
-                      <div className="text-[10px] text-slate-500 font-bold tracking-widest uppercase mb-2">タイムテーブル</div>
-                      <div className="text-slate-300 text-sm leading-7 whitespace-pre-wrap pl-3 border-l-2 border-yellow-500/30">{event.timeTable}</div>
+                   <div className="mt-10 p-8 bg-white rounded-[2rem] border border-yellow-50 shadow-sm">
+                      <div className="text-[10px] text-yellow-600 font-bold tracking-widest uppercase mb-4 text-center">Time Table</div>
+                      <div className="text-slate-600 text-sm leading-8 whitespace-pre-wrap font-medium">{event.timeTable}</div>
                    </div>
                  )}
-              </div>
-              <div className="mt-auto pt-8 border-t border-white/5">
+              </section>
+
+              {/* シェア */}
+              <div className="mt-auto pt-8 border-t border-yellow-50 flex items-center justify-between">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Share this event</p>
                  <div className="flex gap-3">
-                    <button onClick={handleShareLine} className="w-10 h-10 rounded-full bg-[#06C755] text-white flex items-center justify-center hover:scale-105 transition-transform"><LinkIcon size={18}/></button>
-                    <button onClick={handleShareFB} className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-105 transition-transform"><Facebook size={18}/></button>
-                    <button onClick={handleShareTwitter} className="w-10 h-10 rounded-full bg-black border border-white/20 text-white flex items-center justify-center hover:scale-105 transition-transform"><Twitter size={18}/></button>
-                    <button onClick={handleCopyLink} className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all hover:scale-105 ${copied ? "bg-yellow-400 text-black" : "bg-white/5 text-white/50 border-white/10"}`}>{copied ? <Check size={18}/> : <Copy size={18}/>}</button>
+                    <button onClick={handleShareLine} className="w-10 h-10 rounded-full bg-[#06C755] text-white flex items-center justify-center hover:opacity-80 transition-opacity"><LinkIcon size={18}/></button>
+                    <button onClick={handleShareFB} className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:opacity-80 transition-opacity"><Facebook size={18}/></button>
+                    <button onClick={handleShareTwitter} className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:opacity-80 transition-opacity"><Twitter size={18}/></button>
+                    <button onClick={handleCopyLink} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${copied ? "bg-yellow-400 border-yellow-400 text-black" : "bg-white border-yellow-200 text-yellow-500 hover:border-yellow-400"}`}>{copied ? <Check size={18}/> : <Copy size={18}/>}</button>
                  </div>
               </div>
             </div>
           </div>
 
-          <div className="p-4 md:p-10 bg-black/10 flex flex-col justify-between md:rounded-br-[2.5rem]">
-            <div className="space-y-8">
-              <div>
-                <div className="flex items-center gap-2 font-bold tracking-[0.2em] text-xs mb-3" style={{ color: themeColor }}><Calendar size={14} /> 開催日時</div>
-                <div className="text-2xl md:text-4xl font-bold tracking-tight text-white mb-2">{full} <span className="text-xl text-white/30 font-sans ml-1">({week})</span></div>
-                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-sm md:text-lg text-slate-300 pl-1">
-                  <div className="flex items-center gap-2"><Clock size={16} className="text-white/30"/><span className="tracking-wide">{event.startTime} - {event.endTime}</span></div>
-                  <span className="text-xs text-black font-bold px-3 py-1 rounded-full w-fit shadow-lg shadow-yellow-500/20" style={{ backgroundColor: themeColor }}>受付 {event.openTime}〜</span>
+          {/* 右カラム：手続きエリア */}
+          <div className="p-6 md:p-12 bg-[#FAF9F2]/50 flex flex-col justify-between md:rounded-br-[3rem]">
+            <div className="space-y-10">
+              {/* 開催情報 */}
+              <div className="space-y-6">
+                <div>
+                  <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-3">Schedule</div>
+                  <div className="text-3xl md:text-4xl font-black text-slate-900 mb-2">{full} <span className="text-xl text-yellow-600/50 font-medium ml-1">({week})</span></div>
+                  <div className="flex items-center gap-4 text-slate-600 font-bold">
+                    <div className="flex items-center gap-2"><Clock size={18} className="text-yellow-500"/>{event.startTime} - {event.endTime}</div>
+                    <span className="text-[10px] bg-white px-3 py-1 rounded-full border border-yellow-200 shadow-sm text-yellow-600 uppercase tracking-widest">Door Open {event.openTime}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-3">Venue</div>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-4">{event.venueName || "会場未定"}</h3>
+                  {event.venueAddress && (
+                    <div className="w-full h-44 rounded-[2rem] overflow-hidden border-4 border-white shadow-md relative z-0">
+                      <iframe 
+                        width="100%" height="100%" style={{ border: 0 }} 
+                        loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                      ></iframe>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div>
-                <div className="flex items-center gap-2 font-bold tracking-[0.2em] text-xs mb-3" style={{ color: themeColor }}><MapPin size={14} /> 会場</div>
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-wide">{event.venueName || "会場未定"}</h3>
-                {event.venueAddress && (
-                  <div className="w-full h-40 md:h-48 rounded-xl overflow-hidden border border-white/10 bg-black/40 mt-2 relative z-0">
-                    <iframe 
-                      width="100%" height="100%" style={{ border: 0, filter: 'grayscale(1) invert(0.9) opacity(0.5)' }} 
-                      loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                    ></iframe>
-                  </div>
-                )}
-              </div>
 
-              <div className="bg-white/5 rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-6 mt-10 backdrop-blur-md ring-1 ring-white/5">
+              {/* お問い合わせ：ミモザ仕様 */}
+              <div className="bg-white rounded-[2.5rem] p-8 border border-yellow-100 shadow-sm space-y-6 mt-10 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400 opacity-50"></div>
                 <div className="flex items-center gap-3">
-                  <div className="w-1.5 h-6 rounded-full shadow-[0_0_15px_rgba(255,224,0,0.4)]" style={{ backgroundColor: themeColor }}></div>
-                  <h3 className="font-bold text-white tracking-widest text-sm uppercase">Contact</h3>
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_10px_#FFE000]"></div>
+                  <h3 className="font-black text-slate-900 tracking-wider text-sm uppercase">Contact</h3>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Organizer</p>
-                    <p className="font-bold text-white/90">{event.contactName || tenant?.name || "Support Team"}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Organizer</p>
+                    <p className="font-black text-slate-800">{event.contactName || tenant?.name || "運営事務局"}</p>
                   </div>
                   <div className="flex flex-col gap-2">
                     {event.contactEmail && (
-                      <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl text-xs font-bold text-white/60 hover:text-yellow-400 hover:border-yellow-400/50 transition-all group">
-                        <Mail size={16} className="group-hover:scale-110 transition-transform" />
+                      <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-xs font-bold text-slate-600 hover:border-yellow-400 hover:text-yellow-600 transition-all group">
+                        <Mail size={16} className="text-yellow-500 group-hover:scale-110 transition-transform" />
                         <span className="truncate">{event.contactEmail}</span>
                       </a>
                     )}
                     {event.contactPhone && (
-                      <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl text-xs font-bold text-white/60 hover:text-yellow-400 hover:border-yellow-400/50 transition-all group">
-                        <Phone size={16} className="group-hover:scale-110 transition-transform" />
+                      <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-xs font-bold text-slate-600 hover:border-yellow-400 hover:text-yellow-600 transition-all group">
+                        <Phone size={16} className="text-yellow-500 group-hover:scale-110 transition-transform" />
                         {event.contactPhone}
                       </a>
                     )}
@@ -210,21 +204,34 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/5">
-                <div><div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: themeColor }}>参加費</div><div className="text-lg md:text-xl font-bold text-white">{event.price || "無料"}</div></div>
-                <div><div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: themeColor }}>定員</div><div className="text-lg md:text-xl font-bold text-white">{event.capacity ? `${event.capacity}名` : "定員なし"}</div></div>
+              {/* 料金・定員 */}
+              <div className="grid grid-cols-2 gap-4 pt-10 border-t border-yellow-100">
+                <div className="text-center">
+                  <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-1">Fee</div>
+                  <div className="text-2xl font-black text-slate-900">{event.price || "無料"}</div>
+                </div>
+                <div className="text-center border-l border-yellow-50">
+                  <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-1">Capacity</div>
+                  <div className="text-2xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "定員なし"}</div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-10 relative z-50 isolate">
-              <div className="flex items-center justify-between mb-3 px-1"><h3 className="text-xs font-bold text-white/40 tracking-widest uppercase">Registration</h3></div>
-              <div className="bg-[#1A1D1A] rounded-2xl p-2 md:p-6 border border-white/10 shadow-3xl">
+            {/* 申し込みフォーム */}
+            <div className="mt-12 relative z-50">
+              <div className="text-center mb-6">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Entry Form</span>
+              </div>
+              <div className="bg-white rounded-[2.5rem] p-3 md:p-8 shadow-2xl shadow-yellow-900/10 border border-yellow-50">
                 <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant || undefined} onSuccess={handleFormSuccess}/>
               </div>
             </div>
           </div>
         </div>
-        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-white/20 text-[10px] tracking-[0.3em] uppercase">© {new Date().getFullYear()} {tenant?.name || "Event Manager"}</p></footer>
+        
+        <footer className="mt-20 mb-10 text-center relative z-10">
+          <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">© {new Date().getFullYear()} {tenant?.name || "Event Manager"}</p>
+        </footer>
       </div>
     </div>
   );
