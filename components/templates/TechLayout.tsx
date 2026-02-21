@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
-import { Calendar, Clock, MapPin, User, ShieldCheck, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, AlertTriangle, Copy, Twitter } from "lucide-react";
+import { Calendar, Clock, MapPin, User, ShieldCheck, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, AlertTriangle, Copy, Twitter, Mail, Phone } from "lucide-react";
 
 // 親から受け取るデータの型定義
 type Props = {
@@ -198,6 +198,37 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
                   </div>
                 )}
               </div>
+
+              {/* 会場マップの </div> の直後に挿入 */}
+          <div className="bg-[#1A1D2D]/80 rounded-[2rem] p-8 border border-white/5 shadow-2xl space-y-6 mt-10 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" style={{ backgroundColor: themeColor }}></div>
+              <h3 className="font-bold text-white tracking-widest text-sm uppercase">Contact</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Organizer</p>
+                <p className="font-bold text-slate-200">{event.contactName || tenant?.name || "Support Team"}</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {event.contactEmail && (
+                  <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-black/40 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all group">
+                    <Mail size={16} className="group-hover:text-indigo-400" />
+                    <span className="truncate">{event.contactEmail}</span>
+                  </a>
+                )}
+                {event.contactPhone && (
+                  <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-black/40 border border-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all group">
+                    <Phone size={16} className="group-hover:text-indigo-400" />
+                    {event.contactPhone}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                 <div><div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: themeColor }}>参加費</div><div className="text-lg md:text-xl font-bold text-white tracking-wide">{event.price || "無料"}</div></div>
                 <div><div className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: themeColor }}>定員</div><div className="text-lg md:text-xl font-bold text-white tracking-wide">{event.capacity ? `${event.capacity}名` : "定員なし"}</div></div>
