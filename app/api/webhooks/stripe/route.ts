@@ -120,6 +120,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
+                subject: `【決済完了テスト】${eData?.title}`, // ★ この1行を追加！
                 name: rData?.name,
                 email: rData?.email,
                 type: rData?.type,

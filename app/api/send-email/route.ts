@@ -39,7 +39,8 @@ export async function POST(request: Request) {
       zoomUrl, zoomPasscode, meetingId,
       reservationId, planName,
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
-      contactName, contactEmail, contactPhone, eventPrice
+      contactName, contactEmail, contactPhone, eventPrice,
+      subject: customSubject // ★ ここに customSubject を追加
     } = body;
 
     const senderName = tenantName || "HANAHIRO CO.,LTD.";
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     // 🔄 メールの種類による条件分岐
     if (type === 'upgrade_confirmation') {
       // 💎 1. アップグレード完了メール
-      subject = `【重要】${planName || "スタンダード"}へのアップグレードが完了しました`;
+      subject = customSubject || `【重要】${planName || "スタンダード"}へのアップグレードが完了しました`;
       mainHtml = `
         <p style="${styles.greeting}">
           <strong>${name || "お客様"} 様</strong><br><br>
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       `;
     } else {
       // 🎟️ 2. イベント受講票メール（既存ロジック）
-      subject = `【受講票】${eventTitle} 受付完了のお知らせ`;
+      subject = customSubject || `【受講票】${eventTitle} 受付完了のお知らせ`;
       const isOnline = type === 'online';
       const formattedDate = formatToJapaneseDate(eventDate);
       const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${reservationId}&amp;bgcolor=ffffff` : "";

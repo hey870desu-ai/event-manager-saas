@@ -163,6 +163,7 @@ setNewReservationId(docRef.id);
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              subject: `【仮受付テスト】${event.title}`, // ★ この1行を追加！
               name: reservationData.name,
               email: reservationData.email,
               type: reservationData.type,
