@@ -7,7 +7,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase, MessageSquare, ArrowUp, ArrowDown,Palette, 
-  CheckCircle, Building2, Smile } from "lucide-react";
+  CheckCircle, Building2, Smile,Sparkles } from "lucide-react";
 import { fetchTenantData, type Tenant } from "../lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -765,6 +765,25 @@ useEffect(() => {
             </div>
             {formData.theme === 'mimosa' && <div className="absolute top-2 right-2 text-[#FFE000]"><CheckCircle size={16}/></div>}
           </label>
+
+          {/* ★カメレオン（おまかせ配色）を追加 */}
+  <label className={`
+    cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+    ${formData.theme === 'chameleon' 
+      ? 'bg-white border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
+      : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100 hover:border-slate-300'
+    }
+  `}>
+    <input type="radio" name="theme" value="chameleon" checked={formData.theme === 'chameleon'} onChange={handleChange} className="hidden" />
+    <div className="w-full h-16 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 rounded-lg flex items-center justify-center shadow-inner overflow-hidden">
+       {/* 虹色のグラデーションで「おまかせ感」を演出 */}
+       <Sparkles className="text-white/80 animate-pulse" size={24}/>
+    </div>
+    <div className="text-center">
+       <div className="font-bold text-slate-800 text-[10px] md:text-xs">Chameleon</div>
+       <div className="text-[8px] text-slate-400 mt-0.5 whitespace-nowrap">画像から自動配色</div>
+    </div>
+  </label>
 
         </div>
       </div>
