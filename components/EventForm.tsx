@@ -736,7 +736,6 @@ useEffect(() => {
             {formData.theme === 'pop' && <div className="absolute top-2 right-2 text-orange-500"><CheckCircle size={16}/></div>}
           </label>
 
-          // 📂 components/EventForm.tsx の 550行目付近（Popテーマの後ろなど）に追加
 
           {/* 4. Mimosa (New!) */}
           <label className={`
