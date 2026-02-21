@@ -221,33 +221,39 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
             </div>
           </div>
         </div>
-        {/* お問い合わせ（下の蓋） */}
-        <div className="mt-20 max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-[3rem] p-10 border border-yellow-100 shadow-xl text-center space-y-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400 opacity-50"></div>
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-1.5 h-6 rounded-full bg-yellow-400 shadow-[0_0_10px_#FFE000]"></div>
-              <h3 className="font-black text-slate-900 text-lg uppercase tracking-widest">お問い合わせ</h3>
-            </div>
-            <div className="space-y-4">
-              <p className="font-black text-slate-800 text-lg">{event.contactName || tenant?.name || "運営事務局"}</p>
-              <div className="flex flex-wrap justify-center gap-4">
-                {event.contactEmail && (
-                  <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 px-6 py-4 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-sm font-bold text-slate-600">
-                    <Mail size={18} className="text-yellow-500" />
-                    <span>{event.contactEmail}</span>
-                  </a>
-                )}
-                {event.contactPhone && (
-                  <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 px-6 py-4 bg-[#FCF9EE] border border-yellow-100 rounded-2xl text-sm font-bold text-slate-600">
-                    <Phone size={18} className="text-yellow-500" />
-                    <span>{event.contactPhone}</span>
-                  </a>
-                )}
-              </div>
-            </div>
+        {/* お問い合わせ：カードをやめて、オープンで品のあるデザインへ */}
+<div className="mt-32 max-w-4xl mx-auto px-6 border-t border-yellow-200/50 pt-20">
+  <div className="text-center space-y-8">
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-[0.4em]">Inquiry</p>
+      <h3 className="text-2xl font-black text-slate-800">お問い合わせ</h3>
+    </div>
+    
+    <div className="space-y-1">
+      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Organizer</p>
+      <p className="text-xl font-bold text-slate-700">{event.contactName || tenant?.name || "運営事務局"}</p>
+    </div>
+
+    <div className="flex flex-wrap justify-center gap-6 pt-4">
+      {event.contactEmail && (
+        <a href={`mailto:${event.contactEmail}`} className="flex flex-col items-center gap-2 group">
+          <div className="w-14 h-14 rounded-full bg-white border border-yellow-100 flex items-center justify-center shadow-sm group-hover:bg-yellow-50 transition-colors">
+            <Mail size={20} className="text-yellow-500" />
           </div>
-        </div>
+          <span className="text-[10px] font-bold text-slate-500">{event.contactEmail}</span>
+        </a>
+      )}
+      {event.contactPhone && (
+        <a href={`tel:${event.contactPhone}`} className="flex flex-col items-center gap-2 group">
+          <div className="w-14 h-14 rounded-full bg-white border border-yellow-100 flex items-center justify-center shadow-sm group-hover:bg-yellow-50 transition-colors">
+            <Phone size={20} className="text-yellow-500" />
+          </div>
+          <span className="text-[10px] font-bold text-slate-500">{event.contactPhone}</span>
+        </a>
+      )}
+    </div>
+  </div>
+</div>
 
         <footer className="mt-20 mb-10 text-center relative z-10">
           <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">© {new Date().getFullYear()} {tenant?.name || "Event Manager"}</p>
