@@ -116,6 +116,10 @@ export default function EventForm({ event, onSuccess }: Props) {
     
     replyTemplateId: "default",
     adminTemplateId: "default",
+    // 👇 ここに3つ追加
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
   });
 
   // ★追加：複数講師の管理
@@ -225,6 +229,10 @@ useEffect(() => {
         theme: event.theme || "dark",
         replyTemplateId: event.replyTemplateId || "default",
         adminTemplateId: event.adminTemplateId || "default",
+        // 👇 ここに3つ追加（既存データがあれば読み込む）
+        contactName: event.contactName || "",
+        contactEmail: event.contactEmail || "",
+        contactPhone: event.contactPhone || "",
       });
       // ★追加：講師リストの読み込み
       if (event.lecturers && Array.isArray(event.lecturers)) {
@@ -629,6 +637,51 @@ useEffect(() => {
         有料
       </button>
     </div>
+
+    {/* 👇 ここから追加：お問い合わせ先設定 */}
+      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
+        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
+          <User size={20} className="text-indigo-400"/> お問い合わせ先設定
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">担当者・事務局名</label>
+            <input 
+              type="text" 
+              name="contactName" 
+              value={formData.contactName} 
+              onChange={handleChange} 
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
+              placeholder="例：事務局 塙"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">問い合わせメール</label>
+            <input 
+              type="email" 
+              name="contactEmail" 
+              value={formData.contactEmail} 
+              onChange={handleChange} 
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
+              placeholder="info@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">問い合わせ電話番号</label>
+            <input 
+              type="tel" 
+              name="contactPhone" 
+              value={formData.contactPhone} 
+              onChange={handleChange} 
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" 
+              placeholder="024-xxx-xxxx"
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-3">
+          ※イベントページおよび自動返信メールの署名に利用されます。未入力の場合は組織の基本情報が表示されます。
+        </p>
+      </div>
 
     {/* 入力エリア (有料のときだけ表示) */}
     {formData.price !== "無料" ? (

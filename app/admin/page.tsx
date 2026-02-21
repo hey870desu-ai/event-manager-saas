@@ -21,7 +21,7 @@ import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users,
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
-type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[]; };
+type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
 type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean; };
 
