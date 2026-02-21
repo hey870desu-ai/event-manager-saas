@@ -103,26 +103,35 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
             <Music className="absolute bottom-0 left-10 text-pink-400 w-10 h-10 animate-pulse hidden md:block" />
           </div>
 
-          {/* メイン画像（ステッカー風） */}
-          <div className="relative max-w-4xl mx-auto transform rotate-1 hover:rotate-0 transition-transform duration-500">
-             <div className="absolute inset-0 bg-slate-900 rounded-[2.5rem] translate-x-3 translate-y-3"></div>
-             <div className="relative bg-white p-2 rounded-[2.5rem] border-4 border-slate-900 overflow-hidden h-[400px] md:h-[500px]">
-               {event.ogpImage ? (
-                 <img src={event.ogpImage} className="w-full h-full object-cover rounded-[2rem]" alt="Main Visual" />
-               ) : (
-                 <div className="w-full h-full bg-cyan-100 rounded-[2rem] flex items-center justify-center">
-                    <PartyPopper size={64} className="text-cyan-400"/>
-                 </div>
-               )}
-             </div>
-             
-             {/* 日付バッジ */}
-             <div className="absolute -top-6 -left-4 md:-left-8 bg-pink-500 text-white p-6 rounded-full border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] transform -rotate-12">
-                <p className="text-xs font-black text-pink-200">DATE</p>
-                <p className="text-2xl font-black leading-none">{dateStr}</p>
-                <p className="text-sm font-bold text-center">{weekDay}</p>
-             </div>
-          </div>
+{/* 📂 PopLayout.tsx 100行目付近 */}
+
+{/* メイン画像（ステッカー風：はみ出し防止版） */}
+<div className="relative max-w-4xl mx-auto transform rotate-1 hover:rotate-0 transition-transform duration-500 group">
+   {/* 背面の黒い影 */}
+   <div className="absolute inset-0 bg-slate-900 rounded-[2.5rem] md:rounded-[4rem] translate-x-3 translate-y-3"></div>
+   
+   {/* 画像コンテナ：flex items-center を追加して中央配置 */}
+   <div className="relative bg-white p-2 md:p-4 rounded-[2.5rem] md:rounded-[4rem] border-4 border-slate-900 flex items-center justify-center overflow-hidden min-h-[300px]">
+     {event.ogpImage ? (
+       <img 
+         src={event.ogpImage} 
+         className="w-full h-auto max-h-[70vh] object-contain rounded-[2rem] md:rounded-[3.5rem]" 
+         alt="Main Visual" 
+       />
+     ) : (
+       <div className="w-full h-64 md:h-96 bg-cyan-100 rounded-[2rem] flex items-center justify-center">
+          <PartyPopper size={64} className="text-cyan-400"/>
+       </div>
+     )}
+   </div>
+   
+   {/* 日付バッジ（位置を少し調整して画像に被りすぎないように） */}
+   <div className="absolute -top-6 -left-4 md:-left-8 bg-pink-500 text-white p-6 rounded-full border-4 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] transform -rotate-12 z-20">
+      <p className="text-xs font-black text-pink-200 uppercase">Date</p>
+      <p className="text-2xl font-black leading-none">{dateStr}</p>
+      <p className="text-sm font-bold text-center">{weekDay}</p>
+   </div>
+</div>
 
           {/* インフォメーションバー */}
           <div className="mt-12 flex flex-wrap justify-center gap-4 md:gap-8">
