@@ -38,7 +38,8 @@ export async function POST(request: Request) {
       eventDate, eventTime, venueName, 
       zoomUrl, zoomPasscode, meetingId,
       reservationId, planName,
-      tenantName, tenantLogo, tenantUrl, themeColor, replyTo
+      tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
+      contactName, contactEmail, contactPhone, eventPrice
     } = body;
 
     const senderName = tenantName || "HANAHIRO CO.,LTD.";
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       cardAccent: "position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: " + brandColor + ";",
       label: "font-size: 11px; color: #64748b; letter-spacing: 1px; margin-bottom: 6px; font-weight: 700;",
       value: "font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 5px;",
+      contactBox: "margin-top: 20px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
       calendarLink: "display: inline-block; font-size: 11px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 4px; background-color: #f0f9ff; margin-bottom: 20px; font-weight: bold;", 
       button: "display: inline-block; background: " + brandColor + "; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0, 0.2); transition: all 0.2s;",
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
@@ -122,6 +124,12 @@ export async function POST(request: Request) {
         accessInfoHtml = `
           <div style="background-color: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
             <h3 style="color: #c2410c; margin: 0 0 10px 0; font-size: 16px;">🏢 会場案内: ${venueName}</h3>
+
+            <p style="font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 10px;">
+              【当日の受付用QRコード】<br>
+              会場受付にてこちらのQRコードをご提示ください。
+            </p>
+
             ${reservationId ? `<img src="${qrCodeUrl}" width="160" height="160" style="display: block; margin: 15px auto;">` : ''}
           </div>`;
       }
@@ -138,6 +146,16 @@ export async function POST(request: Request) {
           <div style="${styles.label}">日時</div>
           <div style="${styles.value}">${formattedDate} ${eventTime}</div>
           <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 カレンダーに追加</a>
+
+          <div style="${styles.contactBox}">
+            <div style="${styles.label}">イベントに関するお問い合わせ</div>
+            <div style="${styles.value}" style="font-size: 14px;">
+              ${contactName || senderName}<br>
+              ${contactEmail ? `<span style="font-weight: normal; font-size: 12px;">✉️ ${contactEmail}</span><br>` : ''}
+              ${contactPhone ? `<span style="font-weight: normal; font-size: 12px;">📞 ${contactPhone}</span>` : ''}
+            </div>
+          </div>
+                    
           ${accessInfoHtml}
         </div>`;
     }
