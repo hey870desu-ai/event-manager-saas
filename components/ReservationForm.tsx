@@ -338,12 +338,12 @@ export default function ReservationForm({
       required 
     />
     <span className="text-sm text-slate-400 leading-relaxed select-none">
-      <Link href="/privacy" target="_blank" className="font-bold hover:underline inline-flex items-center gap-1" style={{ color: themeColor }}>
-        プライバシーポリシー
-        <ExternalLink size={14} />
-      </Link>
-      および個人情報の取り扱いに同意して申し込む。
-    </span>
+  <Link href="/privacy" target="_blank" className="font-bold hover:underline inline-flex items-center gap-1" style={{ color: themeColor }}>
+    プライバシーポリシー
+    <ExternalLink size={14} />
+  </Link>
+  に同意し、<span>主催者からの案内</span>を受け取ることを含め申し込む。
+</span>
   </label>
 </div>
 {/* ▲▲▲ 追加完了 ▲▲▲ */}
