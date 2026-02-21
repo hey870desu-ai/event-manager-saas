@@ -76,9 +76,9 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
   const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
 
   // 4. 価格計算
-  const priceStr = event.price || "無料";
-  const isPaid = priceStr !== "無料" && !isNaN(Number(priceStr));
-  const priceAmount = isPaid ? Number(priceStr) : 0;
+  const priceVal = event?.price;
+  const isPaid = priceVal !== undefined && priceVal !== "無料" && Number(priceVal) > 0;
+  const priceAmount = isPaid ? Number(priceVal) : 0; // ★ この1行を書き足す！
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
