@@ -289,47 +289,64 @@ export default function ReservationForm({
 
                    {/* 参加形式 */}
 <div className="space-y-4">
-  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">
-    参加形式
-  </h3>
-
-  {isHybrid ? (
-    /* 【ハイブリッドの場合】 選択肢を2つ表示 */
-    <div className="grid grid-cols-2 gap-4">
-      {/* 会場参加ボタン */}
-      <div 
-        onClick={() => setParticipationType("offline")}
-        className={`cursor-pointer relative p-4 rounded-xl border text-center transition-all ${participationType === "offline" ? "bg-slate-800/80" : "bg-slate-900"}`}
-        style={{ borderColor: participationType === "offline" ? themeColor : '#334155' }}
-      >
-        <span className={`font-bold ${participationType === "offline" ? "text-white" : "text-slate-400"}`}>会場参加</span>
-        {participationType === "offline" && <div className="absolute top-2 right-2 text-emerald-400"><CheckCircle size={16} /></div>}
+  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">参加形式</h3>
+  <div className="grid grid-cols-2 gap-4">
+    
+    {/* --- 会場参加ボタン --- */}
+    <div 
+      onClick={() => hasVenue && setParticipationType("offline")} // 会場設定がある時だけクリック可能
+      className={`
+        relative p-4 rounded-xl border text-center transition-all group
+        ${!hasVenue 
+          ? "bg-slate-900/50 border-slate-800 opacity-40 cursor-not-allowed" // 会場がない時はグレーアウト
+          : participationType === "offline" 
+            ? "bg-slate-800/80 cursor-pointer" 
+            : "bg-slate-900 hover:bg-slate-800/50 cursor-pointer"}
+      `}
+      style={{ borderColor: (hasVenue && participationType === "offline") ? themeColor : '#334155' }}
+    >
+      <div className="flex flex-col items-center gap-1">
+         <span className={`font-bold ${participationType === "offline" && hasVenue ? "text-white" : "text-slate-500"}`}>会場参加</span>
+         {!hasVenue && <span className="text-[10px] text-slate-600 font-medium tracking-tighter">（設定なし）</span>}
       </div>
-
-      {/* オンラインボタン */}
-      <div 
-        onClick={() => setParticipationType("online")}
-        className={`cursor-pointer relative p-4 rounded-xl border text-center transition-all ${participationType === "online" ? "bg-slate-800/80" : "bg-slate-900"}`}
-        style={{ borderColor: participationType === "online" ? themeColor : '#334155' }}
-      >
-        <span className={`font-bold ${participationType === "online" ? "text-white" : "text-slate-400"}`}>オンライン</span>
-        {participationType === "online" && <div className="absolute top-2 right-2 text-emerald-400"><CheckCircle size={16} /></div>}
-      </div>
+      {participationType === "offline" && hasVenue && (
+        <div className="absolute top-2 right-2 text-emerald-400">
+          <CheckCircle size={16} />
+        </div>
+      )}
     </div>
-  ) : (
-    /* 【一方のみの場合】 固定のバッジを表示 */
-    <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl flex items-center justify-between group">
-      <div className="flex items-center gap-3">
-        {/* オンラインならMail/Smartphone、リアルならUserなど適切なアイコンを出すのもアリ */}
-        <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: themeColor }}></div>
-        <span className="font-bold text-white tracking-wide">
-          {hasOnline ? "オンライン開催（Zoom/URL）" : "会場開催（リアル）"}
-        </span>
+
+    {/* --- オンラインボタン --- */}
+    <div 
+      onClick={() => hasOnline && setParticipationType("online")} // オンライン設定がある時だけクリック可能
+      className={`
+        relative p-4 rounded-xl border text-center transition-all group
+        ${!hasOnline 
+          ? "bg-slate-900/50 border-slate-800 opacity-40 cursor-not-allowed" // オンラインがない時はグレーアウト
+          : participationType === "online" 
+            ? "bg-slate-800/80 cursor-pointer" 
+            : "bg-slate-900 hover:bg-slate-800/50 cursor-pointer"}
+      `}
+      style={{ borderColor: (hasOnline && participationType === "online") ? themeColor : '#334155' }}
+    >
+      <div className="flex flex-col items-center gap-1">
+         <span className={`font-bold ${participationType === "online" && hasOnline ? "text-white" : "text-slate-500"}`}>オンライン</span>
+         {!hasOnline && <span className="text-[10px] text-slate-600 font-medium tracking-tighter">（設定なし）</span>}
       </div>
-      <span className="text-[10px] font-black text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full uppercase tracking-widest border border-slate-700">
-        Entry Mode: Fixed
-      </span>
+      {participationType === "online" && hasOnline && (
+        <div className="absolute top-2 right-2 text-emerald-400">
+          <CheckCircle size={16} />
+        </div>
+      )}
     </div>
+
+  </div>
+  
+  {/* 補足メッセージ（どちらか一方が無い場合のみ表示） */}
+  {(!hasVenue || !hasOnline) && (
+    <p className="text-[10px] text-slate-600 text-center italic">
+      ※このイベントは {hasVenue ? "会場" : "オンライン"} 開催のみ対応しています
+    </p>
   )}
 </div>
 
