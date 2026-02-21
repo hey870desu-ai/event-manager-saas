@@ -86,24 +86,41 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
 
       <div className="relative z-10 container mx-auto px-0 md:px-4 pt-12 md:pt-24 max-w-6xl">
 
-        {/* --- ヘッダー：タイトルとテナント名の順序入れ替え --- */}
+        {/* --- ヘッダー：タイトル ➔ テナント ➔ サムネイル ➔ サブタイトルの順 --- */}
 <div className="text-center mb-24 px-4">
   
-  {/* 1. タイトルを最上部に（PCで1行、スマホで安全に） */}
+  {/* 1. タイトル（最上部） */}
   <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[1.3] mb-6 max-w-6xl mx-auto break-words md:break-normal">
     {event.title}
   </h1>
 
-  {/* 2. テナント名をその下に（上品なライン装飾） */}
-  <div className="flex items-center justify-center gap-3 mb-10 text-slate-400 font-bold tracking-[0.4em] uppercase text-[10px]">
+  {/* 2. テナント名（タイトルのすぐ下） */}
+  <div className="flex items-center justify-center gap-3 mb-12 text-slate-400 font-bold tracking-[0.4em] uppercase text-[10px]">
     <div className="w-10 h-[1px] bg-yellow-400/30"></div>
     <span className="px-2">{tenant?.name || tenantId}</span>
     <div className="w-10 h-[1px] bg-yellow-400/30"></div>
   </div>
 
-  {/* 3. サブタイトル */}
+  {/* 3. サムネイル画像（枠内に収める処理：Mimosa Ver.） */}
+  {event.ogpImage && (
+    <div className="max-w-5xl mx-auto mb-12 relative group">
+      {/* ふわっとしたミモザ・オーラの影 */}
+      <div className="absolute inset-0 bg-yellow-200/40 rounded-[2.5rem] md:rounded-[4rem] translate-y-4 blur-2xl opacity-60 transition-transform group-hover:translate-y-6"></div>
+      
+      {/* 画像コンテナ：白枠と柔らかい角丸 */}
+      <div className="relative bg-white p-2 md:p-4 rounded-[2.5rem] md:rounded-[4rem] shadow-xl border border-yellow-50 flex items-center justify-center overflow-hidden">
+        <img 
+          src={event.ogpImage} 
+          className="w-full h-auto max-h-[60vh] object-contain rounded-[2rem] md:rounded-[3.5rem]" 
+          alt="Event Thumbnail" 
+        />
+      </div>
+    </div>
+  )}
+
+  {/* 4. サブタイトル（画像の下に添える） */}
   {event.subtitle && (
-    <p className="text-slate-500 md:text-lg max-w-3xl mx-auto font-medium leading-relaxed">
+    <p className="text-slate-500 md:text-lg max-w-3xl mx-auto font-medium leading-relaxed px-6">
       {event.subtitle}
     </p>
   )}
