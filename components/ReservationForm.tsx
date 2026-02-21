@@ -318,14 +318,17 @@ export default function ReservationForm({
     </div>
   ) : (
     /* 【一方のみの場合】 固定のバッジを表示 */
-    <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full" style={{ background: themeColor }}></div>
-        <span className="font-bold text-white">
-          {hasOnline ? "オンライン開催" : "会場開催（リアル）"}
+    <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl flex items-center justify-between group">
+      <div className="flex items-center gap-3">
+        {/* オンラインならMail/Smartphone、リアルならUserなど適切なアイコンを出すのもアリ */}
+        <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: themeColor }}></div>
+        <span className="font-bold text-white tracking-wide">
+          {hasOnline ? "オンライン開催（Zoom/URL）" : "会場開催（リアル）"}
         </span>
       </div>
-      <span className="text-[10px] text-slate-500 bg-slate-800 px-2 py-1 rounded uppercase tracking-tighter">固定</span>
+      <span className="text-[10px] font-black text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full uppercase tracking-widest border border-slate-700">
+        Entry Mode: Fixed
+      </span>
     </div>
   )}
 </div>
@@ -368,21 +371,24 @@ export default function ReservationForm({
                     )}
 
                     <div className="pt-8 border-t border-slate-800 mt-8">
-  {/* 👇 ここから差し替え */}
-  <button type="submit" disabled={status === "loading"} style={{ background: themeColor }} className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed hover:opacity-90">
+  <button 
+    type="submit" 
+    // ▼ 修正点1: 「読み込み中」または「未同意」の場合にボタンを無効化
+    disabled={status === "loading" || !agreed} 
+    // ▼ 修正点2: 同意していない時はグレー(#334155)、同意したらテーマカラーに
+    style={{ background: agreed ? themeColor : '#334155' }} 
+    className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+  >
     {status === "loading" ? (
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
     ) : (
-      // ▼▼▼ ここで表示を切り替え ▼▼▼
       isPaid ? (
         <>{priceAmount.toLocaleString()}円で支払う <CreditCard size={18} /></>
       ) : (
         <>上記の内容で申し込む <Send size={18} /></>
       )
-      // ▲▲▲ ここまで ▲▲▲
     )}
   </button>
-  {/* 👆 ここまで */}
 </div>
                   </form>
                 </div>
