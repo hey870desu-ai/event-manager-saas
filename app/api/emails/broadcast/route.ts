@@ -113,6 +113,11 @@ export async function POST(request: Request) {
       `会場: ${venueName}\n\n※この予定は ${senderName} からの案内メールより登録されました。`
     );
 
+    // 追加：イベント専用のお問い合わせ情報
+    const contactName = eData?.contactName || senderName; // 入力がない場合はテナント名
+    const contactEmail = eData?.contactEmail || "";
+    const contactPhone = eData?.contactPhone || "";
+
     // 4. HTMLスタイル（共通）
     const styles = {
       body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
@@ -125,6 +130,8 @@ export async function POST(request: Request) {
       card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 30px;",
       label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;",
       value: "font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px;",
+      // 追加：お問い合わせセクション用
+      contactBox: "margin-top: 20px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
       calendarLink: "display: inline-block; font-size: 12px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 6px; background-color: #f0f9ff; font-weight: bold; margin-top: 10px;",
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 12px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
       footerLink: "color: " + brandColor + "; text-decoration: none; font-weight: bold;"
@@ -183,6 +190,16 @@ export async function POST(request: Request) {
                   <div style="${styles.value}">${eventDate} ${eventTime}</div>
                   <div style="${styles.label}">会場</div>
                   <div style="${styles.value}">${venueName}</div>
+                  {/* --- ここから追加：お問い合わせ窓口 --- */}
+                  <div style="${styles.contactBox}">
+                    <div style="${styles.label}">イベントに関するお問い合わせ</div>
+                    <div style="${styles.value}">
+                      ${contactName}<br>
+                      ${contactEmail ? `<span style="font-weight: normal; font-size: 13px;">✉️ ${contactEmail}</span><br>` : ''}
+                      ${contactPhone ? `<span style="font-weight: normal; font-size: 13px;">📞 ${contactPhone}</span>` : ''}
+                    </div>
+                  </div>
+                  {/* --- ここまで追加 --- */}
                   <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">
                     📅 Googleカレンダーに追加
                   </a>
