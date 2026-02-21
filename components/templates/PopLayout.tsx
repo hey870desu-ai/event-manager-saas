@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Clock, MapPin, User, Sparkles, 
   CheckCircle2, Share2, Check, ExternalLink, 
-  Music, PartyPopper,Twitter, Facebook, Link as LinkIcon, Mail, Phone
+  Music, PartyPopper,Twitter, Facebook, Link as LinkIcon, Mail, Phone,Users,Video
 } from "lucide-react";
 
 type Props = {
@@ -213,6 +213,28 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
 
         {/* 右カラム (サイドバー) */}
         <div className="lg:col-span-4 space-y-8">
+
+          {/* 1. 開催形式バッジ（ポップなステッカー風） */}
+<div className="flex justify-center mb-6 px-4">
+  {event.hasOnline && event.hasOffline && (
+    <div className="bg-yellow-300 border-4 border-slate-900 px-6 py-3 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] transform rotate-1 flex items-center gap-3 transition-transform hover:scale-105 cursor-default">
+      <Users size={24} strokeWidth={3} /> 
+      <span>HYBRID (会場 & ONLINE)</span>
+    </div>
+  )}
+  {event.hasOnline && !event.hasOffline && (
+    <div className="bg-cyan-300 border-4 border-slate-900 px-6 py-3 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] transform -rotate-1 flex items-center gap-3 transition-transform hover:scale-105 cursor-default text-slate-900">
+      <Video size={24} strokeWidth={3} /> 
+      <span>ONLINE 開催！</span>
+    </div>
+  )}
+  {!event.hasOnline && event.hasOffline && (
+    <div className="bg-pink-400 border-4 border-slate-900 px-6 py-3 rounded-2xl font-black text-sm shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] transform rotate-1 flex items-center gap-3 transition-transform hover:scale-105 cursor-default text-white">
+      <MapPin size={24} strokeWidth={3} /> 
+      <span>会場で待ってるよ！</span>
+    </div>
+  )}
+</div>
            
            {/* 申し込みカード */}
            <div id="reservation-area" className="sticky top-8">
