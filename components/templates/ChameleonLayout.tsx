@@ -165,7 +165,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
             <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-lg border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 rounded-2xl" style={{ backgroundColor: `${dynamicColor}15`, color: dynamicColor }}><Info size={24}/></div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Information</h2>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">イベント概要</h2>
               </div>
               <div className="prose prose-slate max-w-none text-slate-700 leading-8 whitespace-pre-wrap font-medium text-lg">
                 {event.content}
@@ -209,108 +209,113 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
           </div>
 
 {/* 右：サイドバー・アクション */}
-<div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-8">
 
-  {/* 1. 開催形式バッジ（サイズを大きく、視認性アップ） */}
-  <div className="flex flex-wrap gap-2 mb-2">
-    {(event.hasOnline && event.hasOffline) && (
-      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border-2 font-black text-sm uppercase tracking-tight shadow-sm" 
-           style={{ borderColor: dynamicColor, color: dynamicColor, backgroundColor: `${dynamicColor}15` }}>
-        <Users size={20} /> Hybrid (会場 & Online)
-      </div>
-    )}
-    {(event.hasOnline && !event.hasOffline) && (
-      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border-2 font-black text-sm uppercase tracking-tight shadow-sm" 
-           style={{ borderColor: "#3b82f6", color: "#3b82f6", backgroundColor: "#3b82f615" }}>
-        <Video size={20} /> Online 参加
-      </div>
-    )}
-    {(!event.hasOnline && event.hasOffline) && (
-      <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border-2 font-black text-sm uppercase tracking-tight shadow-sm" 
-           style={{ borderColor: "#10b981", color: "#10b981", backgroundColor: "#10b98115" }}>
-        <MapPin size={20} /> 会場 参加
-      </div>
-    )}
-  </div>
-  
-  {/* 2. 開催概要カード（LGサイズ以上のみ sticky にし、スマホでの重なりを防止） */}
-  <div className="lg:sticky lg:top-8 space-y-6">
-    
-    <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 overflow-hidden">
-      <div className="space-y-8 mb-10">
-        <div className="group">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Schedule</p>
-          <div className="text-3xl font-black text-slate-900">{full}</div>
-          <div className="flex items-center gap-3 mt-3 p-3 rounded-2xl bg-slate-50 font-bold text-slate-600">
-            <Clock size={18} style={{ color: dynamicColor }}/> {event.startTime} - {event.endTime}
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Venue & Access</p>
-          <h3 className="text-xl font-black text-slate-900 mb-2">{event.venueName}</h3>
-          
-          {/* ★アクセス情報（追加） */}
-          {event.venueAccess && (
-            <div className="text-sm font-medium text-slate-500 mb-4 bg-slate-50 p-3 rounded-xl border-l-4" style={{ borderColor: dynamicColor }}>
-              {event.venueAccess}
+            {/* 1. 開催形式バッジ（「中心がズレる」問題を justify-center で解消） */}
+            <div className="flex justify-center mb-2 px-4">
+              {event.hasOnline && event.hasOffline && (
+                <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-b-4 font-black text-sm uppercase tracking-tight shadow-lg transition-transform hover:scale-105" 
+                     style={{ borderColor: dynamicColor, color: dynamicColor, backgroundColor: `white`, border: `2px solid ${dynamicColor}`, borderBottomWidth: '6px' }}>
+                  <Users size={22} /> ハイブリッド (会場 & Online)
+                </div>
+              )}
+              {event.hasOnline && !event.hasOffline && (
+                <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-b-4 font-black text-sm uppercase tracking-tight shadow-lg transition-transform hover:scale-105" 
+                     style={{ borderColor: "#3b82f6", color: "#3b82f6", backgroundColor: `white`, border: `2px solid #3b82f6`, borderBottomWidth: '6px' }}>
+                  <Video size={22} /> Online 参加
+                </div>
+              )}
+              {!event.hasOnline && event.hasOffline && (
+                <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-b-4 font-black text-sm uppercase tracking-tight shadow-lg transition-transform hover:scale-105" 
+                     style={{ borderColor: "#10b981", color: "#10b981", backgroundColor: `white`, border: `2px solid #10b981`, borderBottomWidth: '6px' }}>
+                  <MapPin size={22} /> 会場 参加
+                </div>
+              )}
             </div>
-          )}
+            
+            {/* 2. 開催概要カード（スマホでの隠れ防止 & 日本語ラベル統一） */}
+            <div className="lg:sticky lg:top-8 space-y-6">
+              
+              <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-slate-100 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: dynamicColor }}></div>
+                
+                <div className="space-y-8 mb-10">
+                  <div className="group">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">開催日時</p>
+                    <div className="text-3xl font-black text-slate-900 text-center md:text-left">{full}</div>
+                    <div className="flex items-center justify-center md:justify-start gap-3 mt-3 p-4 rounded-2xl bg-slate-50 font-bold text-slate-600">
+                      <Clock size={20} style={{ color: dynamicColor }}/> {event.startTime} - {event.endTime}
+                    </div>
+                  </div>
 
-          {event.venueAddress && (
-            <div className="rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner aspect-video mb-4">
-              <iframe width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}></iframe>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">会場 & アクセス</p>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 text-center md:text-left">{event.venueName}</h3>
+                    
+                    {/* ★アクセス情報の表示 */}
+                    {event.venueAccess && (
+                      <div className="text-sm font-bold text-slate-500 mb-5 bg-slate-50 p-4 rounded-2xl border-l-4 leading-relaxed" style={{ borderColor: dynamicColor }}>
+                        {event.venueAccess}
+                      </div>
+                    )}
+
+                    {event.venueAddress && (
+                      <div className="rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner aspect-video mb-6">
+                        <iframe width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}></iframe>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-slate-50 text-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">参加費</p>
+                      <div className="text-xl font-black text-slate-900">{event.price ? `${Number(event.price).toLocaleString()}円` : "無料"}</div>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-slate-50 text-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">定員</p>
+                      <div className="text-xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "制限なし"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 申し込みフォーム */}
+                <div className="pt-8 border-t border-slate-100">
+                  <div className="text-center mb-8">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">申し込みフォーム</span>
+                  </div>
+                  <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant} onSuccess={handleFormSuccess}/>
+                </div>
+              </div>
+
+              {/* 3. お問い合わせカード */}
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-slate-100">
+                <h3 className="font-black text-slate-900 flex items-center justify-center md:justify-start gap-2 mb-6 text-sm uppercase tracking-widest">
+                  <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: dynamicColor }}></div>
+                  お問い合わせ
+                </h3>
+                <div className="space-y-5">
+                   <div className="text-center md:text-left">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">主催者</p>
+                      <p className="font-bold text-slate-800 text-sm">{event.contactName || tenant?.name}</p>
+                   </div>
+                   <div className="space-y-3">
+                      {event.contactEmail && (
+                        <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                          <Mail size={18} style={{ color: dynamicColor }}/>
+                          <span className="truncate">{event.contactEmail}</span>
+                        </a>
+                      )}
+                      {event.contactPhone && (
+                        <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                          <Phone size={18} style={{ color: dynamicColor }}/>
+                          {event.contactPhone}
+                        </a>
+                      )}
+                   </div>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-50">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Fee</p>
-            <div className="text-xl font-black text-slate-900">{event.price || "無料"}</div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-50">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Capacity</p>
-            <div className="text-xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "定員なし"}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 申し込みフォーム */}
-      <div className="pt-8 border-t border-slate-100">
-        <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant} onSuccess={handleFormSuccess}/>
-      </div>
-    </div>
-
-    {/* 3. お問い合わせカード（stickyエリア内に含めることで、スマホでも隠れないように順序を守る） */}
-    <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-slate-100">
-      <h3 className="font-black text-slate-900 flex items-center gap-2 mb-6">
-        <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: dynamicColor }}></div>
-        Contact
-      </h3>
-      <div className="space-y-4">
-         <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Organizer</p>
-            <p className="font-bold text-slate-800">{event.contactName || tenant?.name}</p>
-         </div>
-         <div className="space-y-2">
-            {event.contactEmail && (
-              <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
-                <Mail size={16} style={{ color: dynamicColor }}/>
-                <span className="truncate">{event.contactEmail}</span>
-              </a>
-            )}
-            {event.contactPhone && (
-              <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
-                <Phone size={16} style={{ color: dynamicColor }}/>
-                {event.contactPhone}
-              </a>
-            )}
-         </div>
-      </div>
-    </div>
-  </div>
-</div>
         </div>
 
         {/* フッター */}
