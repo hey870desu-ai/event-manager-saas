@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import TechLayout from "@/components/templates/TechLayout";
 import CorporateLayout from "@/components/templates/CorporateLayout"; 
 import PopLayout from "@/components/templates/PopLayout"; // 👈 これを追加！
+import MimosaLayout from "@/components/templates/MimosaLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -46,6 +47,11 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
   // ★ポップ（Pop）テーマ
   if (theme === "pop") {
     return <PopLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★追加：ミモザテーマ
+  if (theme === "mimosa") {
+    return <MimosaLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
 
   // ★ビジネス（Corporate）テーマ

@@ -338,7 +338,7 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
       <footer className="bg-slate-900 text-white py-16 border-t-8 border-yellow-400">
          <div className="text-center">
             <h2 className="text-2xl font-black mb-2">{tenant?.name}</h2>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">© POP EVENT MANAGER</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">© EVENT MANAGER</p>
          </div>
       </footer>
       

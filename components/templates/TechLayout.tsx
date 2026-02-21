@@ -243,7 +243,7 @@ export default function TechLayout({ event, tenant, eventId, tenantId }: Props) 
             </div>
           </div>
         </div>
-        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-slate-600 text-[10px] tracking-[0.2em] uppercase">© {new Date().getFullYear()} Event System.</p></footer>
+        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-slate-600 text-[10px] tracking-[0.2em] uppercase">© {new Date().getFullYear()} Event Manager.</p></footer>
       </div>
     </div>
   );

@@ -736,6 +736,36 @@ useEffect(() => {
             {formData.theme === 'pop' && <div className="absolute top-2 right-2 text-orange-500"><CheckCircle size={16}/></div>}
           </label>
 
+          // 📂 components/EventForm.tsx の 550行目付近（Popテーマの後ろなど）に追加
+
+          {/* 4. Mimosa (New!) */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'mimosa' 
+              ? 'bg-[#141814] border-[#FFE000] shadow-[0_0_15px_rgba(255,224,0,0.3)]' 
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="mimosa" checked={formData.theme === 'mimosa'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-[#141814] border border-[#FFE000]/30 rounded-lg flex flex-col gap-1 p-2 shadow-inner relative overflow-hidden">
+               <div className="w-full h-1.5 bg-yellow-500/20 rounded-full mb-1"></div>
+               <div className="w-2/3 h-1.5 bg-yellow-500/20 rounded-full"></div>
+               {/* ミモザの花をイメージした点々 */}
+               <div className="absolute top-2 right-2 flex gap-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFE000]"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFE000] translate-y-1"></div>
+               </div>
+               <div className="mt-auto w-full h-6 bg-[#FFE000]/10 rounded flex items-center justify-center">
+                 <div className="w-2 h-2 rounded-full bg-[#FFE000]"></div>
+               </div>
+            </div>
+            <div>
+               <div className="font-bold text-[#FFE000] text-sm">Mimosa (Yellow)</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">春の温かさと知的なデザイン</div>
+            </div>
+            {formData.theme === 'mimosa' && <div className="absolute top-2 right-2 text-[#FFE000]"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 
