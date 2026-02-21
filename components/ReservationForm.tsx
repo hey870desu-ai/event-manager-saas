@@ -156,8 +156,8 @@ setNewReservationId(docRef.id);
         }
       }
 
-      // ★修正：無料イベント(!isPaid)の時だけ、ここで即座にメールを送る
-      if (!isPaid) {
+      // ✅ 修正後：確実に「有料ではない（false）」時だけ実行するっぺ！
+     if (isPaid === false) {
         try {
           await fetch('/api/send-email', {
             method: 'POST',
