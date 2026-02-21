@@ -133,7 +133,11 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
                 zoomPasscode: eData?.zoomPasscode,
                 tenantName: tenantName,
                 themeColor: themeColor,
-                replyTo: replyTo || rData?.email
+                replyTo: replyTo || rData?.email,
+                contactName: eData?.contactName || tenantName,
+                contactEmail: eData?.contactEmail || "",
+                contactPhone: eData?.contactPhone || "",
+                eventPrice: eData?.price || "無料"
               }),
             });
             console.log("📧 Async payment email sent via Webhook");
