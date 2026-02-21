@@ -90,14 +90,36 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
       </div>
 
       <div className="relative z-10 container mx-auto px-0 md:px-4 pt-12 md:pt-24 max-w-6xl">
-        {/* ヘッダー */}
+
+        {/* ★ここから修正：サムネイル画像を最上部に配置 */}
+        {event.ogpImage ? (
+          <div className="px-4 mb-10">
+            <div className="relative max-w-5xl mx-auto transform hover:scale-[1.01] transition-transform duration-500">
+              {/* ステッカー風の影 */}
+              <div className="absolute inset-0 bg-yellow-200/50 rounded-[2rem] md:rounded-[3rem] translate-x-2 translate-y-2 blur-sm"></div>
+              <div className="relative aspect-video w-full overflow-hidden rounded-[2rem] md:rounded-[3rem] border-4 border-white shadow-xl">
+                <img src={event.ogpImage} className="w-full h-full object-cover" alt="Event Thumbnail" />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ヘッダー：タイトルの位置を調整 */}
         <div className="text-center mb-12 px-4">
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-yellow-200 shadow-sm mb-8">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-yellow-200 shadow-sm mb-6">
             <Sparkles size={14} className="text-yellow-500" />
             <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name || tenantId}</span>
           </div>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">{event.title}</h1>
-          {event.subtitle && <p className="text-slate-500 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed font-medium">{event.subtitle}</p>}
+          
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6 max-w-5xl mx-auto">
+            {event.title}
+          </h1>
+          
+          {event.subtitle && (
+            <p className="text-slate-500 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed font-medium">
+              {event.subtitle}
+            </p>
+          )}
         </div>
 
         {/* 2カラムレイアウト */}
