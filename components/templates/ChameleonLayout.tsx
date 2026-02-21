@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
   Link as LinkIcon, Facebook, CheckCircle2, Copy, 
-  Twitter, Mail, Phone, Sparkles, Users 
+  Twitter, Mail, Phone, Sparkles, Users, Info, ChevronRight
 } from "lucide-react";
 
 type Props = {
@@ -22,7 +22,6 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
   const [copied, setCopied] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // --- 色抽出魔法 ---
   useEffect(() => {
     if (event.ogpImage && imgRef.current) {
       const img = new Image();
@@ -31,8 +30,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
       img.onload = () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        canvas.width = 10;
-        canvas.height = 10;
+        canvas.width = 10; canvas.height = 10;
         ctx?.drawImage(img, 0, 0, 10, 10);
         const data = ctx?.getImageData(0, 0, 10, 10).data;
         let r = 0, g = 0, b = 0;
@@ -40,6 +38,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
           r += data![i]; g += data![i+1]; b += data![i+2];
         }
         const count = (data?.length || 0) / 4;
+        // 色味を少し強調して反映
         setDynamicColor(`rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`);
       };
     }
@@ -52,163 +51,209 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
   };
 
   const handleFormSuccess = (id: string) => {
-    setReservationId(id);
-    setSubmitted(true);
+    setReservationId(id); setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const { full, week } = formatDate(event.date);
+  const lecturersList = event.lecturers || (event.lecturer ? [{ name: event.lecturer, title: event.lecturerTitle, image: event.lecturerImage, profile: event.lecturerProfile }] : []);
+  // ▼▼▼ ここから追加 ▼▼▼
+  const handleShareTwitter = () => {
+    const shareText = `${event.title} | イベント申し込み`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+  };
+  // ▼▼▼ この1行を handleCopyLink のすぐ上に追加してください ▼▼▼
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (submitted) {
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}`;
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-        <div className="bg-white max-w-lg w-full p-10 rounded-[3rem] shadow-xl text-center space-y-6 border border-slate-100">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: `${dynamicColor}20`, color: dynamicColor }}><CheckCircle2 size={32} /></div>
-          <h2 className="text-2xl font-black text-slate-800">お申し込み完了</h2>
-          <div className="bg-slate-50 rounded-3xl p-6 text-left border border-slate-100">
-             <h3 className="font-bold text-slate-800 mb-2">{event.title}</h3>
-             <img src={qrImageUrl} alt="QR" className="w-32 h-32 mx-auto mt-4"/>
-          </div>
-          <button onClick={()=>window.location.reload()} className="px-8 py-3 rounded-full text-white font-bold" style={{ backgroundColor: dynamicColor }}>戻る</button>
+        <div className="bg-white max-w-lg w-full p-10 rounded-[3rem] shadow-2xl text-center space-y-6 border-4" style={{ borderColor: dynamicColor }}>
+          <CheckCircle2 size={64} className="mx-auto" style={{ color: dynamicColor }} />
+          <h2 className="text-3xl font-black text-slate-900">お申し込み完了</h2>
+          <button onClick={()=>window.location.reload()} className="px-10 py-4 rounded-full text-white font-bold shadow-lg" style={{ backgroundColor: dynamicColor }}>ページに戻る</button>
         </div>
       </div>
     );
   }
 
-  const { full, week } = formatDate(event.date);
-  const lecturersList = event.lecturers || (event.lecturer ? [{ name: event.lecturer, title: event.lecturerTitle, image: event.lecturerImage, profile: event.lecturerProfile }] : []);
-
   return (
-    <div className="min-h-screen pb-32 relative transition-colors duration-1000" style={{ backgroundColor: `${dynamicColor}08` }}>
-      {/* 背景の光 */}
+    <div className="min-h-screen pb-20 relative transition-colors duration-1000" style={{ backgroundColor: `${dynamicColor}15` }}>
+      
+      {/* 背景のダイナミック・オーラ */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[10%] w-[600px] h-[600px] blur-[120px] opacity-10 animate-pulse" style={{ backgroundColor: dynamicColor }} />
-        <div className="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] blur-[120px] opacity-10" style={{ backgroundColor: dynamicColor }} />
+        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] blur-[150px] opacity-20" style={{ backgroundColor: dynamicColor }} />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] blur-[150px] opacity-20" style={{ backgroundColor: dynamicColor }} />
       </div>
 
-      <div className="relative z-10 container mx-auto px-0 md:px-4 pt-4 md:pt-12 max-w-6xl">
-        {/* サムネイル */}
-        {event.ogpImage && (
-          <div className="px-4 mb-10">
-            <div className="relative max-w-5xl mx-auto">
-              <div className="absolute inset-0 rounded-[2rem] md:rounded-[3rem] translate-x-2 translate-y-2 blur-md opacity-20" style={{ backgroundColor: dynamicColor }}></div>
-              <img ref={imgRef} src={event.ogpImage} className="relative w-full aspect-video object-cover rounded-[2rem] md:rounded-[3rem] border-4 border-white shadow-2xl" alt="Main Visual" />
-            </div>
+      <div className="relative z-10 container mx-auto px-4 pt-8 md:pt-16 max-w-6xl">
+        
+        {/* サムネイル・メインビジュアル */}
+        <div className="relative mb-12 group">
+          <div className="absolute inset-0 rounded-[2.5rem] md:rounded-[4rem] translate-y-4 blur-2xl opacity-30 transition-transform group-hover:translate-y-6" style={{ backgroundColor: dynamicColor }}></div>
+          <div className="relative bg-white p-2 md:p-4 rounded-[2.5rem] md:rounded-[4rem] shadow-2xl">
+            <img ref={imgRef} src={event.ogpImage} className="w-full aspect-video object-cover rounded-[2rem] md:rounded-[3.5rem]" alt="Event Thumbnail" />
           </div>
-        )}
-
-        {/* ヘッダー */}
-        <div className="text-center mb-12 px-4">
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white border border-slate-100 shadow-sm mb-6">
-            <Sparkles size={14} style={{ color: dynamicColor }} />
-            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name}</span>
-          </div>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-900 leading-tight mb-6">{event.title}</h1>
-          {event.subtitle && <p className="text-slate-500 text-sm md:text-lg font-medium max-w-3xl mx-auto">{event.subtitle}</p>}
         </div>
 
-        {/* メイングリッド */}
-        <div className="bg-white/80 backdrop-blur-xl border-y md:border md:rounded-[3rem] grid grid-cols-1 lg:grid-cols-12 shadow-2xl border-white">
-          
-          {/* 左：詳細情報 */}
-          <div className="lg:col-span-8 p-6 md:p-12 border-r border-slate-50 space-y-16">
-            <section>
-              <div className="flex items-center gap-2 font-bold tracking-widest text-xs mb-8 uppercase" style={{ color: dynamicColor }}><AlignLeft size={14} /> Information</div>
-              <div className="prose prose-slate max-w-none"><div className="text-slate-700 leading-8 whitespace-pre-wrap font-medium">{event.content}</div></div>
-            </section>
+        {/* ヘッダーセクション */}
+        <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] p-8 md:p-16 mb-12 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: dynamicColor }}></div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border border-slate-100 font-bold text-xs uppercase tracking-widest text-slate-500">
+              <Sparkles size={14} style={{ color: dynamicColor }} /> {tenant?.name}
+            </div>
+            <div className="flex gap-2">
+               <button onClick={handleShareTwitter} className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors"><Twitter size={18}/></button>
+               <button onClick={handleCopyLink} className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors" style={{ color: copied ? dynamicColor : 'inherit' }}><LinkIcon size={18}/></button>
+            </div>
+          </div>
+          <h1 className="text-3xl md:text-6xl font-black text-slate-900 leading-[1.1] mb-6">{event.title}</h1>
+          {event.subtitle && <p className="text-lg md:text-2xl font-medium text-slate-500 leading-relaxed border-l-4 pl-6" style={{ borderColor: dynamicColor }}>{event.subtitle}</p>}
+        </div>
 
-            {/* タイムテーブル */}
+        {/* メインコンテンツ・グリッド */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
+          
+          {/* 左：詳細カード群 */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* 詳細情報カード */}
+            <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-lg border border-slate-100">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 rounded-2xl" style={{ backgroundColor: `${dynamicColor}15`, color: dynamicColor }}><Info size={24}/></div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Information</h2>
+              </div>
+              <div className="prose prose-slate max-w-none text-slate-700 leading-8 whitespace-pre-wrap font-medium text-lg">
+                {event.content}
+              </div>
+            </div>
+
+            {/* タイムテーブルカード */}
             {event.timeTable && (
-              <section>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Time Table</div>
-                <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 text-slate-600 text-sm leading-8 whitespace-pre-wrap">{event.timeTable}</div>
-              </section>
+              <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-lg border border-slate-100 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-8 opacity-5 text-slate-900"><Clock size={120}/></div>
+                <h2 className="text-xl font-black text-slate-900 mb-8 flex items-center gap-2">
+                  <span className="w-2 h-8 rounded-full" style={{ backgroundColor: dynamicColor }}></span>
+                  Time Table
+                </h2>
+                <div className="relative bg-slate-50 rounded-3xl p-8 border border-slate-100 text-slate-700 leading-8 whitespace-pre-wrap font-bold">
+                  {event.timeTable}
+                </div>
+              </div>
             )}
 
-            {/* 講師リスト */}
+            {/* 講師カード */}
             {lecturersList.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 font-bold tracking-widest text-xs mb-8 uppercase" style={{ color: dynamicColor }}><User size={14} /> Lecturers</div>
-                <div className="space-y-8">
+              <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-lg border border-slate-100">
+                <h2 className="text-xl font-black text-slate-900 mb-10 flex items-center gap-2">
+                   <User size={24} style={{ color: dynamicColor }}/> Lecturers
+                </h2>
+                <div className="grid gap-6">
                   {lecturersList.map((lec: any, i: number) => (
-                    <div key={i} className="flex flex-col sm:flex-row gap-6 p-6 bg-white rounded-[2rem] border border-slate-100">
-                      {lec.image && <img src={lec.image} className="w-24 h-32 object-cover rounded-2xl shadow-sm"/>}
+                    <div key={i} className="flex flex-col sm:flex-row gap-8 p-8 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
+                      {lec.image && <div className="shrink-0 ring-4 ring-white rounded-2xl overflow-hidden shadow-lg"><img src={lec.image} className="w-32 h-40 object-cover" alt={lec.name}/></div>}
                       <div>
-                        <h3 className="text-xl font-black text-slate-900 mb-1">{lec.name}</h3>
-                        <p className="text-xs font-bold mb-3" style={{ color: dynamicColor }}>{lec.title}</p>
-                        <p className="text-slate-600 text-sm leading-relaxed">{lec.profile}</p>
+                        <div className="inline-block px-3 py-1 rounded-lg text-[10px] font-black text-white mb-3" style={{ backgroundColor: dynamicColor }}>{lec.title}</div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-3">{lec.name}</h3>
+                        <p className="text-slate-600 leading-relaxed font-medium">{lec.profile}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </section>
+              </div>
             )}
           </div>
 
-          {/* 右：サイドバー */}
-          <div className="lg:col-span-4 p-6 md:p-12 bg-slate-50/30 space-y-10 md:rounded-br-[3rem]">
-            <div className="space-y-8">
-              <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Schedule</div>
-                <div className="text-3xl font-black text-slate-900">{full} <span className="text-lg font-medium opacity-30">({week})</span></div>
-                <div className="flex items-center gap-2 mt-2 font-bold text-slate-600"><Clock size={16}/>{event.startTime} - {event.endTime}</div>
-              </div>
-
-              <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Venue</div>
-                <h3 className="text-xl font-black text-slate-900 mb-4">{event.venueName}</h3>
-                {event.venueAddress && (
-                  <div className="rounded-[2rem] overflow-hidden border-4 border-white shadow-md aspect-video">
-                    <iframe width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}></iframe>
+          {/* 右：サイドバー・アクション */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* 開催概要カード */}
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 sticky top-8">
+              <div className="space-y-8 mb-10">
+                <div className="group">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Schedule</p>
+                  <div className="text-3xl font-black text-slate-900 group-hover:translate-x-1 transition-transform">{full}</div>
+                  <div className="flex items-center gap-3 mt-3 p-3 rounded-2xl bg-slate-50 font-bold text-slate-600">
+                    <Clock size={18} style={{ color: dynamicColor }}/> {event.startTime} - {event.endTime}
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Venue</p>
+                  <h3 className="text-xl font-black text-slate-900 mb-4">{event.venueName}</h3>
+                  {event.venueAddress && (
+                    <div className="rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner aspect-video">
+                      <iframe width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}></iframe>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Fee</p>
+                    <div className="text-xl font-black text-slate-900">{event.price || "無料"}</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Capacity</p>
+                    <div className="text-xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "定員なし"}</div>
+                  </div>
+                </div>
               </div>
 
-              {/* 問い合わせ */}
-              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 text-sm font-black" style={{ color: dynamicColor }}><Mail size={16}/> Contact</div>
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Organizer</p>
-                  <p className="font-bold text-slate-800">{event.contactName || tenant?.name}</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="text-xs font-bold text-slate-500 hover:opacity-70 truncate">{event.contactEmail}</a>}
-                  {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="text-xs font-bold text-slate-500 hover:opacity-70">{event.contactPhone}</a>}
-                </div>
+              {/* フォーム部分 */}
+              <div className="pt-8 border-t border-slate-100">
+                <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant} onSuccess={handleFormSuccess}/>
               </div>
             </div>
 
-            {/* フォーム */}
-            <div className="bg-white rounded-[2.5rem] p-6 md:p-8 shadow-2xl border border-white">
-              <div className="text-center mb-6"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Registration</span></div>
-              <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant} onSuccess={handleFormSuccess}/>
+            {/* お問い合わせカード */}
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-slate-100">
+              <h3 className="font-black text-slate-900 flex items-center gap-2 mb-6">
+                <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: dynamicColor }}></div>
+                Contact
+              </h3>
+              <div className="space-y-4">
+                 <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Organizer</p>
+                    <p className="font-bold text-slate-800">{event.contactName || tenant?.name}</p>
+                 </div>
+                 <div className="space-y-2">
+                    {event.contactEmail && (
+                      <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                        <Mail size={16} style={{ color: dynamicColor }}/>
+                        <span className="truncate">{event.contactEmail}</span>
+                      </a>
+                    )}
+                    {event.contactPhone && (
+                      <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                        <Phone size={16} style={{ color: dynamicColor }}/>
+                        {event.contactPhone}
+                      </a>
+                    )}
+                 </div>
+              </div>
             </div>
           </div>
         </div>
-        {/* ▼▼▼ 追加：フッター（蓋） ▼▼▼ */}
-        <footer className="mt-20 mb-10 text-center relative z-10 space-y-4">
-          <div className="flex flex-col items-center gap-4">
-            {tenant?.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="h-8 object-contain opacity-80" />
-            ) : (
-              <div className="flex items-center gap-2 font-bold text-slate-400">
-                <Sparkles size={16} style={{ color: dynamicColor }} />
-                <span>{tenant?.name}</span>
-              </div>
-            )}
-            
-            <div className="h-[1px] w-12 bg-slate-200" style={{ backgroundColor: `${dynamicColor}20` }}></div>
-            
-            <p className="text-[10px] font-bold tracking-[0.3em] text-slate-400 uppercase">
-              © {new Date().getFullYear()} {tenant?.name || "Event Manager"} All rights reserved.
-            </p>
-            
-            {/* システム名（控えめに） */}
-            <p className="text-[9px] text-slate-300 font-medium tracking-widest">
-              POWERED BY EVENT MANAGER
-            </p>
+
+        {/* フッター */}
+        <footer className="mt-20 py-12 text-center border-t border-slate-200/50">
+          <div className="flex flex-col items-center gap-6">
+            {tenant?.logoUrl && <img src={tenant.logoUrl} className="h-8 opacity-60 grayscale hover:grayscale-0 transition-all" alt="logo"/>}
+            <div className="text-[10px] font-black text-slate-400 tracking-[0.5em] uppercase">
+              © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
+            </div>
+            <div className="px-4 py-1 rounded-full bg-slate-900 text-white text-[8px] font-bold tracking-widest uppercase opacity-20">
+              Powered by Event Manager
+            </div>
           </div>
         </footer>
-        {/* ▲▲▲ 追加ここまで ▲▲▲ */}
       </div>
     </div>
   );
