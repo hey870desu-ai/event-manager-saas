@@ -6,9 +6,10 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
-import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard } from "lucide-react"; 
+import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard,ExternalLink } from "lucide-react"; 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Link from "next/link";
 
 type TenantData = {
   name: string;
@@ -45,6 +46,7 @@ export default function ReservationForm({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
+  const [agreed, setAgreed] = useState(false);
   
   // 1. フックとパラメータ
   const params = useParams();
@@ -323,6 +325,28 @@ export default function ReservationForm({
                        <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><MessageSquare size={14} style={{color: themeColor}}/> ご要望・備考 (任意)</label>
                        <textarea name="notes" placeholder="その他、ご質問などがございましたらご記入ください。" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none min-h-[100px]" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
                     </div>
+
+                    {/* ▼▼▼ 追加：プライバシーポリシー同意チェック ▼▼▼ */}
+<div className="mt-8 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+  <label className="flex items-start gap-3 cursor-pointer group">
+    <input 
+      type="checkbox" 
+      checked={agreed}
+      onChange={(e) => setAgreed(e.target.checked)}
+      className="mt-1 w-5 h-5 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-offset-0 focus:ring-1"
+      style={{ accentColor: themeColor }}
+      required 
+    />
+    <span className="text-sm text-slate-400 leading-relaxed select-none">
+      <Link href="/privacy" target="_blank" className="font-bold hover:underline inline-flex items-center gap-1" style={{ color: themeColor }}>
+        プライバシーポリシー
+        <ExternalLink size={14} />
+      </Link>
+      および個人情報の取り扱いに同意して申し込む。
+    </span>
+  </label>
+</div>
+{/* ▲▲▲ 追加完了 ▲▲▲ */}
 
                     {status === "error" && (
                       <div className="p-4 bg-red-900/30 text-red-200 text-sm rounded-lg border border-red-500/30 flex items-start gap-3">
