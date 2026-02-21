@@ -211,24 +211,29 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
           {/* 右：サイドバー・アクション */}
           <div className="lg:col-span-4 space-y-8">
 
-            {/* 開催形式バッジ（サイドバー内） */}
+            {/* 開催形式バッジ（実際のデータ構造 hasOnline / hasOffline に合わせた修正版） */}
 <div className="mb-6 flex flex-wrap gap-2">
-  {event.eventFormat === "hybrid" && (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+  {/* 1. 両方にチェックがある場合 = ハイブリッド */}
+  {event.hasOnline && event.hasOffline && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-[10px] uppercase tracking-tighter" 
          style={{ borderColor: dynamicColor, color: dynamicColor, backgroundColor: `${dynamicColor}10` }}>
-      <Users size={16} /> ハイブリッド開催 (会場 & オンライン)
+      <Users size={14} /> Hybrid (会場 & Online)
     </div>
   )}
-  {event.eventFormat === "online" && (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+
+  {/* 2. オンラインのみにチェックがある場合 */}
+  {event.hasOnline && !event.hasOffline && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-[10px] uppercase tracking-tighter" 
          style={{ borderColor: "#3b82f6", color: "#3b82f6", backgroundColor: "#3b82f610" }}>
-      <Video size={16} /> オンライン開催
+      <Video size={14} /> Online
     </div>
   )}
-  {event.eventFormat === "venue" && (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase tracking-tighter" 
+
+  {/* 3. 会場のみにチェックがある場合 */}
+  {!event.hasOnline && event.hasOffline && (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-[10px] uppercase tracking-tighter" 
          style={{ borderColor: "#10b981", color: "#10b981", backgroundColor: "#10b98110" }}>
-      <MapPin size={16} /> 会場開催
+      <MapPin size={14} /> Venue (会場開催)
     </div>
   )}
 </div>
