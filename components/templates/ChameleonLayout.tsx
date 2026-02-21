@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
   Link as LinkIcon, Facebook, CheckCircle2, Copy, 
-  Twitter, Mail, Phone, Sparkles, Users, Info, ChevronRight,Video
+  Twitter, Mail, Phone, Sparkles, Users, Info, ChevronRight,Video,
 } from "lucide-react";
 
 type Props = {
@@ -80,11 +80,24 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
   };
 
   if (submitted) {
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}`;
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
         <div className="bg-white max-w-lg w-full p-10 rounded-[3rem] shadow-2xl text-center space-y-6 border-4" style={{ borderColor: dynamicColor }}>
           <CheckCircle2 size={64} className="mx-auto" style={{ color: dynamicColor }} />
           <h2 className="text-3xl font-black text-slate-900">お申し込み完了</h2>
+
+          {/* --- ★ ここを追加：QRコードとスクショ案内 --- */}
+        <div className="p-6 bg-slate-50 rounded-[1.5rem] border-2 border-dashed border-slate-200">
+           <img src={qrImageUrl} alt="QR" className="w-40 h-40 mx-auto mb-4" />
+           <p className="text-xs font-bold text-slate-600 leading-relaxed bg-white p-3 rounded-lg shadow-sm">
+             【当日受付用】<br/>
+             この画面をスクリーンショットで保存し、<br/>
+             受付で提示してください。
+           </p>
+        </div>
+        {/* --- ★ ここまで --- */}
+
           <button onClick={()=>window.location.reload()} className="px-10 py-4 rounded-full text-white font-bold shadow-lg" style={{ backgroundColor: dynamicColor }}>ページに戻る</button>
         </div>
       </div>

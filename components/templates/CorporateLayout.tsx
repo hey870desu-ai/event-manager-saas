@@ -5,7 +5,7 @@ import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, MapPin, User, CheckCircle2, ArrowRight, 
   Share2, Check, ExternalLink, Train, Users, Sparkles,
-  Twitter, Facebook, Link as LinkIcon,Mail, Phone
+  Twitter, Facebook, Link as LinkIcon,Mail, Phone,Clock
 } from "lucide-react";
 
 type Props = {
@@ -19,6 +19,7 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
   const [submitted, setSubmitted] = useState(false);
   const [reservationId, setReservationId] = useState(""); 
   const [copied, setCopied] = useState(false);
+  const themeColor = event.themeColor || "#3b82f6";
 
   // --- 共通機能 ---
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -33,33 +34,76 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // --- 完了画面 ---
-  if (submitted) {
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}`;
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6 font-sans">
-        <div className="max-w-2xl w-full text-center space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="relative inline-block">
-            <div className="absolute inset-0 scale-150 blur-3xl bg-purple-200/40 rounded-full" />
-            <CheckCircle2 size={80} strokeWidth={1} className="relative text-slate-900" />
+  const formatDate = (dateStr: string) => {
+  if (!dateStr) return { full: "----年--月--日" };
+  const d = new Date(dateStr);
+  return { full: `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日` };
+};
+
+  // --- 完了画面 (テック・コーポレート用 調整版) ---
+if (submitted) {
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}`;
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-800">
+      <div className="bg-white max-w-lg w-full p-8 md:p-10 rounded-3xl shadow-xl text-center space-y-6 border border-slate-100 animate-in zoom-in-95 duration-300">
+        
+        {/* アイコンとタイトル */}
+        <div className="space-y-2">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+            <CheckCircle2 size={32} />
           </div>
-          <div className="space-y-4">
-            <h2 className="text-4xl font-black tracking-tighter text-slate-900">ご予約を確定しました</h2>
-            <p className="text-slate-600 font-medium">登録いただいたアドレスへ、案内メールを送付しました。</p>
-          </div>
-          <div className="bg-[#F9F9F9] rounded-[3rem] p-16 border border-slate-200 shadow-xl">
-             <div className="w-48 h-48 mx-auto bg-white p-4 rounded-3xl shadow-sm mb-8">
-               <img src={qrImageUrl} alt="QR" className="w-full h-full object-contain" />
+          <h2 className="text-xl font-bold text-slate-800">お申し込み完了</h2>
+        </div>
+
+        {/* ★ 追加：当日の案内（テック系に合わせた少し落ち着いたオレンジ） */}
+        <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left">
+          <p className="text-xs font-bold text-amber-800 leading-relaxed text-center">
+            【当日の受付用QRコード】<br/>
+            この画面をスクリーンショット等で保存し、<br/>
+            当日受付にてスタッフへご提示ください。
+          </p>
+        </div>
+
+        {/* イベント情報カード */}
+        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-left space-y-2">
+           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">EVENT INFO</div>
+           <h3 className="text-sm font-bold text-slate-800 leading-snug">{event.title}</h3>
+           <div className="pt-2 border-t border-slate-200/50 space-y-1.5">
+             <div className="flex items-center gap-2 text-xs text-slate-600">
+               <Calendar size={14} style={{color: themeColor}}/><span className="font-bold">{formatDate(event.date).full}</span>
              </div>
-             <p className="text-xs font-bold tracking-[0.1em] text-slate-500 uppercase">Personal Entry Key</p>
-          </div>
-          <button onClick={() => window.location.reload()} className="text-slate-900 font-bold border-b-2 border-slate-900 pb-1 hover:text-slate-600 hover:border-slate-400 transition-all">
-            イベントページへ戻る
+             <div className="flex items-center gap-2 text-xs text-slate-600">
+               <Clock size={14} style={{color: themeColor}}/><span className="font-bold">{event.startTime} - {event.endTime}</span>
+             </div>
+             <div className="flex items-start gap-2 text-xs text-slate-600">
+               <MapPin size={14} className="mt-0.5" style={{color: themeColor}}/><span className="font-bold">{event.venueName || "会場未定"}</span>
+             </div>
+           </div>
+        </div>
+
+        {/* QRコードセクション */}
+        <div className="bg-slate-900 p-5 rounded-2xl inline-block shadow-inner relative group">
+           {/* ラベルを追加して「何のためのQRか」を明確に */}
+           <div className="text-[9px] text-slate-500 font-bold mb-2 tracking-[0.2em]">CHECK-IN TICKET</div>
+           <div className="bg-white p-2 rounded-lg">
+              {reservationId ? (
+                <img src={qrImageUrl} alt="QR" className="w-[140px] h-[140px] object-contain"/>
+              ) : (
+                <div className="w-[140px] h-[140px] bg-slate-100 flex items-center justify-center text-xs">Loading...</div>
+              )}
+           </div>
+           <div className="text-[9px] text-slate-500 mt-2 font-mono">ID: {reservationId}</div>
+        </div>
+
+        <div className="pt-2">
+          <button onClick={()=>window.location.reload()} className="text-sm font-bold py-2.5 px-6 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+            イベントページに戻る
           </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   const d = new Date(event.date);
   const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
