@@ -265,46 +265,7 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
             </section>
           )}
         </div>
-        {/* 登壇者セクションの後に追加 */}
-<section className="space-y-10 pt-12 border-t border-slate-100">
-  <div className="inline-flex items-center gap-4">
-    <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-    <h2 className="text-lg font-black text-slate-900">本イベントに関するお問い合わせ</h2>
-  </div>
-  
-  <div className="bg-slate-50 rounded-[2rem] p-8 md:p-10 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-8">
-    <div className="space-y-2">
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Person</p>
-      <p className="text-xl font-black text-slate-900">
-        {event.contactName || tenant?.name || "運営事務局"}
-      </p>
-    </div>
-
-    <div className="flex flex-col sm:flex-row gap-4">
-      {/* メール */}
-      {event.contactEmail && (
-        <a 
-          href={`mailto:${event.contactEmail}`} 
-          className="flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm group"
-        >
-          <Mail size={18} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
-          {event.contactEmail}
-        </a>
-      )}
-
-      {/* 電話 */}
-      {event.contactPhone && (
-        <a 
-          href={`tel:${event.contactPhone}`} 
-          className="flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-slate-700 font-bold hover:border-purple-400 hover:text-purple-600 transition-all shadow-sm group"
-        >
-          <Phone size={18} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
-          {event.contactPhone}
-        </a>
-      )}
-    </div>
-  </div>
-</section>
+        
 
         {/* サイドバー: 予約フォーム */}
         <div className="lg:col-span-4 space-y-10">
@@ -390,6 +351,36 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
               </a>
             </div>
           </div>
+          {/* ▼ ここから追加：お問い合わせセクション（エラー修正版） */}
+          <div className="bg-slate-50 rounded-[3rem] p-8 border border-slate-200 shadow-sm space-y-6 mt-10">
+            <div className="flex items-center gap-3">
+              <span className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></span>
+              <h3 className="font-bold text-slate-900">お問い合わせ</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact Person</p>
+                <p className="font-bold text-slate-800">{event.contactName || tenant?.name || "運営事務局"}</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {event.contactEmail && (
+                  <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-all shadow-sm">
+                    <Mail size={16} className="text-slate-400" />
+                    <span className="truncate">{event.contactEmail}</span>
+                  </a>
+                )}
+                {event.contactPhone && (
+                  <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:text-purple-600 hover:border-purple-200 transition-all shadow-sm">
+                    <Phone size={16} className="text-slate-400" />
+                    {event.contactPhone}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+          {/* ▲ ここまで追加 */}
         </div>
       </main>
 
