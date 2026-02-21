@@ -156,37 +156,40 @@ setNewReservationId(docRef.id);
         }
       }
 
-      // メール送信処理
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: reservationData.name,
-            email: reservationData.email,
-            // company: reservationData.company, // ← 削除
-            type: reservationData.type,
-            eventTitle: event.title,
-            eventDate: event.date,
-            eventTime: `${event.startTime} - ${event.endTime}`,
-            venueName: event.venueName,
-            zoomUrl: event.zoomUrl,
-            meetingId: event.meetingId,
-            zoomPasscode: event.zoomPasscode,
-            reservationId: docRef.id,
-            tenantName: safeTenant?.orgName || safeTenant?.name,
-            themeColor: tenantData?.themeColor,
-            replyTo: safeTenant?.ownerEmail,
-            customAnswers: customAnswers, // ★追加: カスタム回答もメールに含める
+      // ★修正：無料イベント(!isPaid)の時だけ、ここで即座にメールを送る
+      if (!isPaid) {
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: reservationData.name,
+              email: reservationData.email,
+              type: reservationData.type,
+              eventTitle: event.title,
+              eventDate: event.date,
+              eventTime: `${event.startTime} - ${event.endTime}`,
+              venueName: event.venueName,
+              zoomUrl: event.zoomUrl,
+              meetingId: event.meetingId,
+              zoomPasscode: event.zoomPasscode,
+              reservationId: docRef.id,
+              tenantName: safeTenant?.orgName || safeTenant?.name,
+              themeColor: tenantData?.themeColor,
+              replyTo: safeTenant?.ownerEmail,
+              customAnswers: customAnswers,
 
-            // ★ ここに以下の4つを追加！
-            contactName: event.contactName || safeTenant?.name || "運営事務局",
-            contactEmail: event.contactEmail || "",
-            contactPhone: event.contactPhone || "",
-            eventPrice: event.price // これで「NaN」も直ります
-          }),
-        });
-      } catch (mailError) { console.error("Mail error:", mailError); }
+              // 問い合わせ先情報
+              contactName: event.contactName || safeTenant?.name || "運営事務局",
+              contactEmail: event.contactEmail || "",
+              contactPhone: event.contactPhone || "",
+              eventPrice: event.price 
+            }),
+          });
+        } catch (mailError) { 
+          console.error("Mail error:", mailError); 
+        }
+      }
 
       setStatus("success");
       if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
