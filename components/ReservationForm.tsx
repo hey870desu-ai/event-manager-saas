@@ -47,10 +47,12 @@ export default function ReservationForm({
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
   const [agreed, setAgreed] = useState(false);
-  // ▼▼▼ 追加：開催形式の判定フラグ ▼▼▼
-  const hasVenue = !!event.venueName; // 会場名があるか
-  const hasOnline = !!event.zoomUrl;   // Zoom等のURLがあるか
-  const isHybrid = hasVenue && hasOnline; // 両方あればハイブリッド
+ // ✅ 修正後のコード（データのフラグを直接使う）
+// event.hasOffline や event.hasOnline がデータ内にあるので、それを使います
+const hasVenue = event.hasOffline === true; 
+const hasOnline = event.hasOnline === true;
+const isHybrid = hasVenue && hasOnline;
+console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVenue, online: event.zoomUrl, hasOnline });
 
   // 初回表示時に適切な方をデフォルトにする
   useEffect(() => {
