@@ -92,7 +92,7 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
             <Sparkles size={14} className="text-yellow-500" />
             <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">{tenant?.name || tenantId}</span>
           </div>
-          <h1 className="text-2xl md:text-5xl font-black text-slate-900 leading-[1.3] mb-8 max-w-4xl mx-auto break-words px-4">
+          <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-slate-900 leading-[1.3] mb-8 max-w-6xl mx-auto break-words md:break-normal px-4">
     {event.title}
   </h1>
           {event.subtitle && <p className="text-slate-500 md:text-lg max-w-3xl mx-auto">{event.subtitle}</p>}
