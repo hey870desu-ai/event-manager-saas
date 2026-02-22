@@ -75,10 +75,11 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
   const safeEventId = eventId || event?.id || (params?.event as string);
   const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
 
-  // 4. 価格計算
-  const priceVal = event?.price;
-  const isPaid = priceVal !== undefined && priceVal !== "無料" && Number(priceVal) > 0;
-  const priceAmount = isPaid ? Number(priceVal) : 0; // ★ この1行を書き足す！
+  // 4. 価格計算（判定を100%確実にするっぺ）
+  const priceVal = event?.price; 
+  // 「無料」という文字が入っていない、かつ「0より大きい数字」のときだけ有料(isPaid)とする
+  const isPaid = priceVal !== undefined && priceVal !== null && priceVal !== "無料" && Number(priceVal) > 0;
+  const priceAmount = isPaid ? Number(priceVal) : 0;
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);

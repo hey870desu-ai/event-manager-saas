@@ -92,12 +92,6 @@ export async function POST(request: Request) {
       success_url: `${origin}/t/${safeTenantId}/e/${safeEventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/t/${safeTenantId}/e/${safeEventId}`,
       
-      payment_intent_data: {
-        application_fee_amount: platformFee,
-        transfer_data: {
-          destination: connectedAccountId,
-        },
-      },
       metadata: {
         eventId,
         tenantId,
