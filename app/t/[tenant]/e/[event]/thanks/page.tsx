@@ -5,9 +5,9 @@ import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { CheckCircle, AlertCircle, Loader2, ArrowLeft, Clock, ReceiptText } from "lucide-react"; // Clock, ReceiptTextを追加
 
 function SuccessContent() {
-  const params = useParams();
-  const tId = params.tenantId as string;
-  const eId = params.eventId as string;
+  const params = useParams(); // これでURLの中のIDを拾うっぺ
+  const tId = params.tenantId; // URLの [tenantId]
+  const eId = params.eventId;  // URLの [eventId]
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get("session_id");

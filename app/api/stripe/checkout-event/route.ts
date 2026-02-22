@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+const domain = "https://event-manager.app";
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
 });
@@ -48,7 +50,8 @@ export async function POST(request: Request) {
       },
 
       // 決済成功時とキャンセル時の戻り先URL
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
+      
+      success_url: `${domain}/t/${tenantId}/e/${eventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}`,
       
       metadata: {
