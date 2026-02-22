@@ -47,24 +47,33 @@ export async function POST(request: Request) {
     const brandColor = themeColor || "#3b82f6";
     const homeUrl = tenantUrl || "#";
     
-    // スタイル定義
     const styles = {
-      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
+      // 1. 外側の余白を少し詰め（20px -> 10px）
+      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 10px;",
+      
+      // 2. メインの白いカード（これはそのまま残すっぺ！）
       container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);",
-      header: "background: #1e293b; padding: 40px 20px; text-align: center; border-bottom: 4px solid " + brandColor + ";",
+      
+      header: "background: #1e293b; padding: 30px 15px; text-align: center; border-bottom: 4px solid " + brandColor + ";",
       headerTitle: "color: #94a3b8; margin: 0; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 600; margin-bottom: 15px;",
       logoText: "color: #ffffff; font-size: 22px; font-weight: bold; display: block; letter-spacing: 1px; text-decoration: none;",
-      content: "padding: 40px 30px;",
-      greeting: "font-size: 16px; margin-bottom: 30px; line-height: 1.8; color: #334155;",
+      
+      // 3. メインカード内の余白をスリムに（40px 30px -> 25px 15px）
+      content: "padding: 25px 15px;",
+      
+      greeting: "font-size: 16px; margin-bottom: 25px; line-height: 1.8; color: #334155;",
       companyName: "font-size: 14px; color: #64748b; margin-bottom: 5px; display: block;",
-      card: "background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-bottom: 35px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden;",
+      
+      // 4. 中のイベント情報カード（これも残す！ paddingを25px -> 15pxに）
+      card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden;",
+      
       cardAccent: "position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: " + brandColor + ";",
-      label: "font-size: 11px; color: #64748b; letter-spacing: 1px; margin-bottom: 6px; font-weight: 700;",
-      value: "font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 5px;",
-      contactBox: "margin-top: 20px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
-      calendarLink: "display: inline-block; font-size: 11px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 4px; background-color: #f0f9ff; margin-bottom: 20px; font-weight: bold;", 
-      button: "display: inline-block; background: " + brandColor + "; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0, 0.2); transition: all 0.2s;",
-      footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
+      label: "font-size: 11px; color: #64748b; letter-spacing: 1px; margin-bottom: 4px; font-weight: 700;",
+      value: "font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 10px; line-height: 1.4;",
+      contactBox: "margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
+      calendarLink: "display: inline-block; font-size: 11px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 4px; background-color: #f0f9ff; margin-bottom: 15px; font-weight: bold;", 
+      button: "display: inline-block; background: " + brandColor + "; color: #ffffff; text-decoration: none; padding: 14px 25px; border-radius: 8px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0, 0.2);",
+      footer: "background-color: #f8fafc; color: #94a3b8; padding: 25px 15px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
       footerLink: "color: " + brandColor + "; text-decoration: none; font-weight: bold;"
     };
 

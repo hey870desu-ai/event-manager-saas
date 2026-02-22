@@ -118,22 +118,26 @@ export async function POST(request: Request) {
     const contactEmail = eData?.contactEmail || "";
     const contactPhone = eData?.contactPhone || "";
 
-    // 4. HTMLスタイル（共通）
     const styles = {
-      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
+      // 外側の余白を 20px -> 8px に削って、画面を広く使うっぺ
+      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 8px;",
       container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);",
-      header: "background: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid " + brandColor + ";",
+      header: "background: #1e293b; padding: 30px 15px; text-align: center; border-bottom: 4px solid " + brandColor + ";",
       logoText: "color: #ffffff; font-size: 20px; font-weight: bold; display: block; text-decoration: none;",
-      content: "padding: 40px 30px;",
-      greeting: "font-size: 16px; margin-bottom: 25px; line-height: 1.8; color: #334155; font-weight: bold;",
+      
+      // メインの余白を 30px -> 15px にスリム化
+      content: "padding: 30px 15px;",
+      greeting: "font-size: 16px; margin-bottom: 25px; line-height: 1.6; color: #334155; font-weight: bold;",
       messageBody: "font-size: 15px; line-height: 1.8; color: #334155; white-space: pre-wrap;",
-      card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 30px;",
-      label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;",
-      value: "font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px;",
-      // 追加：お問い合わせセクション用
-      contactBox: "margin-top: 20px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
-      calendarLink: "display: inline-block; font-size: 12px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 6px; background-color: #f0f9ff; font-weight: bold; margin-top: 10px;",
-      footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 12px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
+      
+      // ★ カードのデザインは維持！余白だけ 20px -> 15px に調整
+      card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 25px;",
+      label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px; text-transform: uppercase;",
+      value: "font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; line-height: 1.4;",
+      
+      contactBox: "margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e2e8f0;",
+      calendarLink: "display: inline-block; font-size: 11px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 8px 14px; border-radius: 6px; background-color: #f0f9ff; font-weight: bold; margin-top: 10px;",
+      footer: "background-color: #f8fafc; color: #94a3b8; padding: 25px 15px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
       footerLink: "color: " + brandColor + "; text-decoration: none; font-weight: bold;"
     };
 
