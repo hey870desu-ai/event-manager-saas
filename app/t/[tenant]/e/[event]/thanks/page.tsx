@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { CheckCircle, AlertCircle, Loader2, ArrowLeft, Clock, ReceiptText } from "lucide-react"; // Clock, ReceiptTextを追加
 
 function SuccessContent() {
+  const params = useParams();
+  const tId = params.tenantId as string;
+  const eId = params.eventId as string;
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get("session_id");
@@ -136,7 +139,7 @@ function SuccessContent() {
 
             <div className="space-y-3">
               <button 
-                onClick={() => router.push(`/t/${ticketData.tenantId}/e/${ticketData.eventId}`)}
+                onClick={() => router.push(`/t/${tId}/e/${eId}`)} // APIを待たずにこれを使えば確実だっぺ！
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-bold transition-colors"
               >
                 <ArrowLeft size={18} /> イベントページに戻る

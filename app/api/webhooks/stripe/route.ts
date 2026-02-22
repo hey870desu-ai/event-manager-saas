@@ -115,7 +115,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
 
             // C. メール送信APIを叩く
             // （Webhookはサーバー側で動くので、自分のAPIをfetchで叩きます）
-            const baseUrl = "https://event-manager.app/"; // ★ ここを実際のURLに書き換えてください
+            const baseUrl = "https://event-manager.app"; // ★ ここを実際のURLに書き換えてください
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
