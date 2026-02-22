@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       },
 
       // 決済成功時とキャンセル時の戻り先URL
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}`,
       
       metadata: {
