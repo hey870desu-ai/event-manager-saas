@@ -180,7 +180,7 @@ export async function POST(request: Request) {
           
           <div style="${styles.footer}">
             <p style="margin: 0; font-weight: bold; font-size: 14px; color: #475569;">${senderName}</p>
-            <p style="margin-top: 4px; color: #94a3b8;">CARE DESIGN WORKS 事業部</p>
+            <p style="margin-top: 4px; color: #94a3b8;">${senderName} 事務局</p>
             
             ${tenantUrl ? `
               <p style="margin-top: 10px;">
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
             
             <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; opacity: 0.6; font-size: 10px; letter-spacing: 1px;">
-                © ${new Date().getFullYear()} CARE DESIGN WORKS. All Rights Reserved.
+                © ${new Date().getFullYear()} ${senderName}. All Rights Reserved.
               </p>
             </div>
           </div>

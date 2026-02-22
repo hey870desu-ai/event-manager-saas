@@ -214,7 +214,7 @@ export async function POST(request: Request) {
             <div style="${styles.footer}">
               <p style="margin: 0; font-weight: bold;">${senderName}</p>
               ${homeUrl !== '#' ? `<p style="margin-top: 10px;"><a href="${homeUrl}" style="${styles.footerLink}">公式サイト</a></p>` : ''}
-              <p style="margin-top: 20px; opacity: 0.5;">© ${new Date().getFullYear()} Event System.</p>
+              <p style="margin-top: 20px; opacity: 0.5;">© ${new Date().getFullYear()} ${senderName}.</p>
             </div>
           </div>
         </body>
