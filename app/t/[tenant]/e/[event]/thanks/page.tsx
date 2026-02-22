@@ -6,8 +6,8 @@ import { CheckCircle, AlertCircle, Loader2, ArrowLeft, Clock, ReceiptText } from
 
 function SuccessContent() {
   const params = useParams();
-  const tId = params.tenantId as string;
-  const eId = params.eventId as string;
+  const tId = params.tenant || params.tenantId; // どっちでも動くようにするぞい
+  const eId = params.event || params.eventId;   // どっちでも動くようにするぞい
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get("session_id");
@@ -109,7 +109,7 @@ function SuccessContent() {
                 </div>
                 <div className="bg-indigo-900/30 border border-indigo-500/30 rounded-lg p-3 mb-8 text-sm text-indigo-200">
                    <p className="font-bold flex items-center justify-center gap-2 mb-1">
-                     📸 スクリーンショット推奨
+                     📸 当日の受講票になりますのでスクリーンショットで保管してください。
                    </p>
                 </div>
               </>
