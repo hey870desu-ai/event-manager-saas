@@ -50,9 +50,8 @@ export async function POST(request: Request) {
       },
 
       // 決済成功時とキャンセル時の戻り先URL
-      
       success_url: `${domain}/t/${tenantId}/e/${eventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}`,
+      cancel_url: `${domain}/t/${tenantId}/e/${eventId}`,
       
       metadata: {
         tenantId,

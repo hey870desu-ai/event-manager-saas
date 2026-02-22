@@ -11,12 +11,15 @@ export async function POST(request: Request) {
     const { sessionId } = await request.json();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // 余計な処理（メールやDB更新）は全部カットだっぺ！
-    // 画面側には「支払い状況」だけを返してあげるぞい。
+    // ⭕ TypeScriptに「中身は文字列だっぺ！」と教えることで波線を消すぞい
+    const metadata = session.metadata || {};
+
     return NextResponse.json({ 
       success: true,
-      paymentStatus: session.payment_status, // 'paid' かどうか
-      reservationId: session.metadata?.reservationId
+      paymentStatus: session.payment_status,
+      reservationId: metadata.reservationId || "",
+      eventId: metadata.eventId || "",   // ✅ これで赤い波線は消えるっぺ！
+      tenantId: metadata.tenantId || ""   // ✅ これも消えるっぺ！
     });
 
   } catch (error: any) {
