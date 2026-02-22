@@ -132,28 +132,31 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
       const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
       // ★ これを追加
 setNewReservationId(docRef.id);
+      // ▼▼▼ ログを出すっぺ！これで判定の嘘がバレるぞい ▼▼▼
+      console.log("💰 最終判定:", { isPaid, priceAmount, eventPrice: event.price });
 
-      // ▼▼▼ 追加: 有料イベントの場合 ▼▼▼
+      // ▼▼▼ 有料イベントの場合：Stripeへ飛ばす ▼▼▼
       if (isPaid) {
-        const res = await fetch('/api/stripe/checkout', {
+        // ★修正：イベント専用のAPI（checkout-event）を呼ぶようにするっぺ！
+        const res = await fetch('/api/stripe/checkout-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             eventId: safeEventId,
             tenantId: safeTenantId,
-            price: priceAmount,
-            title: event.title,
-            origin: window.location.origin,
-            reservationId: docRef.id, 
-            email: reservationData.email
+            amount: priceAmount, // 金額
+            eventTitle: event.title,
+            email: reservationData.email,
+            reservationId: docRef.id,
+            // 豊嶋さんのStripeアカウントIDを渡して、手数料を引く準備をするっぺ
+            stripeAccountId: safeTenant?.stripeConnectId 
           }),
         });
 
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
         if (data.url) {
-          window.location.href = data.url; // Stripeへ移動
-          return; 
+          window.location.href = data.url; 
+          return;
         }
       }
 
