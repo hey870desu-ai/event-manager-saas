@@ -1,6 +1,8 @@
 // 📂 app/api/send-email/route.ts (完全統合版)
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend'; // 👈 nodemailerを消してこれに変更
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 日付フォーマット
 function formatToJapaneseDate(dateString: string): string {
@@ -198,20 +200,21 @@ export async function POST(request: Request) {
       </body>
       </html>`;
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
-    });
-
-    await transporter.sendMail({
-      from: `"${senderName}" <${process.env.GMAIL_USER}>`,
-      replyTo: replyTo || process.env.GMAIL_USER,
-      to: email,
+    const { data, error } = await resend.emails.send({
+      from: `${senderName} <info@event-manager.app>`, // 👈 ここが重要！
+      to: [email],
+      replyTo: replyTo || "info@event-manager.app",
       subject: subject,
       html: finalHtml,
     });
 
-    return NextResponse.json({ success: true });
+    if (error) {
+      console.error('Resend Error:', error);
+      return NextResponse.json({ success: false, error }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+
   } catch (error: any) {
     console.error('Email Send Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

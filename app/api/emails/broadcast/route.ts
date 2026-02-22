@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
+const resend = new Resend(process.env.RESEND_API_KEY);
 import { adminDb } from '@/lib/firebase-admin';
 
 // 🗓️ GoogleカレンダーURL生成
@@ -83,14 +84,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, count: 0, message: '対象者がいませんでした' });
     }
 
-    // 3. 送信設定
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
-      },
-    });
 
     // テナント情報の整備（ここが calendarUrl より先にないとダメ！）
     const senderName = tData?.orgName || tData?.name || "イベント事務局";
@@ -222,13 +215,16 @@ export async function POST(request: Request) {
       `;
 
       try {
-        await transporter.sendMail({
-          from: `"${senderName}" <${process.env.GMAIL_USER}>`,
-          replyTo: replyTo,
-          to: userEmail,
+        // ✅ ここを Resend に書き換え！
+        const { error } = await resend.emails.send({
+          from: `${senderName} <info@event-manager.app>`,
+          to: [userEmail],
+          replyTo: replyTo, // 波線対策でキャメルケースにしてあるっぺ
           subject: subject,
           html: htmlContent,
         });
+
+        if (error) throw error;
         sentCount++;
       } catch (err: any) {
         console.error(`Failed to send to ${userEmail}:`, err);
