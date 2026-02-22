@@ -13,7 +13,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { 
       tenantId, 
-      eventId, 
+      eventId,
+      reservationId, 
       eventTitle, 
       amount,       // セミナー作成画面で入力された金額（例：5000）
       email,        // 参加者のメールアドレス
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       metadata: {
         tenantId,
         eventId,
+        reservationId,
         type: 'event_payment'
       },
     });
