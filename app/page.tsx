@@ -401,7 +401,7 @@ export default function Home() {
             {/* 行1: 制作会社 */}
             <tr>
                <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">制作会社（プロ品質）</td>
-               <td className="p-6 md:p-8 whitespace-nowrap">30万 〜 100万円+</td>
+               <td className="p-6 md:p-8 whitespace-nowrap">30万 〜 100万円以上</td>
                <td className="p-6 md:p-8 text-center text-sm whitespace-nowrap">1 〜 2ヶ月</td>
                <td className="p-6 md:p-8 text-center whitespace-nowrap">
                   <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span>
@@ -454,7 +454,7 @@ export default function Home() {
               <div className="mt-24">
                  <div className="text-center mb-16">
                     <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">
-                       「Event Manager」が<br className="sm:hidden"/>圧倒的なコスト削減を実現できる理由
+                       「Event Manager」の<br className="sm:hidden"/>導入メリットと強み
                     </h3>
                  </div>
 
