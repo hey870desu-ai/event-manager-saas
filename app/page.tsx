@@ -97,7 +97,7 @@ export default function Home() {
            <div className="container mx-auto max-w-6xl px-4">
               <div className="text-center mb-16">
                  <h2 className="text-3xl md:text-4xl font-black mb-4 text-slate-900">
-                    「イベント管理」の時間を、<br className="sm:hidden"/>「企画」の時間へ。
+                    「イベント準備」の時間を、<br className="sm:hidden"/>「企画」の時間へ。
                  </h2>
                  <p className="text-slate-600 text-lg max-w-2xl mx-auto">
                     名簿の印刷、エクセルへの転記、メールの送信…。<br className="hidden sm:inline"/>
