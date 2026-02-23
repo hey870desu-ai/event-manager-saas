@@ -382,31 +382,23 @@ export default function Home() {
                  </p>
               </div>
 
-              {/* 📊 比較テーブル：横スクロール対応版 */}
+{/* 📊 比較テーブル：3行復活 ＆ 横スクロール完全版 */}
 <div className="relative group">
-   {/* 1. 外側の div に overflow-x-auto を追加して、はみ出しても横に滑らせるっぺ！ */}
-   <div className="relative overflow-x-auto pb-4 custom-scrollbar bg-white border border-slate-200 shadow-2xl rounded-[2rem]">
+   {/* 1. 外側の div を横滑り可能に設定 */}
+   <div className="relative overflow-x-auto pb-4 bg-white border border-slate-200 shadow-2xl rounded-[2rem] custom-scrollbar">
       
-      {/* 2. table に min-w-[700px] を指定して、スマホでも「横長」をキープさせるぞい！ */}
+      {/* 2. テーブルに最小幅を持たせて文字を潰さない */}
       <table className="w-full min-w-[700px] text-left border-collapse">
          <thead>
             <tr className="bg-slate-50/50 border-b border-slate-100">
-               {/* 3. 各 th/td に whitespace-nowrap を入れて、絶対に勝手に改行させないっぺ！ */}
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
-                  制作手法
-               </th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
-                  概算費用
-               </th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">
-                  制作期間
-               </th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">
-                  クオリティ
-               </th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">制作手法</th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">概算費用</th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">制作期間</th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">クオリティ</th>
             </tr>
          </thead>
          <tbody className="divide-y divide-slate-100 text-slate-600">
+            {/* 行1: 制作会社 */}
             <tr>
                <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">制作会社（プロ品質）</td>
                <td className="p-6 md:p-8 whitespace-nowrap">30万 〜 100万円+</td>
@@ -415,8 +407,16 @@ export default function Home() {
                   <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span>
                </td>
             </tr>
-            {/* ... フリーランスの行も同様に whitespace-nowrap を追加 ... */}
-            
+            {/* 🌟 行2: フリーランス（ここが消えていたので復活だっぺ！） */}
+            <tr>
+               <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">フリーランス（標準）</td>
+               <td className="p-6 md:p-8 whitespace-nowrap">10万 〜 30万円</td>
+               <td className="p-6 md:p-8 text-center text-sm whitespace-nowrap">2週間 〜 1ヶ月</td>
+               <td className="p-6 md:p-8 text-center whitespace-nowrap">
+                  <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">バラツキあり</span>
+               </td>
+            </tr>
+            {/* 行3: Event Manager */}
             <tr className="bg-indigo-600 text-white">
                <td className="p-6 md:p-8 font-black flex items-center gap-3 whitespace-nowrap">
                   <Sparkles size={20} className="text-indigo-200"/> 
@@ -434,7 +434,7 @@ export default function Home() {
       </table>
    </div>
    
-   {/* スマホの時だけ「横にスライドしてね」というヒントを出す（任意） */}
+   {/* 3. スマホのみに表示されるスワイプのヒント（看板だっぺ） */}
    <div className="md:hidden text-center mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
       ← Swipe to compare →
    </div>
