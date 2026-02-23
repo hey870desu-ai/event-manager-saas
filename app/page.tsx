@@ -377,7 +377,7 @@ export default function Home() {
                     「制作会社」への外注を、<br className="sm:hidden"/>過去の習慣に。
                  </h2>
                  <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-                    1回きりのイベントに、数十万円をかけ続ける必要はありません。<br className="hidden sm:inline"/>
+                    1回きりのイベントに、数十万円をかける必要はありません。<br className="hidden sm:inline"/>
                     プロの品質を、あなたの手で、わずか10分で。
                  </p>
               </div>
@@ -429,19 +429,50 @@ export default function Home() {
                  </div>
               </div>
 
-              {/* 💡 結論：フッターテキスト */}
-              <div className="mt-16 bg-white p-8 md:p-12 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8">
-                 <div className="flex-1">
-                    <h3 className="text-2xl font-black text-slate-900 mb-4">「資産」としてのLPを、何度でも。</h3>
-                    <p className="text-slate-600 leading-relaxed text-sm md:text-base">
-                       100万円クラスの制作会社が作るLPを「コンポーネント化」しました。<br className="hidden md:inline"/>
-                       一度データを入力すれば、2回目以降は外注費0円。データを流し込むだけで、プロ品質のページが量産されます。
-                    </p>
+              {/* 💡 結論：なぜ「外注費0円」が可能なのか？ */}
+              <div className="mt-24">
+                 <div className="text-center mb-12">
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-900">
+                       「都度発注」の時代は、もう終わり。
+                    </h3>
                  </div>
-                 <div className="shrink-0">
-                    <Link href="/register" className="inline-flex items-center gap-2 bg-slate-900 text-white font-bold py-4 px-8 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg">
-                       今すぐ無料で試す <ArrowRight size={18}/>
-                    </Link>
+
+                 <div className="grid md:grid-cols-3 gap-8">
+                    {/* Step 1 */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">01</div>
+                       <div className="relative z-10">
+                          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 font-bold">型</div>
+                          <h4 className="text-lg font-bold mb-3 text-slate-900">プロの「型」を資産にする</h4>
+                          <p className="text-sm text-slate-500 leading-relaxed">
+                             100万円クラスの制作会社が使う「勝てるデザインの構成」をシステム化。一度契約すれば、その高品質なテンプレートがあなたの「自社資産」になります。
+                          </p>
+                       </div>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">02</div>
+                       <div className="relative z-10">
+                          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 font-bold">流</div>
+                          <h4 className="text-lg font-bold mb-3 text-slate-900">データを流し込むだけ</h4>
+                          <p className="text-sm text-slate-500 leading-relaxed">
+                             2回目以降は、新しいイベントの情報を入力するだけ。プロに依頼していたデザイン・コーディング工程が「10分のデータ入力」に置き換わります。
+                          </p>
+                       </div>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">03</div>
+                       <div className="relative z-10">
+                          <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mb-6 font-bold">得</div>
+                          <h4 className="text-lg font-bold mb-3 text-slate-900">浮いた予算を企画へ</h4>
+                          <p className="text-sm text-slate-500 leading-relaxed">
+                             開催のたびに消えていた数十万円の外注費は、もうかかりません。その予算を広告費やゲストへの謝礼に回し、イベントの質をさらに高めましょう。
+                          </p>
+                       </div>
+                    </div>
                  </div>
               </div>
            </div>
