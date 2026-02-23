@@ -382,61 +382,63 @@ export default function Home() {
                  </p>
               </div>
 
-              {/* 📊 比較テーブル：カードスタイル */}
-              <div className="relative group">
-                 {/* 装飾用の背景光 */}
-                 <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[2rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
-                 
-                 <div className="relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-[2rem]">
-                    <table className="w-full text-left border-collapse">
-                       {/* 📊 比較テーブル：ヘッダーの文字サイズをアップ */}
-<thead className="bg-slate-50/50 border-b border-slate-100">
-   <tr>
-      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest">
-         制作手法
-      </th>
-      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest">
-         概算費用
-      </th>
-      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center">
-         制作期間
-      </th>
-      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center">
-         クオリティ
-      </th>
-   </tr>
-</thead>
-                       <tbody className="divide-y divide-slate-100">
-                          <tr className="text-slate-600">
-                             <td className="p-6 md:p-8 font-bold text-slate-900">制作会社（プロ品質）</td>
-                             <td className="p-6 md:p-8">30万 〜 100万円以上</td>
-                             <td className="p-6 md:p-8 text-center text-sm">1 〜 2ヶ月</td>
-                             <td className="p-6 md:p-8 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span></td>
-                          </tr>
-                          <tr className="text-slate-600">
-                             <td className="p-6 md:p-8 font-bold text-slate-900">フリーランス（標準）</td>
-                             <td className="p-6 md:p-8">10万 〜 30万円</td>
-                             <td className="p-6 md:p-8 text-center text-sm">2週間 〜 1ヶ月</td>
-                             <td className="p-6 md:p-8 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">バラツキあり</span></td>
-                          </tr>
-                          {/* 🌟 Event Manager の強調行 */}
-                          <tr className="bg-indigo-600 text-white">
-                             <td className="p-6 md:p-8 font-black flex items-center gap-3">
-                                <Sparkles size={20} className="text-indigo-200"/> 
-                                <span className="text-xl">Event Manager</span>
-                             </td>
-                             <td className="p-6 md:p-8">
-                                <div className="text-2xl font-black">¥3,300<span className="text-xs font-normal opacity-80">/月</span></div>
-                             </td>
-                             <td className="p-6 md:p-8 text-center font-black">わずか 10分</td>
-                             <td className="p-6 md:p-8 text-center">
-                                <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-bold backdrop-blur-sm">プロ品質（再利用可）</span>
-                             </td>
-                          </tr>
-                       </tbody>
-                    </table>
-                 </div>
-              </div>
+              {/* 📊 比較テーブル：横スクロール対応版 */}
+<div className="relative group">
+   {/* 1. 外側の div に overflow-x-auto を追加して、はみ出しても横に滑らせるっぺ！ */}
+   <div className="relative overflow-x-auto pb-4 custom-scrollbar bg-white border border-slate-200 shadow-2xl rounded-[2rem]">
+      
+      {/* 2. table に min-w-[700px] を指定して、スマホでも「横長」をキープさせるぞい！ */}
+      <table className="w-full min-w-[700px] text-left border-collapse">
+         <thead>
+            <tr className="bg-slate-50/50 border-b border-slate-100">
+               {/* 3. 各 th/td に whitespace-nowrap を入れて、絶対に勝手に改行させないっぺ！ */}
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                  制作手法
+               </th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                  概算費用
+               </th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">
+                  制作期間
+               </th>
+               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">
+                  クオリティ
+               </th>
+            </tr>
+         </thead>
+         <tbody className="divide-y divide-slate-100 text-slate-600">
+            <tr>
+               <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">制作会社（プロ品質）</td>
+               <td className="p-6 md:p-8 whitespace-nowrap">30万 〜 100万円+</td>
+               <td className="p-6 md:p-8 text-center text-sm whitespace-nowrap">1 〜 2ヶ月</td>
+               <td className="p-6 md:p-8 text-center whitespace-nowrap">
+                  <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span>
+               </td>
+            </tr>
+            {/* ... フリーランスの行も同様に whitespace-nowrap を追加 ... */}
+            
+            <tr className="bg-indigo-600 text-white">
+               <td className="p-6 md:p-8 font-black flex items-center gap-3 whitespace-nowrap">
+                  <Sparkles size={20} className="text-indigo-200"/> 
+                  <span className="text-xl">Event Manager</span>
+               </td>
+               <td className="p-6 md:p-8 whitespace-nowrap">
+                  <div className="text-2xl font-black">¥3,300<span className="text-xs font-normal opacity-80">/月</span></div>
+               </td>
+               <td className="p-6 md:p-8 text-center font-black whitespace-nowrap">わずか 10分</td>
+               <td className="p-6 md:p-8 text-center whitespace-nowrap">
+                  <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-bold backdrop-blur-sm">プロ品質（再利用可）</span>
+               </td>
+            </tr>
+         </tbody>
+      </table>
+   </div>
+   
+   {/* スマホの時だけ「横にスライドしてね」というヒントを出す（任意） */}
+   <div className="md:hidden text-center mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
+      ← Swipe to compare →
+   </div>
+</div>
 
               {/* 💡 結論：なぜ「外注費0円」が可能なのか？（洗練版） */}
               <div className="mt-24">
