@@ -417,19 +417,29 @@ export default function Home() {
                </td>
             </tr>
             {/* 行3: Event Manager */}
-            <tr className="bg-indigo-600 text-white">
-               <td className="p-6 md:p-8 font-black flex items-center gap-3 whitespace-nowrap">
-                  <Sparkles size={20} className="text-indigo-200"/> 
-                  <span className="text-xl">Event Manager</span>
-               </td>
-               <td className="p-6 md:p-8 whitespace-nowrap">
-                  <div className="text-2xl font-black">¥3,300<span className="text-xs font-normal opacity-80">/月</span></div>
-               </td>
-               <td className="p-6 md:p-8 text-center font-black whitespace-nowrap">わずか 10分</td>
-               <td className="p-6 md:p-8 text-center whitespace-nowrap">
-                  <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-bold backdrop-blur-sm">プロ品質（再利用可）</span>
-               </td>
-            </tr>
+            <tr className="relative group bg-indigo-50/30"> {/* ほんのり色をつけて境界を出すぞい */}
+      <td className="p-6 md:p-8 whitespace-nowrap">
+         <div className="flex items-center gap-3">
+            <Sparkles size={22} className="text-indigo-600" />
+            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500 tracking-tight">
+               Event Manager
+            </span>
+         </div>
+      </td>
+      <td className="p-6 md:p-8 whitespace-nowrap">
+         <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
+            ¥3,300<span className="text-xs font-medium text-indigo-400">/月</span>
+         </div>
+      </td>
+      <td className="p-6 md:p-8 text-center whitespace-nowrap">
+         <span className="text-lg font-black text-indigo-700">わずか 10分</span>
+      </td>
+      <td className="p-6 md:p-8 text-center whitespace-nowrap">
+         <span className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-full text-xs font-black shadow-lg shadow-indigo-500/20">
+            プロ品質（再利用可）
+         </span>
+      </td>
+   </tr>
          </tbody>
       </table>
    </div>
