@@ -389,18 +389,27 @@ export default function Home() {
                  
                  <div className="relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-[2rem]">
                     <table className="w-full text-left border-collapse">
-                       <thead>
-                          <tr className="bg-slate-50/50 border-b border-slate-100">
-                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest">制作手法</th>
-                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest">概算費用</th>
-                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">制作期間</th>
-                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">クオリティ</th>
-                          </tr>
-                       </thead>
+                       {/* 📊 比較テーブル：ヘッダーの文字サイズをアップ */}
+<thead className="bg-slate-50/50 border-b border-slate-100">
+   <tr>
+      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest">
+         制作手法
+      </th>
+      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest">
+         概算費用
+      </th>
+      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center">
+         制作期間
+      </th>
+      <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center">
+         クオリティ
+      </th>
+   </tr>
+</thead>
                        <tbody className="divide-y divide-slate-100">
                           <tr className="text-slate-600">
                              <td className="p-6 md:p-8 font-bold text-slate-900">制作会社（プロ品質）</td>
-                             <td className="p-6 md:p-8">30万 〜 100万円+</td>
+                             <td className="p-6 md:p-8">30万 〜 100万円以上</td>
                              <td className="p-6 md:p-8 text-center text-sm">1 〜 2ヶ月</td>
                              <td className="p-6 md:p-8 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span></td>
                           </tr>
@@ -475,7 +484,7 @@ export default function Home() {
                           </div>
                           <h4 className="text-xl font-black mb-4 text-slate-900">浮いた予算を次なる企画へ</h4>
                           <p className="text-sm text-slate-500 leading-relaxed">
-                             開催のたびに消費されていた数十万円の外注費はもう不要です。その予算を広告やコンテンツの質向上に回し、イベントの成功率をさらに高めましょう。
+                             開催のたびに消えていた数十万円の外注費は、もうかかりません。その予算を広告費やゲストへの謝礼に回し、イベントの質をさらに高めましょう。
                           </p>
                        </div>
                     </div>
