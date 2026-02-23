@@ -446,49 +446,49 @@ export default function Home() {
                     </h3>
                  </div>
 
-                 <div className="grid md:grid-cols-3 gap-8">
-                    {/* Point 1 */}
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-indigo-50/50 transition-colors">01</div>
-                       <div className="relative z-10">
-                          <div className="inline-flex px-4 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-                             POINT 01
-                          </div>
-                          <h4 className="text-xl font-black mb-4 text-slate-900">プロの「型」を自社資産に</h4>
-                          <p className="text-sm text-slate-500 leading-relaxed">
-                             100万円クラスの制作会社が設計する「成果の出る構成」をシステム化。一度導入すれば、高品質なデザインテンプレートがあなたの強力な「自社資産」に変わります。
-                          </p>
-                       </div>
-                    </div>
+                 <div className="grid md:grid-cols-3 gap-8 items-stretch"> {/* items-stretch で高さを揃えるっぺ */}
+   {/* Point 1 */}
+   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-indigo-50/50 transition-colors pointer-events-none">01</div>
+      <div className="relative z-10 flex flex-col h-full">
+         <div className="inline-flex self-start px-4 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+            POINT 01
+         </div>
+         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">プロの「型」を自社資産に</h4>
+         <p className="text-sm text-slate-500 leading-relaxed flex-1">
+            100万円クラスの制作会社が設計する「成果の出る構成」をシステム化。一度導入すれば、高品質なデザインテンプレートがあなたの強力な「自社資産」に変わります。
+         </p>
+      </div>
+   </div>
 
-                    {/* Point 2 */}
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-emerald-50/50 transition-colors">02</div>
-                       <div className="relative z-10">
-                          <div className="inline-flex px-4 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-                             POINT 02
-                          </div>
-                          <h4 className="text-xl font-black mb-4 text-slate-900">10分のデータ入力で完成</h4>
-                          <p className="text-sm text-slate-500 leading-relaxed">
-                             2回目以降は、新しいイベント情報を流し込むだけ。これまで数週間かかっていた外注とのやり取りが、わずか10分ほどの「データ入力」に置き換わります。
-                          </p>
-                       </div>
-                    </div>
+   {/* Point 2: ここも flex-col と min-h でビシッと揃えるぞい！ */}
+   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-emerald-50/50 transition-colors pointer-events-none">02</div>
+      <div className="relative z-10 flex flex-col h-full">
+         <div className="inline-flex self-start px-4 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+            POINT 02
+         </div>
+         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">10分のデータ入力で完成</h4>
+         <p className="text-sm text-slate-500 leading-relaxed flex-1">
+            2回目以降は、新しいイベント情報を流し込むだけ。これまで数週間かかっていた外注とのやり取りが、わずか10分ほどの「データ入力」に置き換わります。
+         </p>
+      </div>
+   </div>
 
-                    {/* Point 3 */}
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-orange-50/50 transition-colors">03</div>
-                       <div className="relative z-10">
-                          <div className="inline-flex px-4 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-                             POINT 03
-                          </div>
-                          <h4 className="text-xl font-black mb-4 text-slate-900">浮いた予算を次なる企画へ</h4>
-                          <p className="text-sm text-slate-500 leading-relaxed">
-                             開催のたびに消えていた数十万円の外注費は、もうかかりません。その予算を広告費やゲストへの謝礼に回し、イベントの質をさらに高めましょう。
-                          </p>
-                       </div>
-                    </div>
-                 </div>
+   {/* Point 3 */}
+   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-orange-50/50 transition-colors pointer-events-none">03</div>
+      <div className="relative z-10 flex flex-col h-full">
+         <div className="inline-flex self-start px-4 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+            POINT 03
+         </div>
+         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">浮いた予算を次なる企画へ</h4>
+         <p className="text-sm text-slate-500 leading-relaxed flex-1">
+            開催のたびに消費されていた数十万円の外注費はもう不要です。その予算を広告やコンテンツの質向上に回し、イベントの成功率をさらに高めましょう。
+         </p>
+      </div>
+   </div>
+</div>
               </div>
            </div>
         </section>
