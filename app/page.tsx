@@ -366,6 +366,93 @@ export default function Home() {
            </div>
         </section>
 
+        {/* ▼ Comparison Section (圧倒的コスパの証明) */}
+        <section className="py-24 bg-slate-900 text-white overflow-hidden relative">
+           {/* 背景装飾 */}
+           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px]"></div>
+           
+           <div className="container mx-auto max-w-6xl px-4 relative z-10">
+              <div className="text-center mb-16">
+                 <h2 className="text-3xl md:text-5xl font-black mb-6 leading-tight">
+                    なぜ、多くの主催者が<br className="sm:hidden"/>「制作会社」への依頼を辞めたのか
+                 </h2>
+                 <p className="text-slate-400 text-lg">
+                    1回きりのイベントに、数十万円をかけ続ける時代は終わりました。
+                 </p>
+              </div>
+
+              {/* 📊 比較テーブル */}
+              <div className="overflow-x-auto">
+                 <table className="w-full text-left border-collapse bg-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                    <thead>
+                       <tr className="bg-white/10 text-slate-300 text-sm uppercase tracking-widest">
+                          <th className="p-6">制作手法</th>
+                          <th className="p-6">費用感</th>
+                          <th className="p-6">制作期間</th>
+                          <th className="p-6">クオリティ</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-slate-300">
+                       <tr>
+                          <td className="p-6 font-bold">制作会社（プロ）</td>
+                          <td className="p-6 text-red-400">30万 〜 100万円+</td>
+                          <td className="p-6">1 〜 2ヶ月</td>
+                          <td className="p-6 text-emerald-400">最高品質</td>
+                       </tr>
+                       <tr>
+                          <td className="p-6 font-bold">フリーランス</td>
+                          <td className="p-6 text-orange-400">10万 〜 30万円</td>
+                          <td className="p-6">2週間 〜 1ヶ月</td>
+                          <td className="p-6">人により変動</td>
+                       </tr>
+                       <tr className="bg-indigo-600/20 text-white">
+                          <td className="p-6 font-black flex items-center gap-2">
+                             <Sparkles size={18} className="text-indigo-400"/> Event Manager
+                          </td>
+                          <td className="p-6 font-black text-xl">月額 ¥3,300</td>
+                          <td className="p-6 font-black">わずか 10分</td>
+                          <td className="p-6 font-black text-indigo-400">プロ品質（再利用可）</td>
+                       </tr>
+                    </tbody>
+                 </table>
+              </div>
+
+              {/* 💡 結論のまとめ */}
+              <div className="mt-16 grid md:grid-cols-2 gap-12 items-center">
+                 <div className="space-y-6">
+                    <h3 className="text-2xl md:text-3xl font-bold leading-snug">
+                       「資産」としての<br/>イベントLPを手に入れる。
+                    </h3>
+                    <p className="text-slate-400 leading-relaxed">
+                       私たちは、100万円クラスの制作会社が作るLPを「コンポーネント化」しました。<br/>
+                       一度データを入力すれば、2回目以降は外注費0円。データを流し込むだけで、プロ品質のページが量産されます。
+                    </p>
+                    <div className="flex gap-4 items-center p-4 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl">
+                       <Zap className="text-indigo-400" size={24}/>
+                       <p className="text-sm font-bold">浮いた予算を、イベントの中身や広告費に回して成功を加速させましょう。</p>
+                    </div>
+                 </div>
+                 
+                 {/* イメージ図やグラフ */}
+                 <div className="relative aspect-video rounded-3xl bg-slate-800 border border-white/10 overflow-hidden shadow-inner">
+                    <div className="absolute inset-0 flex items-center justify-center p-12">
+                       {/* ここにコスト削減のグラフをイメージしたImageなどを入れるっぺ */}
+                       <div className="w-full space-y-4">
+                          <div className="h-4 bg-slate-700 rounded-full w-full overflow-hidden">
+                             <div className="h-full bg-red-500 w-full"></div>
+                          </div>
+                          <p className="text-[10px] text-slate-500">制作会社への外注（毎回積み重なるコスト）</p>
+                          <div className="h-4 bg-slate-700 rounded-full w-full overflow-hidden">
+                             <div className="h-full bg-indigo-500 w-12 animate-pulse"></div>
+                          </div>
+                          <p className="text-[10px] text-indigo-400 font-bold">Event Manager（一度導入すれば維持費のみ）</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </section>
+
 
         {/* ▼ 詳細機能グリッド (Bento Grid) */}
         <section className="py-24 bg-slate-50 border-y border-slate-200">
