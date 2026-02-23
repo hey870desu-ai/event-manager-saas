@@ -429,47 +429,53 @@ export default function Home() {
                  </div>
               </div>
 
-              {/* 💡 結論：なぜ「外注費0円」が可能なのか？ */}
+              {/* 💡 結論：なぜ「外注費0円」が可能なのか？（洗練版） */}
               <div className="mt-24">
-                 <div className="text-center mb-12">
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-900">
-                       「都度発注」の時代は、もう終わり。
+                 <div className="text-center mb-16">
+                    <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">
+                       「Event Manager」が<br className="sm:hidden"/>圧倒的なコスト削減を実現できる理由
                     </h3>
                  </div>
 
                  <div className="grid md:grid-cols-3 gap-8">
-                    {/* Step 1 */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">01</div>
+                    {/* Point 1 */}
+                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-indigo-50/50 transition-colors">01</div>
                        <div className="relative z-10">
-                          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 font-bold">型</div>
-                          <h4 className="text-lg font-bold mb-3 text-slate-900">プロの「型」を資産にする</h4>
+                          <div className="inline-flex px-4 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+                             POINT 01
+                          </div>
+                          <h4 className="text-xl font-black mb-4 text-slate-900">プロの「型」を自社資産に</h4>
                           <p className="text-sm text-slate-500 leading-relaxed">
-                             100万円クラスの制作会社が使う「勝てるデザインの構成」をシステム化。一度契約すれば、その高品質なテンプレートがあなたの「自社資産」になります。
+                             100万円クラスの制作会社が設計する「成果の出る構成」をシステム化。一度導入すれば、高品質なデザインテンプレートがあなたの強力な「自社資産」に変わります。
                           </p>
                        </div>
                     </div>
 
-                    {/* Step 2 */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">02</div>
+                    {/* Point 2 */}
+                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-emerald-50/50 transition-colors">02</div>
                        <div className="relative z-10">
-                          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 font-bold">流</div>
-                          <h4 className="text-lg font-bold mb-3 text-slate-900">データを流し込むだけ</h4>
+                          <div className="inline-flex px-4 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+                             POINT 02
+                          </div>
+                          <h4 className="text-xl font-black mb-4 text-slate-900">10分のデータ入力で完成</h4>
                           <p className="text-sm text-slate-500 leading-relaxed">
-                             2回目以降は、新しいイベントの情報を入力するだけ。プロに依頼していたデザイン・コーディング工程が「10分のデータ入力」に置き換わります。
+                             2回目以降は、新しいイベント情報を流し込むだけ。これまで数週間かかっていた外注とのやり取りが、わずか10分ほどの「データ入力」に置き換わります。
                           </p>
                        </div>
                     </div>
 
-                    {/* Step 3 */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
-                       <div className="text-5xl font-black text-slate-100 absolute top-4 right-6 group-hover:text-indigo-50 transition-colors">03</div>
+                    {/* Point 3 */}
+                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                       <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-orange-50/50 transition-colors">03</div>
                        <div className="relative z-10">
-                          <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mb-6 font-bold">得</div>
-                          <h4 className="text-lg font-bold mb-3 text-slate-900">浮いた予算を企画へ</h4>
+                          <div className="inline-flex px-4 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold mb-6 tracking-widest">
+                             POINT 03
+                          </div>
+                          <h4 className="text-xl font-black mb-4 text-slate-900">浮いた予算を次なる企画へ</h4>
                           <p className="text-sm text-slate-500 leading-relaxed">
-                             開催のたびに消えていた数十万円の外注費は、もうかかりません。その予算を広告費やゲストへの謝礼に回し、イベントの質をさらに高めましょう。
+                             開催のたびに消費されていた数十万円の外注費はもう不要です。その予算を広告やコンテンツの質向上に回し、イベントの成功率をさらに高めましょう。
                           </p>
                        </div>
                     </div>
