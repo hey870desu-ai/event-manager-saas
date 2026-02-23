@@ -366,88 +366,82 @@ export default function Home() {
            </div>
         </section>
 
-        {/* ▼ Comparison Section (圧倒的コスパの証明) */}
-        <section className="py-24 bg-slate-900 text-white overflow-hidden relative">
-           {/* 背景装飾 */}
-           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px]"></div>
-           
-           <div className="container mx-auto max-w-6xl px-4 relative z-10">
+        {/* ▼ Comparison Section (統一感重視のライトデザイン版) */}
+        <section className="py-24 bg-slate-50 border-y border-slate-200">
+           <div className="container mx-auto max-w-5xl px-4">
               <div className="text-center mb-16">
-                 <h2 className="text-3xl md:text-5xl font-black mb-6 leading-tight">
-                    なぜ、多くの主催者が<br className="sm:hidden"/>「制作会社」への依頼を辞めたのか
+                 <div className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-indigo-600 uppercase bg-indigo-50 rounded-full">
+                    Cost Performance
+                 </div>
+                 <h2 className="text-3xl md:text-5xl font-black mb-6 text-slate-900 leading-tight">
+                    「制作会社」への外注を、<br className="sm:hidden"/>過去の習慣に。
                  </h2>
-                 <p className="text-slate-400 text-lg">
-                    1回きりのイベントに、数十万円をかけ続ける時代は終わりました。
+                 <p className="text-slate-500 text-lg max-w-2xl mx-auto">
+                    1回きりのイベントに、数十万円をかけ続ける必要はありません。<br className="hidden sm:inline"/>
+                    プロの品質を、あなたの手で、わずか10分で。
                  </p>
               </div>
 
-              {/* 📊 比較テーブル */}
-              <div className="overflow-x-auto">
-                 <table className="w-full text-left border-collapse bg-white/5 rounded-3xl overflow-hidden shadow-2xl">
-                    <thead>
-                       <tr className="bg-white/10 text-slate-300 text-sm uppercase tracking-widest">
-                          <th className="p-6">制作手法</th>
-                          <th className="p-6">費用感</th>
-                          <th className="p-6">制作期間</th>
-                          <th className="p-6">クオリティ</th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-slate-300">
-                       <tr>
-                          <td className="p-6 font-bold">制作会社（プロ）</td>
-                          <td className="p-6 text-red-400">30万 〜 100万円+</td>
-                          <td className="p-6">1 〜 2ヶ月</td>
-                          <td className="p-6 text-emerald-400">最高品質</td>
-                       </tr>
-                       <tr>
-                          <td className="p-6 font-bold">フリーランス</td>
-                          <td className="p-6 text-orange-400">10万 〜 30万円</td>
-                          <td className="p-6">2週間 〜 1ヶ月</td>
-                          <td className="p-6">人により変動</td>
-                       </tr>
-                       <tr className="bg-indigo-600/20 text-white">
-                          <td className="p-6 font-black flex items-center gap-2">
-                             <Sparkles size={18} className="text-indigo-400"/> Event Manager
-                          </td>
-                          <td className="p-6 font-black text-xl">月額 ¥3,300</td>
-                          <td className="p-6 font-black">わずか 10分</td>
-                          <td className="p-6 font-black text-indigo-400">プロ品質（再利用可）</td>
-                       </tr>
-                    </tbody>
-                 </table>
+              {/* 📊 比較テーブル：カードスタイル */}
+              <div className="relative group">
+                 {/* 装飾用の背景光 */}
+                 <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[2rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                 
+                 <div className="relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-[2rem]">
+                    <table className="w-full text-left border-collapse">
+                       <thead>
+                          <tr className="bg-slate-50/50 border-b border-slate-100">
+                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest">制作手法</th>
+                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest">概算費用</th>
+                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">制作期間</th>
+                             <th className="p-6 md:p-8 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">クオリティ</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                          <tr className="text-slate-600">
+                             <td className="p-6 md:p-8 font-bold text-slate-900">制作会社（プロ品質）</td>
+                             <td className="p-6 md:p-8">30万 〜 100万円+</td>
+                             <td className="p-6 md:p-8 text-center text-sm">1 〜 2ヶ月</td>
+                             <td className="p-6 md:p-8 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span></td>
+                          </tr>
+                          <tr className="text-slate-600">
+                             <td className="p-6 md:p-8 font-bold text-slate-900">フリーランス（標準）</td>
+                             <td className="p-6 md:p-8">10万 〜 30万円</td>
+                             <td className="p-6 md:p-8 text-center text-sm">2週間 〜 1ヶ月</td>
+                             <td className="p-6 md:p-8 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">バラツキあり</span></td>
+                          </tr>
+                          {/* 🌟 Event Manager の強調行 */}
+                          <tr className="bg-indigo-600 text-white">
+                             <td className="p-6 md:p-8 font-black flex items-center gap-3">
+                                <Sparkles size={20} className="text-indigo-200"/> 
+                                <span className="text-xl">Event Manager</span>
+                             </td>
+                             <td className="p-6 md:p-8">
+                                <div className="text-2xl font-black">¥3,300<span className="text-xs font-normal opacity-80">/月</span></div>
+                             </td>
+                             <td className="p-6 md:p-8 text-center font-black">わずか 10分</td>
+                             <td className="p-6 md:p-8 text-center">
+                                <span className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-bold backdrop-blur-sm">プロ品質（再利用可）</span>
+                             </td>
+                          </tr>
+                       </tbody>
+                    </table>
+                 </div>
               </div>
 
-              {/* 💡 結論のまとめ */}
-              <div className="mt-16 grid md:grid-cols-2 gap-12 items-center">
-                 <div className="space-y-6">
-                    <h3 className="text-2xl md:text-3xl font-bold leading-snug">
-                       「資産」としての<br/>イベントLPを手に入れる。
-                    </h3>
-                    <p className="text-slate-400 leading-relaxed">
-                       私たちは、100万円クラスの制作会社が作るLPを「コンポーネント化」しました。<br/>
+              {/* 💡 結論：フッターテキスト */}
+              <div className="mt-16 bg-white p-8 md:p-12 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8">
+                 <div className="flex-1">
+                    <h3 className="text-2xl font-black text-slate-900 mb-4">「資産」としてのLPを、何度でも。</h3>
+                    <p className="text-slate-600 leading-relaxed text-sm md:text-base">
+                       100万円クラスの制作会社が作るLPを「コンポーネント化」しました。<br className="hidden md:inline"/>
                        一度データを入力すれば、2回目以降は外注費0円。データを流し込むだけで、プロ品質のページが量産されます。
                     </p>
-                    <div className="flex gap-4 items-center p-4 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl">
-                       <Zap className="text-indigo-400" size={24}/>
-                       <p className="text-sm font-bold">浮いた予算を、イベントの中身や広告費に回して成功を加速させましょう。</p>
-                    </div>
                  </div>
-                 
-                 {/* イメージ図やグラフ */}
-                 <div className="relative aspect-video rounded-3xl bg-slate-800 border border-white/10 overflow-hidden shadow-inner">
-                    <div className="absolute inset-0 flex items-center justify-center p-12">
-                       {/* ここにコスト削減のグラフをイメージしたImageなどを入れるっぺ */}
-                       <div className="w-full space-y-4">
-                          <div className="h-4 bg-slate-700 rounded-full w-full overflow-hidden">
-                             <div className="h-full bg-red-500 w-full"></div>
-                          </div>
-                          <p className="text-[10px] text-slate-500">制作会社への外注（毎回積み重なるコスト）</p>
-                          <div className="h-4 bg-slate-700 rounded-full w-full overflow-hidden">
-                             <div className="h-full bg-indigo-500 w-12 animate-pulse"></div>
-                          </div>
-                          <p className="text-[10px] text-indigo-400 font-bold">Event Manager（一度導入すれば維持費のみ）</p>
-                       </div>
-                    </div>
+                 <div className="shrink-0">
+                    <Link href="/register" className="inline-flex items-center gap-2 bg-slate-900 text-white font-bold py-4 px-8 rounded-2xl hover:bg-indigo-600 transition-all shadow-lg">
+                       今すぐ無料で試す <ArrowRight size={18}/>
+                    </Link>
                  </div>
               </div>
            </div>
@@ -525,7 +519,7 @@ export default function Home() {
         <section id="pricing" className="py-24 bg-white">
           <div className="container mx-auto max-w-5xl px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-black mb-4 text-slate-900">
-              シンプルで、透明な料金プラン
+              シンプルな料金プラン
             </h2>
             <p className="text-slate-600 mb-16">
               まずは無料で。あなたのイベントを成功に導くための最適なプランを選んでください。
