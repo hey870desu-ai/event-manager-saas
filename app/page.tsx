@@ -434,52 +434,70 @@ export default function Home() {
            </div>
         </section>
               
-        {/* ▼ Pricing Section (塙さん完全監修版) */}
+        {/* ▼ Pricing Section (機能充実・縦長ボリューム版) */}
         <section id="pricing" className="py-24 bg-white">
           <div className="container mx-auto max-w-5xl px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-black mb-4 text-slate-900">シンプルで、透明な料金プラン</h2>
-            <p className="text-slate-600 mb-16">イベントの規模と、やりたいことに合わせた3つのプラン。</p>
+            <h2 className="text-3xl md:text-4xl font-black mb-4 text-slate-900">
+              シンプルで、透明な料金プラン
+            </h2>
+            <p className="text-slate-600 mb-16">
+              まずは無料で。あなたのイベントを成功に導くための最適なプランを選んでください。
+            </p>
 
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
               {/* Free Plan */}
-              <div className="border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-all flex flex-col bg-white">
+              <div className="border border-slate-200 rounded-3xl p-8 hover:shadow-xl transition-all flex flex-col bg-white">
                 <h3 className="text-xl font-bold text-slate-900 mb-2">フリー</h3>
                 <div className="text-4xl font-black mb-6">¥0</div>
-                <ul className="space-y-3 text-sm text-slate-600 text-left mb-8 flex-1">
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-600"/> イベント公開・参加受付</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-600"/> 管理画面での名簿確認</li>
-                  <li className="text-slate-400 flex gap-2">❌ ストライプ決済（カード決済）</li>
-                  <li className="text-slate-400 flex gap-2">❌ CSV出力・アンケート集計</li>
+                <ul className="space-y-4 text-sm text-slate-600 text-left mb-10 flex-1">
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> イベント公開・参加受付（無制限）</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> 管理画面での名簿閲覧・手動受付</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> QRコード受付（チェックイン機能）</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> 参加者へのメール送信（一斉・個別）</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> 前日リマインド・開催後の御礼メール</li>
+                  <li className="text-slate-400 flex gap-3 pt-2 border-t border-slate-100 italic">※CSV出力・決済連携・アンケートは不可</li>
                 </ul>
-                <Link href="/register" className="block w-full py-3 rounded-lg border border-slate-300 font-bold text-slate-700 hover:bg-slate-50">無料で始める</Link>
+                <Link href="/register" className="block w-full py-4 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-50 text-center transition-colors">
+                  無料で始める
+                </Link>
               </div>
 
-              {/* Standard Plan (旧Pro) */}
-              <div className="border-2 border-indigo-600 rounded-2xl p-8 shadow-xl relative transform md:-translate-y-4 bg-white flex flex-col">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold">一番人気</div>
+              {/* Standard Plan (おすすめ) */}
+              <div className="border-2 border-indigo-600 rounded-3xl p-8 shadow-2xl relative transform md:-translate-y-4 bg-white flex flex-col scale-105 z-10">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase">
+                  POPULAR
+                </div>
                 <h3 className="text-xl font-bold text-indigo-600 mb-2">スタンダード</h3>
                 <div className="text-4xl font-black mb-6">¥3,300<span className="text-sm font-medium text-slate-400">/月</span></div>
-                <ul className="space-y-3 text-sm text-slate-600 text-left mb-8 flex-1">
-                  <li className="flex gap-2 font-bold text-slate-800"><CheckCircle2 size={16} className="text-indigo-600"/> ストライプ決済連携（参加費徴収）</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-600"/> CSVエクスポート</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-600"/> アンケート作成・自動集計</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-600"/> 全デザインテーマ利用可能</li>
+                <ul className="space-y-4 text-sm text-slate-600 text-left mb-10 flex-1">
+                  <li className="flex gap-3 font-bold text-slate-900"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> ストライプ決済連携（有料イベント対応）</li>
+                  <li className="flex gap-3 font-bold text-slate-900"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> CSVデータ一括ダウンロード</li>
+                  <li className="flex gap-3 font-bold text-slate-900"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> サブ管理者の追加（スタッフ・担当者）</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> アンケート作成・自動集計機能</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> 参加者 250名まで / 1イベント</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-600 shrink-0"/> すべてのデザインテーマが解放</li>
                 </ul>
-                <Link href="/register" className="block w-full py-3 rounded-lg bg-indigo-600 font-bold text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/30">スタンダードで始める</Link>
+                <Link href="/register" className="block w-full py-4 rounded-xl bg-indigo-600 font-bold text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 text-center transition-all">
+                  スタンダードで始める
+                </Link>
               </div>
 
               {/* Pro Plan */}
-              <div className="border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-all flex flex-col bg-slate-900 text-white">
+              <div className="border border-slate-200 rounded-3xl p-8 hover:shadow-xl transition-all flex flex-col bg-slate-900 text-white">
                 <h3 className="text-xl font-bold mb-2">プロ</h3>
                 <div className="text-4xl font-black mb-2">¥11,000<span className="text-sm font-medium text-slate-400">/月〜</span></div>
-                <p className="text-[10px] text-slate-400 mb-6">※基本5テナント（支部）込み</p>
-                <ul className="space-y-3 text-sm text-slate-300 text-left mb-8 flex-1">
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-400"/> 複数テナント一括管理（5支部〜）</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-400"/> 6店舗目以降 ＋¥2,200/月</li>
-                  <li className="flex gap-2 font-bold text-white"><CheckCircle2 size={16} className="text-indigo-400"/> 会員ID管理・受講履歴記録</li>
-                  <li className="flex gap-2"><CheckCircle2 size={16} className="text-indigo-400"/> 専任サポート・導入支援</li>
+                <p className="text-[10px] text-slate-400 mb-6">※基本5テナント（支部）分を含む</p>
+                <ul className="space-y-4 text-sm text-slate-300 text-left mb-10 flex-1">
+                  <li className="flex gap-3 font-bold text-white"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> 複数テナント一括管理（マルチテナント）</li>
+                  <li className="flex gap-3 font-bold text-white"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> 会員ID管理・受講履歴トラッキング</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> 6店舗目以降：＋¥2,200/月（税込）</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> 参加者 1,000名以上の大規模イベント対応</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> 専任担当者による導入・運用サポート</li>
+                  <li className="flex gap-3"><CheckCircle2 size={18} className="text-indigo-400 shrink-0"/> オリジナルドメイン対応（オプション）</li>
                 </ul>
-                <Link href="/contact" className="block w-full py-3 rounded-lg bg-white text-slate-900 font-bold hover:bg-slate-100 text-center">お問い合わせ</Link>
+                <Link href="/contact" className="block w-full py-4 rounded-xl bg-white text-slate-900 font-bold hover:bg-slate-100 text-center transition-colors">
+                  お問い合わせ
+                </Link>
               </div>
             </div>
           </div>
