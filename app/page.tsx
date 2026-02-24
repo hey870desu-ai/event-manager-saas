@@ -602,11 +602,11 @@ export default function Home() {
 
     <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
       
-      {/* 1. スポットプラン */}
+      {/* 1. フリープラン */}
       <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all relative flex flex-col group">
         <div className="mb-8">
           <span className="px-4 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full uppercase tracking-widest mb-4 inline-block">
-            Spot
+            Free
           </span>
           <h3 className="text-xl font-black text-slate-900 mb-2">スポット利用</h3>
           <div className="flex items-baseline gap-1 mt-4">
