@@ -475,7 +475,7 @@ const fetchTargets = async () => {
     </div>
 
     {/* 連絡帳風のリスト */}
-    <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-2 border border-slate-800/50">
+    <div className="max-h-[65vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
       {displayedRecipients.map((r, i) => (
         <label 
           key={i} 
