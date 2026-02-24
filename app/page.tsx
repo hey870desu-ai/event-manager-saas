@@ -63,12 +63,12 @@ export default function Home() {
       {/* ▼ Hero Section: 色を濃くし、「」を削除して洗練させる */}
 <h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
   {/* 1行目：text-slate-400/70 から text-slate-500 に変更して濃くする */}
-  <span className="block mb-2 text-slate-500">セミナーの"案内"</span>
+  <span className="block mb-2 text-slate-500">セミナーの 案内</span>
   {/* 2行目：「」を削除 */}
-  <span className="block mb-2 text-slate-600">スマートな"受付"</span>
+  <span className="block mb-2 text-slate-600">スマートな 受付</span>
   {/* 3行目：「」を削除 */}
   <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
-    絆を深める<span className="whitespace-nowrap">"ファン作り"</span>
+    絆を深める<span className="whitespace-nowrap"> ファン作り </span>
   </span>
 </h1>
 
