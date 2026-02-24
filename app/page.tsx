@@ -61,14 +61,17 @@ export default function Home() {
       </div>
 
            {/* 見出し部分の修正案 */}
-<h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 mb-8 leading-tight tracking-tighter whitespace-normal lg:whitespace-nowrap">
-  セミナーの 案内
-  <span className="mx-2 text-slate-300 hidden lg:inline">|</span> 
-  スマートな 受付
-  <span className="mx-2 text-slate-300 hidden lg:inline">|</span>
-  <span className="text-indigo-600">
+<h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.15] mb-8">
+  {/* 1行目：PCでは横並び / スマホでは縦並び */}
+  <div className="flex flex-col md:flex-row md:justify-center md:items-center md:gap-x-4 mb-2 md:mb-4">
+    <span className="text-slate-400">セミナーの 案内</span>
+    <span className="text-slate-900">スマートな 受付</span>
+  </div>
+
+  {/* 2行目：絆を深めるファン作り */}
+  <div className="text-indigo-600 block">
     絆を深める ファン作り
-  </span>
+  </div>
 </h1>
 
       {/* サブ：一本の線で繋がる安心感 */}
