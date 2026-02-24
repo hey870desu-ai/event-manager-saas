@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
-type Recipient = { email: string; name: string };
+type Recipient = { email: string; name: string; memo?: string };
 
 // ★追加: メールテンプレートの定義（配信停止リンク付き）
 const EMAIL_TEMPLATES = [
@@ -249,7 +249,19 @@ const fetchTargets = async () => {
         });
       }));
 
-      const uniqueList = Array.from(emailMap.entries()).map(([email, name]) => ({ email, name }));
+      const uniqueList = await Promise.all(
+  Array.from(emailMap.entries()).map(async ([email, name]) => {
+    // 💡 保存済みのメモを取得しに行くぞい
+    const memoRef = doc(db, "tenants", tenantData.id, "kizuna_memos", email);
+    const memoSnap = await getDoc(memoRef);
+    
+    return { 
+      email, 
+      name, 
+      memo: memoSnap.exists() ? memoSnap.data().text : "" 
+    };
+  })
+);
       setRecipients(uniqueList);
       setExtracted(true);
 
@@ -277,6 +289,29 @@ const fetchTargets = async () => {
       setBody(tmpl.body);
     }
   };
+
+  // ✅ 新しく追加する関数
+const handleSaveMemo = async (email: string, memo: string) => {
+  if (!tenantData || !user) return;
+  
+  try {
+    // ユーザー（テナント）ごとの専用のメモ保存場所を作るっぺ
+    // docIDを "メアド" にすることで、一人一人のメモを管理するぞい
+    const memoRef = doc(db, "tenants", tenantData.id, "kizuna_memos", email);
+    await setDoc(memoRef, {
+      text: memo,
+      updatedAt: new Date()
+    }, { merge: true });
+
+    // ローカルの state も更新して、再読み込みなしで反映させるっぺ
+    setRecipients(prev => prev.map(r => 
+      r.email === email ? { ...r, memo } : r
+    ));
+    console.log("絆メモを刻んだっぺ！:", memo);
+  } catch (e) {
+    console.error("Memo Save Error:", e);
+  }
+};
 
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
@@ -476,28 +511,42 @@ const fetchTargets = async () => {
 
     {/* 連絡帳風のリスト */}
     <div className="max-h-[65vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
-      {displayedRecipients.map((r, i) => (
-        <label 
-          key={i} 
-          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
-        >
-          <input 
-            type="checkbox"
-            checked={selectedEmails.has(r.email)}
-            onChange={() => {
-              const newSet = new Set(selectedEmails);
-              if (newSet.has(r.email)) newSet.delete(r.email);
-              else newSet.add(r.email);
-              setSelectedEmails(newSet);
-            }}
-            className="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-800 cursor-pointer"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-white truncate">{r.name}</div>
-            <div className="text-[10px] text-slate-600 truncate">{r.email}</div>
-          </div>
-        </label>
-      ))}
+      {/* 📂 リスト表示のループ内 */}
+{displayedRecipients.map((r, i) => (
+  <div 
+    key={i} 
+    className={`p-3 rounded-lg transition-colors border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
+  >
+    <div className="flex items-center gap-3">
+      <input 
+        type="checkbox"
+        checked={selectedEmails.has(r.email)}
+        onChange={() => {
+          const newSet = new Set(selectedEmails);
+          if (newSet.has(r.email)) newSet.delete(r.email);
+          else newSet.add(r.email);
+          setSelectedEmails(newSet);
+        }}
+        className="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-800 cursor-pointer"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-bold text-white truncate">{r.name}</div>
+        <div className="text-[10px] text-slate-600 truncate">{r.email}</div>
+      </div>
+    </div>
+
+    {/* ★ 絆メモの入力欄をここに追加だっぺ！ */}
+    <div className="mt-2 ml-7">
+      <input 
+        type="text"
+        placeholder="絆メモ（例：交流会で名刺交換）"
+        defaultValue={r.memo || ""}
+        onBlur={(e) => handleSaveMemo(r.email, e.target.value)}
+        className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic placeholder:text-slate-700"
+      />
+    </div>
+  </div>
+))}
       {displayedRecipients.length === 0 && (
         <div className="p-10 text-center text-slate-600 text-xs">
           一致する人は見つからなかったっぺ...
