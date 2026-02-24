@@ -37,49 +37,45 @@ export default function Home() {
 
       <main>
         
-        {/* ▼ Hero Section: B案（統合コンセプト）× ホワイトデザイン */}
+        {/* ▼ 案1：専門用語ゼロ！動作と結果で伝える Hero Section */}
 <section className="relative pt-32 pb-24 overflow-hidden bg-white">
-  {/* 装飾用の淡い背景アクセント（うるさくない程度に） */}
+  {/* 装飾用のドット背景（清潔感） */}
   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
 
   <div className="container mx-auto px-4 relative z-10">
     <div className="max-w-5xl mx-auto text-center">
-      {/* 独自性をアピールするバッジ */}
+      
+      {/* ターゲットへのメッセージ */}
       <div className="inline-block px-5 py-2 mb-10 text-xs font-black tracking-[0.2em] text-indigo-600 uppercase bg-indigo-50 rounded-full border border-indigo-100">
-        Seminar Management : All-in-One
+        Seminar Management Support
       </div>
 
-      {/* メインコピー：バラバラに使うのは終わりだっぺ！ */}
-      <h1 className="text-5xl md:text-8xl font-black mb-10 leading-[1.05] tracking-tighter text-slate-900">
-        LPも、フォームも、名簿管理も。<br className="hidden md:inline" />
+      {/* メイン：案内から受付まで、これ一つ！ */}
+      <h1 className="text-4xl md:text-7xl font-black mb-10 leading-[1.25] tracking-tight text-slate-900 px-4">
+        セミナーの「案内」から<br className="sm:hidden" />「当日の受付」まで<br className="hidden md:inline" />
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
-          バラバラに使うのは、もう終わり。
+          必要なすべてがこれ一つで完結
         </span>
       </h1>
 
-      {/* サブコピー：一気通貫の価値を伝える */}
-      <p className="text-lg md:text-2xl text-slate-500 mb-12 max-w-4xl mx-auto leading-relaxed font-medium">
-        デザイン制作と申し込み受付を、初めて「一つの体験」に統合。<br className="hidden md:inline" />
-        他のツールでは成し得なかった、セミナー主催者のための<br className="hidden md:inline" />
-        <span className="text-slate-900 font-bold">「一気通貫」のオールインワン・システムです。</span>
+      {/* サブ：バラバラだった道具を統合することを伝える */}
+      <p className="text-lg md:text-2xl text-slate-500 mb-12 max-w-4xl mx-auto leading-relaxed font-medium px-4">
+        きれいな案内ページ、スムーズな申し込み、当日の名簿作り。<br className="hidden md:inline" />
+        これまでバラバラの道具で苦労していたことが、<br className="hidden md:inline" />
+        <span className="text-slate-900 font-bold">今日から「Event Manager」これ一台で解決します。</span>
       </p>
 
-      {/* アクションボタン */}
+      {/* ボタン */}
       <div className="flex flex-col items-center gap-8">
-        <div className="flex flex-col sm:flex-row gap-5">
-          <Link href="/register" className="px-12 py-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 hover:scale-105 transition-all text-xl shadow-xl shadow-slate-200">
-            今すぐ無料で体験する
-          </Link>
-          <Link href="#demo" className="px-12 py-6 bg-white text-slate-600 font-bold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all text-xl">
-            デモを見る
-          </Link>
-        </div>
+        <Link href="/register" className="px-12 py-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 hover:scale-105 transition-all text-xl shadow-xl shadow-slate-200">
+          まずは無料で試してみる
+        </Link>
         
-        {/* 信頼の証 */}
-        <div className="flex flex-wrap justify-center items-center gap-6 text-slate-400 text-sm font-bold">
-          <span className="flex items-center gap-2"><Check size={18} className="text-emerald-500"/> LP制作0円</span>
-          <span className="flex items-center gap-2"><Check size={18} className="text-emerald-500"/> フォーム自動生成</span>
-          <span className="flex items-center gap-2"><Check size={18} className="text-emerald-500"/> 即日運用OK</span>
+        {/* 初心者でも安心できる3大メリット */}
+        <div className="flex flex-wrap justify-center items-center gap-6 text-slate-600 text-sm font-bold">
+          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> プロ級の案内がすぐ作れる</span>
+          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> 参加者の管理が自動でまとまる</span>
+          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> スマホをかざすだけで当日受付</span>
         </div>
       </div>
     </div>
