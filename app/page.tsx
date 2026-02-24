@@ -61,17 +61,12 @@ export default function Home() {
       </div>
 
            {/* 見出し部分の修正案 */}
-<h1 className="text-5xl md:text-8xl font-black text-slate-900 mb-8 leading-[1.2] tracking-tight">
-  {/* PCでは1行、スマホでは改行 */}
-  セミナーの案内
-  <span className="hidden md:inline"> </span>
-  <br className="md:hidden" />
-  スマートな受付
-  
-  <br />
-
-  {/* 下の行：グラデーションで強調 */}
-  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-500">
+<h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 mb-8 leading-tight tracking-tighter whitespace-normal lg:whitespace-nowrap">
+  セミナーの 案内
+  <span className="mx-2 text-slate-300 hidden lg:inline">|</span> 
+  スマートな 受付
+  <span className="mx-2 text-slate-300 hidden lg:inline">|</span>
+  <span className="text-indigo-600">
     絆を深める ファン作り
   </span>
 </h1>
