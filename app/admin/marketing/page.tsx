@@ -150,6 +150,9 @@ export default function MarketingPage() {
   const [showPreview, setShowPreview] = useState(false);
   // ★追加: 予約日時を入れる箱
   const [scheduledTime, setScheduledTime] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState(""); // 検索ワード用
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set()); // チェックしたメアドを覚える箱
   
 
   useEffect(() => {
@@ -185,6 +188,11 @@ export default function MarketingPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // ★ 抽出されたリストを検索ワードで絞り込むロジックだっぺ！
+  const displayedRecipients = recipients.filter(r => 
+    r.name.includes(searchQuery) || r.email.includes(searchQuery)
+  );
 
   const safeBranches = Array.isArray(tenantData?.branches) 
     ? tenantData.branches.flatMap((b: any) => {
@@ -272,13 +280,17 @@ const fetchTargets = async () => {
 
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
+    // ★ ここで「チェックされた人」がいるか判定するだっぺ！
+  let finalRecipients = recipients;
+  if (!isTest && selectedEmails.size > 0) {
+    // チェックが入っている場合は、その人たちだけに絞り込む
+    finalRecipients = recipients.filter(r => selectedEmails.has(r.email));
+  } else if (isTest) {
+    finalRecipients = [{ email: user?.email || "", name: "管理者(テスト)" }];
+  }
+
+  if (finalRecipients.length === 0) return alert("宛先がありません。");
     
-    const finalRecipients = isTest 
-      ? [{ email: user?.email || "", name: "管理者(テスト)" }] 
-      : recipients;
-
-    if (finalRecipients.length === 0) return alert("宛先がありません。");
-
     if (!isTest) {
       if (!confirm(`【最終確認】\n\n宛先数: ${finalRecipients.length} 名\n件名: ${subject}\n\n本当に一斉送信しますか？`)) return;
     }
@@ -431,18 +443,69 @@ const fetchTargets = async () => {
                  <CheckCircle size={12}/> 重複アドレス除去済み
               </div>
               
-              {recipients.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-800 text-left max-h-[250px] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-lg p-2">
-                   <p className="text-[10px] text-slate-500 mb-2 sticky top-0 bg-slate-950 pb-1 border-b border-slate-800">抽出プレビュー:</p>
-                   {recipients.slice(0, 50).map((r, i) => (
-                      <div key={i} className="text-xs text-slate-400 truncate border-b border-slate-800/50 py-1.5 flex justify-between">
-                        <span className="text-white">{r.name}</span> 
-                        <span className="text-slate-600 ml-2 text-[10px]">{r.email}</span>
-                      </div>
-                   ))}
-                   {recipients.length > 50 && <div className="text-xs text-slate-600 py-2 text-center font-bold">...他 {recipients.length - 50} 名</div>}
-                </div>
-              )}
+              {/* 📂 抽出プレビューのエリア（recipients.length > 0 の中）を以下に差し替え */}
+{recipients.length > 0 && (
+  <div className="mt-4 pt-4 border-t border-slate-800 text-left">
+    
+    {/* 🔍 検索バー */}
+    <div className="relative mb-3">
+      <input 
+        type="text"
+        placeholder="名前やアドレスで検索..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-indigo-500 transition-all"
+      />
+      <Filter size={14} className="absolute left-3 top-3 text-slate-500" />
+    </div>
+
+    {/* 人数カウントの補助情報 */}
+    <div className="flex justify-between items-center px-1 mb-2">
+      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+        {selectedEmails.size > 0 ? `✅ ${selectedEmails.size}名を選択中` : "リスト一覧"}
+      </p>
+      {selectedEmails.size > 0 && (
+        <button 
+          onClick={() => setSelectedEmails(new Set())}
+          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold"
+        >
+          選択を解除
+        </button>
+      )}
+    </div>
+
+    {/* 連絡帳風のリスト */}
+    <div className="max-h-[300px] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-2 border border-slate-800/50">
+      {displayedRecipients.map((r, i) => (
+        <label 
+          key={i} 
+          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
+        >
+          <input 
+            type="checkbox"
+            checked={selectedEmails.has(r.email)}
+            onChange={() => {
+              const newSet = new Set(selectedEmails);
+              if (newSet.has(r.email)) newSet.delete(r.email);
+              else newSet.add(r.email);
+              setSelectedEmails(newSet);
+            }}
+            className="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-800 cursor-pointer"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-white truncate">{r.name}</div>
+            <div className="text-[10px] text-slate-600 truncate">{r.email}</div>
+          </div>
+        </label>
+      ))}
+      {displayedRecipients.length === 0 && (
+        <div className="p-10 text-center text-slate-600 text-xs">
+          一致する人は見つからなかったっぺ...
+        </div>
+      )}
+    </div>
+  </div>
+)}
            </div>
         </div>
 
