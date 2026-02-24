@@ -200,7 +200,7 @@ export default function InfoPage() {
         <section className="space-y-6">
           <div className="flex items-center gap-3 mb-4">
              <div className="p-2 bg-indigo-500/20 rounded-lg"><Megaphone className="text-indigo-400" size={24}/></div>
-             <h2 className="text-xl font-bold text-white">Event Manager SaaS からのお知らせ</h2>
+             <h2 className="text-xl font-bold text-white">絆太郎 からのお知らせ</h2>
           </div>
 
           {/* スーパー管理者のみ投稿フォーム表示 */}

@@ -347,7 +347,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
               © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
             </div>
             <div className="px-4 py-1 rounded-full bg-slate-900 text-white text-[8px] font-bold tracking-widest uppercase opacity-20">
-              Powered by Event Manager
+              Powered by 絆太郎 Event Manager
             </div>
           </div>
         </footer>

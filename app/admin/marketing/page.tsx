@@ -312,7 +312,7 @@ const fetchTargets = async () => {
           recipients: finalRecipients, 
           subject: isTest ? `[TEST] ${subject}` : subject,
           body: body,
-          senderName: tenantData?.name || "Event Manager",
+          senderName: tenantData?.name || "絆太郎",
           eventTitle: displayTitle, 
           eventDate: displayDate, 
           venueName: displayVenue, 
@@ -625,7 +625,7 @@ const fetchTargets = async () => {
               <div className="p-6 border-b border-slate-100 bg-slate-50/50 space-y-2 text-sm">
                 <div className="flex gap-4">
                   <span className="text-slate-500 w-16 text-right">差出人:</span>
-                  <span className="font-bold">{tenantData?.name || "Event Manager"}</span>
+                  <span className="font-bold">{tenantData?.name || "絆太郎"}</span>
                 </div>
                 <div className="flex gap-4">
                   <span className="text-slate-500 w-16 text-right">件名:</span>

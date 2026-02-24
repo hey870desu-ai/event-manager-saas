@@ -293,7 +293,7 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
 </div>
 
         <footer className="mt-20 mb-10 text-center relative z-10">
-          <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">© {new Date().getFullYear()} {tenant?.name || "Event Manager"}</p>
+          <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">© {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"}</p>
         </footer>
       </div>
     </div>

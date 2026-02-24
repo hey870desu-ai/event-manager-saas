@@ -137,7 +137,7 @@ export default function AdminDashboard() {
     setSelectedParticipantIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]);
   };
   // ▲ ここまで貼り付ける ▲
-  const [orgName, setOrgName] = useState("Event Manager"); 
+  const [orgName, setOrgName] = useState("絆太郎 Event Manager"); 
   const [editingOrgName, setEditingOrgName] = useState(""); 
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
@@ -277,7 +277,7 @@ useEffect(() => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         // データがあればそれをセット。なければ "Event Manager" などのデフォルト値
-        const name = data.orgName || data.name || "Event Manager"; // orgName(署名用)優先、なければテナント名
+        const name = data.orgName || data.name || "絆太郎"; // orgName(署名用)優先、なければテナント名
         setOrgName(name);
         setEditingOrgName(name);
       }
@@ -622,7 +622,7 @@ useEffect(() => {
               {/* アイコンをインディゴからオレンジ（炎）に変更 */}
               <BarChart3 className="text-orange-500 drop-shadow-sm"/>
               {/* タイトル文字を白から黒系に変更 */}
-              <h1 className="text-xl font-bold text-slate-800 hidden sm:block tracking-tight">Event Manager</h1>
+              <h1 className="text-xl font-bold text-slate-800 hidden sm:block tracking-tight">絆太郎 Event Manager</h1>
             </div>
             <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-full transition-all text-xs font-bold border border-slate-200">
               <Megaphone size={14} /> <span className="hidden md:inline">Information</span>

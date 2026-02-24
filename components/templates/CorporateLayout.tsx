@@ -446,7 +446,7 @@ if (submitted) {
 
           <div className="h-[1px] w-32 bg-white/10" />
           <p className="text-[10px] font-bold tracking-widest text-white/30 uppercase">
-            © {new Date().getFullYear()} {tenant?.name || "Event Manager"} All rights reserved.
+            © {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"} All rights reserved.
           </p>
         </div>
       </footer>

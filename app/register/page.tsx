@@ -50,10 +50,18 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center items-center gap-2 mb-6">
-           <Sparkles className="text-indigo-600" size={28} />
-           <span className="text-2xl font-black text-slate-900 tracking-tighter">Event Manager</span>
-        </div>
+        <div className="flex justify-center items-center gap-3 mb-8">
+  {/* 1. Sparkles を icon.webp に差し替え */}
+  <img 
+    src="/icon.webp" 
+    alt="絆太郎" 
+    className="h-9 w-9 object-contain" 
+  />
+  {/* 2. 名前を「絆太郎」へ！ text-3xl にして存在感をアップしたぞい */}
+  <span className="text-3xl font-black text-slate-900 tracking-tighter">
+    絆太郎 EVENT MANAGER
+  </span>
+</div>
         <h2 className="text-center text-3xl font-extrabold text-slate-900">
           無料でアカウント作成
         </h2>

@@ -269,7 +269,7 @@ if (submitted) {
             </div>
           </div>
         </div>
-        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-slate-600 text-[10px] tracking-[0.2em] uppercase">© {new Date().getFullYear()} Event Manager.</p></footer>
+        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-slate-600 text-[10px] tracking-[0.2em] uppercase">© {new Date().getFullYear()} 絆太郎 Event Manager.</p></footer>
       </div>
     </div>
   );

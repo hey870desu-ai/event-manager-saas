@@ -6,16 +6,25 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-slate-50 text-slate-800 py-12 md:py-20 px-4">
       <div className="max-w-3xl mx-auto">
         
-        {/* ロゴ・戻るリンク */}
-        <div className="flex justify-between items-center mb-12">
-          <Link href="/" className="flex items-center gap-2 font-black text-xl tracking-tighter">
-            <Sparkles className="text-indigo-600" size={24} />
-            Event Manager
-          </Link>
-          <Link href="/" className="flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
-            <ArrowLeft size={16} /> TOPへ戻る
-          </Link>
-        </div>
+        {/* ▼ ロゴ・戻るリンク（修正版だっぺ！） */}
+<div className="flex justify-between items-center mb-12">
+  <Link href="/" className="flex items-center gap-2.5 group">
+    {/* 1. 星マークを icon.webp に差し替え */}
+    <img 
+      src="/icon.webp" 
+      alt="絆太郎" 
+      className="h-9 w-9 object-contain group-hover:scale-105 transition-transform" 
+    />
+    {/* 2. 名前を「絆太郎」だけに。Event Manager は卒業だっぺ！ */}
+    <span className="font-black text-2xl tracking-tighter text-slate-900">
+      絆太郎 Event Manager
+    </span>
+  </Link>
+  
+  <Link href="/" className="flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
+    <ArrowLeft size={16} /> TOPへ戻る
+  </Link>
+</div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-emerald-600 px-8 py-10 text-center">

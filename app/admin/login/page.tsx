@@ -76,7 +76,7 @@ export default function LoginPage() {
           </div>
           {/* 👇 ここが重要！特定の組織名を消しました */}
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            Event Manager SaaS
+            絆太郎 SaaS
           </h1>
           <p className="text-slate-400 text-sm mt-2">
             次世代イベント管理プラットフォーム
@@ -114,7 +114,7 @@ export default function LoginPage() {
         </div>
         
         <div className="text-center mt-8 text-slate-600 text-xs">
-          &copy; Event Manager System.
+          &copy; 絆太郎 Event Manager System.
         </div>
       </div>
     </div>
