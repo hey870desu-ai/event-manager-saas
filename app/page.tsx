@@ -76,7 +76,7 @@ export default function Home() {
       <p className="text-lg md:text-2xl text-slate-500 mb-14 max-w-4xl mx-auto leading-relaxed font-medium px-4">
         募集から当日、そして終了後の心のこもったフォローまで<br className="hidden md:inline" />
         これまでバラバラの道具で苦労していたことが<br className="hidden md:inline" />
-        <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">今日から「絆太郎」これ一台で完結します</span>
+        <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">LP作成からフォーム作成・名簿管理を「絆太郎」で完結</span>
       </p>
 
       {/* アクションボタン */}
