@@ -163,8 +163,7 @@ export default function AdminDashboard() {
   // テナント情報をここで確定させる
   const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
   
-  // プラン判定（大文字・小文字どちらでも反応するように .toUpperCase() を追加！）
-  const isFreePlan = (currentTenantData?.plan || '').toUpperCase() === 'FREE';
+  const isFreePlan = false;
 
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
     e.stopPropagation();
@@ -490,11 +489,7 @@ useEffect(() => {
   const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
      e.stopPropagation();
      
-  // 無料プランならここでストップ！
-  if (isFreePlan) {
-    alert("🔒 CSVダウンロードは【スタンダードプラン以上限定】機能です。\n\n参加者リストをExcelで管理するには、\nプランのアップグレードをご検討ください！");
-    return;
-  }
+  
   // ▲▲▲ 追加ここまで ▲▲▲ 
        
       setDownloadingId(eventId);
@@ -670,7 +665,7 @@ useEffect(() => {
              {/* メールマーケティング */}
              <button 
   onClick={() => {
-    if (isFreePlan) return alert("🔒 メールマーケティングは【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
+  
     router.push("/admin/marketing");
   }}
   className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
@@ -872,7 +867,6 @@ useEffect(() => {
                    <button 
                      onClick={(e) => { 
   e.stopPropagation(); 
-  if (isFreePlan) return alert("🔒 アンケートQR表示は【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
   setQrEvent(ev); 
   setIsQrModalOpen(true); 
 }}
@@ -885,7 +879,6 @@ useEffect(() => {
                    <button 
                      onClick={(e) => { 
   e.stopPropagation(); 
-  if (isFreePlan) return alert("🔒 アンケート結果分析は【スタンダードプラン以上】限定です。\n\n利用するにはプランのアップグレードをご検討ください！");
   setCurrentEventForList(ev); 
   setIsFeedbackOpen(true); 
 }}
@@ -1385,77 +1378,89 @@ useEffect(() => {
                   </div>
                 </div>
 
-{/* 2. スタッフ招待（全ユーザーに開放 ※ただし自分のテナント限定） */}
+{/* 2. スタッフ招待（全ユーザーに開放：価値ある機能として提供） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
                  <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
                     <UserPlus size={16}/> スタッフ・管理者招待
                  </h3>
                  
-                 {/* ▼▼▼ 条件分岐 ▼▼▼ */}
-                 {!isSuperAdminMode && isFreePlan ? (
-                    /* フリープランの場合：ロック画面を表示 */
-                    <div className="text-center py-4 bg-slate-950/50 rounded-lg border border-slate-800 border-dashed">
-                      <p className="text-xs text-slate-400 mb-2">
-                        フリープランではスタッフを追加できません。<br/>
-                        チームで管理するにはプロプランへのアップグレードが必要です。
-                      </p>
-                      <Link href="/dashboard" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline">
-                        プランを確認する &rarr;
-                      </Link>
-                    </div>
+                 {/* プラン制限を撤廃し、常に適切なフォームを表示します */}
+                 {isSuperAdminMode ? (
+                    // スーパー管理者の場合：全テナントから選べる
+                    <form onSubmit={handleAddAdmin} className="space-y-2">
+                      <p className="text-xs text-orange-400 mb-1">※スーパー管理者権限で操作中</p>
+                      <input 
+                        value={newAdminEmail} 
+                        onChange={e=>setNewAdminEmail(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+                        placeholder="追加するメールアドレス" 
+                        required 
+                      />
+                      <select 
+                         value={`${newAdminTenantId}::${newAdminBranch}`} 
+                         onChange={handleAdminBranchChange} 
+                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                       >
+                        <option value="::">（所属を選択してください）</option>
+                        {tenantList.map((tenant) => (
+                          <optgroup key={tenant.id} label={tenant.name}>
+                            {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b:any) => typeof b === 'string' ? b : []).map((branch:any) => (
+                              <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>{branch}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <div className="flex justify-end">
+                        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                          権限付与して招待
+                        </button>
+                      </div>
+                    </form>
                  ) : (
-                    /* 有料プラン または スーパー管理者の場合 */
-                    isSuperAdminMode ? (
-                       // スーパー管理者の場合：全テナントから選べる
-                       <form onSubmit={handleAddAdmin} className="space-y-2">
-                         <p className="text-xs text-orange-400 mb-1">※スーパー管理者権限で操作中</p>
-                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="追加するメールアドレス" required />
-                         <select 
-                            value={`${newAdminTenantId}::${newAdminBranch}`} 
-                            onChange={handleAdminBranchChange} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                          >
-                           <option value="::">（所属を選択してください）</option>
-                           {tenantList.map((tenant) => (
-                             <optgroup key={tenant.id} label={tenant.name}>
-                               {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b:any) => typeof b === 'string' ? b : []).map((branch:any) => (
-                                 <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>{branch}</option>
-                               ))}
-                             </optgroup>
-                           ))}
-                         </select>
-                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">権限付与して招待</button></div>
-                       </form>
-                    ) : (
-                       // 一般ユーザー（有料プラン）の場合：自分のテナントの支部しか選べない
-                       <form onSubmit={async (e) => {
-                          e.preventDefault();
-                          if(!newAdminEmail || !newAdminBranch) return alert("入力してください");
-                          if(!confirm(`${newAdminEmail} を招待しますか？`)) return;
-                          try {
-                            const res = await fetch('/api/admin/add', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ email: newAdminEmail, branchId: newAdminBranch, tenantId: currentUserTenant }),
-                            });
-                            if(res.ok) { alert("招待しました！"); setNewAdminEmail(""); }
-                            else { alert("エラーが発生しました"); }
-                          } catch(err) { alert("通信エラー"); }
-                       }} className="space-y-2">
-                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="招待するスタッフのメール" required />
-                         <select 
-                            value={newAdminBranch} 
-                            onChange={e=>setNewAdminBranch(e.target.value)} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                          >
-                           <option value="">（所属部門・教室を選択）</option>
-                           {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
-                              typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
-                           ))}
-                         </select>
-                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">招待する</button></div>
-                       </form>
-                    )
+                    // 一般主催者の場合：自分のテナントの支部・部門のみ選べる
+                    <form onSubmit={async (e) => {
+                       e.preventDefault();
+                       if(!newAdminEmail || !newAdminBranch) return alert("入力してください");
+                       if(!confirm(`${newAdminEmail} を招待しますか？`)) return;
+                       try {
+                         const res = await fetch('/api/admin/add', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({ email: newAdminEmail, branchId: newAdminBranch, tenantId: currentUserTenant }),
+                         });
+                         if(res.ok) { 
+                           alert("スタッフを招待しました！"); 
+                           setNewAdminEmail(""); 
+                         } else { 
+                           alert("招待に失敗しました。権限や入力内容を確認してください。"); 
+                         }
+                       } catch(err) { 
+                         alert("通信エラーが発生しました"); 
+                       }
+                    }} className="space-y-2">
+                      <input 
+                        value={newAdminEmail} 
+                        onChange={e=>setNewAdminEmail(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+                        placeholder="招待するスタッフのメール" 
+                        required 
+                      />
+                      <select 
+                         value={newAdminBranch} 
+                         onChange={e=>setNewAdminBranch(e.target.value)} 
+                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                       >
+                        <option value="">（所属部門・教室を選択）</option>
+                        {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
+                           typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
+                        ))}
+                      </select>
+                      <div className="flex justify-end">
+                        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-500/20">
+                          スタッフを招待する
+                        </button>
+                      </div>
+                    </form>
                  )}
                </div>
 
