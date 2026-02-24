@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard } from "lucide-react"; 
+import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   // ▼ ここから貼り付ける ▼
   const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
   const [targetParticipant, setTargetParticipant] = useState<ReservationData | null>(null);
@@ -249,6 +250,25 @@ export default function AdminDashboard() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  // ▼ ここを追加：初回ログイン判定ロジック
+  useEffect(() => {
+    if (!loading && user) {
+      // ユーザーごとに「見たよ」フラグを保存するっぺ
+      const hasVisited = localStorage.getItem(`bantaro_visited_${user.email}`);
+      if (!hasVisited) {
+        setIsWelcomeModalOpen(true);
+      }
+    }
+  }, [user, loading]);
+
+  // モーダルを閉じる時の関数
+  const closeWelcomeModal = () => {
+    if (user?.email) {
+      localStorage.setItem(`bantaro_visited_${user.email}`, 'true');
+    }
+    setIsWelcomeModalOpen(false);
+  };
 
 useEffect(() => {
     if (!user || !currentUserTenant) return; // テナントID確定まで待つ
@@ -1488,6 +1508,68 @@ useEffect(() => {
 
              </div>
            </div>
+        </div>
+      )}
+      {/* ★★★ 絆太郎：おもてなしウェルカムモーダル ★★★ */}
+      {isWelcomeModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* 背景の強力ぼかし */}
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-700"></div>
+
+          {/* モーダル本体（すりガラス） */}
+          <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden animate-in zoom-in duration-500">
+            
+            {/* 華やかな装飾 */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl"></div>
+
+            <div className="relative p-8 md:p-12 text-center">
+              {/* 絆太郎ロゴ */}
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-3xl shadow-xl mb-8 border border-slate-100 animate-bounce-slow">
+                <img src="/icon.webp" alt="絆太郎" className="w-14 h-14 object-contain" />
+              </div>
+
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">
+                絆太郎へようこそ！
+              </h2>
+              <p className="text-slate-600 font-medium mb-10 leading-relaxed text-lg">
+                今日からあなたのセミナー運営が、<br className="hidden md:inline" />
+                もっと楽しく、もっと「絆」が深まるものに変わります。
+              </p>
+
+              {/* 3ステップのおさらい（LPと統一！） */}
+              <div className="grid gap-4 text-left mb-12">
+                {[
+                  { title: "セミナーの案内", desc: "文字を入れるだけで、想いが伝わるページが完成", color: "text-blue-600", bg: "bg-blue-50" },
+                  { title: "スマートな受付", desc: "当日はスマホをかざすだけ。笑顔で迎える準備を", color: "text-indigo-600", bg: "bg-indigo-50" },
+                  { title: "絆を深めるファン作り", desc: "一度きりで終わらせない、次のご縁を大切に", color: "text-emerald-600", bg: "bg-emerald-50" },
+                ].map((item, idx) => (
+                  <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm transition-transform hover:scale-[1.02]`}>
+                    <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color}`}>
+                      <Check size={18} strokeWidth={3} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-900">{item.title}</h4>
+                      <p className="text-xs text-slate-500 font-bold mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 絆を広めるボタン */}
+              <button
+                onClick={closeWelcomeModal}
+                className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-300 flex items-center justify-center gap-2 group text-xl"
+              >
+                さっそく「絆」を広める
+                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              
+              <p className="mt-6 text-slate-400 text-xs font-bold">
+                ※右上の「Information」からいつでも使いかたを確認できます
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
