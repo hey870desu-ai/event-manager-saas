@@ -103,7 +103,7 @@ export async function POST(request: Request) {
             <div style="${styles.content}">
               <div style="${styles.messageBox}">${personalBody}</div>
               
-              {/* ★2. ここを判定で囲うことで、絆リストの時は消えるっぺ！ */}
+              
               ${showEventCard ? `
                 <div style="${styles.card}">
                   <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
