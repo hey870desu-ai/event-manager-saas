@@ -116,7 +116,9 @@ export async function POST(request: Request) {
               ` : ''}
 
             </div>
-            <div style="${styles.footer}"><p style="margin: 0;">${displaySender}</p></div>
+            <div style="${styles.footer}">
+  © ${new Date().getFullYear()} ${displaySender} All rights reserved.
+</div>
           </div>
         </body>
         </html>
