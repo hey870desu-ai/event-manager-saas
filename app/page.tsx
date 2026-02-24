@@ -421,29 +421,37 @@ export default function Home() {
                </td>
             </tr>
             {/* 行3: Event Manager */}
-            <tr className="relative group bg-indigo-50/30"> {/* ほんのり色をつけて境界を出すぞい */}
-      <td className="p-6 md:p-8 whitespace-nowrap">
-         <div className="flex items-center gap-3">
-            <Sparkles size={22} className="text-indigo-600" />
-            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500 tracking-tight">
-               Event Manager
-            </span>
-         </div>
-      </td>
-      <td className="p-6 md:p-8 whitespace-nowrap">
-         <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
-            ¥3,300<span className="text-xs font-medium text-indigo-400">/月</span>
-         </div>
-      </td>
-      <td className="p-6 md:p-8 text-center whitespace-nowrap">
-         <span className="text-lg font-black text-indigo-700">わずか 10分</span>
-      </td>
-      <td className="p-6 md:p-8 text-center whitespace-nowrap">
-         <span className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-full text-xs font-black shadow-lg shadow-indigo-500/20">
-            プロ品質（再利用可）
-         </span>
-      </td>
-   </tr>
+            <tr className="relative group bg-indigo-50/30">
+  <td className="p-6 md:p-8 whitespace-nowrap">
+    <div className="flex items-center gap-3">
+      {/* 1. 星マークを icon.webp に差し替え！ */}
+      <img 
+        src="/icon.webp" 
+        alt="絆太郎ロゴ" 
+        className="h-8 w-8 object-contain" 
+      />
+      {/* 2. 名前を「絆太郎」に変更！グラデーションは維持だっぺ */}
+      <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500 tracking-tight">
+        絆太郎
+      </span>
+    </div>
+  </td>
+  
+  {/* ...以下、価格や時間のセルはそのまま... */}
+  <td className="p-6 md:p-8 whitespace-nowrap">
+    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
+      ¥3,300<span className="text-xs font-medium text-indigo-400">/月</span>
+    </div>
+  </td>
+  <td className="p-6 md:p-8 text-center whitespace-nowrap">
+    <span className="text-lg font-black text-indigo-700">わずか 10分</span>
+  </td>
+  <td className="p-6 md:p-8 text-center whitespace-nowrap">
+    <span className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-full text-xs font-black shadow-lg shadow-indigo-500/20">
+      プロ品質（再利用可）
+    </span>
+  </td>
+</tr>
          </tbody>
       </table>
    </div>
