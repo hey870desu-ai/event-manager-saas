@@ -165,7 +165,7 @@ export default function AdminDashboard() {
   const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
   
   // ★ ここを書き換え：プランが 'FREE' なら true になるようにする
-  const isFreePlan = currentTenantData?.plan === 'FREE';
+  const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
 
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
     e.stopPropagation();
