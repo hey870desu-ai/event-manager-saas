@@ -11,29 +11,39 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* ▼ Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-black text-xl tracking-tighter cursor-pointer">
-            <Sparkles className="text-indigo-600" size={24} />
-            絆太郎
-          </div>
-          <nav className="flex items-center gap-4">
-            <Link href="#features" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-              機能
-            </Link>
-            <Link href="#pricing" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-              料金
-            </Link>
-            <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-            <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">
-              ログイン
-            </Link>
-            <Link href="/register" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40">
-              無料で始める
-            </Link>
-          </nav>
-        </div>
-      </header>
+<header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+  <div className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
+    
+    {/* ロゴと名前の部分だっぺ！ */}
+    <Link href="/" className="flex items-center gap-2.5 font-black text-2xl tracking-tighter cursor-pointer group">
+      {/* 1. Sparkles を img に変更！ */}
+      <img 
+        src="/icon.webp" 
+        alt="絆太郎" 
+        className="h-9 w-9 object-contain group-hover:rotate-6 transition-transform duration-300" 
+      />
+      {/* 2. 名前を表示 */}
+      <span className="text-slate-900">絆太郎</span>
+    </Link>
+
+    <nav className="flex items-center gap-4">
+      {/* ...ナビゲーション部分はそのまま... */}
+      <Link href="#features" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+        機能
+      </Link>
+      <Link href="#pricing" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+        料金
+      </Link>
+      <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+      <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">
+        ログイン
+      </Link>
+      <Link href="/register" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40">
+        無料で始める
+      </Link>
+    </nav>
+  </div>
+</header>
 
       <main>
         
@@ -50,14 +60,17 @@ export default function Home() {
         絆を深めるセミナー運営
       </div>
 
-      {/* メイン：絆を深める3ステップ */}
-      <h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
-        <span className="block mb-2 text-slate-400/70">セミナーの「案内」</span>
-        <span className="block mb-2 text-slate-600">スマートな「受付」</span>
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
-          絆を深める<span className="whitespace-nowrap">「ファン作り」</span>
-        </span>
-      </h1>
+      {/* ▼ Hero Section: 色を濃くし、「」を削除して洗練させる */}
+<h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
+  {/* 1行目：text-slate-400/70 から text-slate-500 に変更して濃くする */}
+  <span className="block mb-2 text-slate-500">セミナーの案内</span>
+  {/* 2行目：「」を削除 */}
+  <span className="block mb-2 text-slate-600">スマートな受付</span>
+  {/* 3行目：「」を削除 */}
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
+    絆を深める<span className="whitespace-nowrap">ファン作り</span>
+  </span>
+</h1>
 
       {/* サブ：一本の線で繋がる安心感 */}
       <p className="text-lg md:text-2xl text-slate-500 mb-14 max-w-4xl mx-auto leading-relaxed font-medium px-4">
@@ -699,10 +712,15 @@ export default function Home() {
                  </ul>
               </div>
               <div>
-                 <div className="flex items-center gap-2 font-black text-slate-900 mb-4">
-                   <Sparkles className="text-indigo-600" size={20} />
-                   Event Manager
-                 </div>
+                 <div className="flex items-center gap-2 font-black text-slate-900 mb-4 text-xl">
+  {/* Sparkles を img に差し替えだっぺ！ */}
+  <img 
+    src="/icon.webp" 
+    alt="絆太郎" 
+    className="h-7 w-7 object-contain" 
+  />
+  絆太郎
+</div>
                  {/* ★ここを会社名に変更 */}
                  <p className="text-xs text-slate-500 leading-relaxed font-medium">
                     Produced by<br/>
