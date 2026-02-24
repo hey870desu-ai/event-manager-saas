@@ -63,12 +63,12 @@ export default function Home() {
       {/* ▼ Hero Section: 色を濃くし、「」を削除して洗練させる */}
 <h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
   {/* 1行目：text-slate-400/70 から text-slate-500 に変更して濃くする */}
-  <span className="block mb-2 text-slate-500">セミナーの案内</span>
+  <span className="block mb-2 text-slate-500">セミナーの"案内"</span>
   {/* 2行目：「」を削除 */}
-  <span className="block mb-2 text-slate-600">スマートな受付</span>
+  <span className="block mb-2 text-slate-600">スマートな"受付"</span>
   {/* 3行目：「」を削除 */}
   <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
-    絆を深める<span className="whitespace-nowrap">ファン作り</span>
+    絆を深める<span className="whitespace-nowrap">"ファン作り"</span>
   </span>
 </h1>
 
@@ -76,7 +76,7 @@ export default function Home() {
       <p className="text-lg md:text-2xl text-slate-500 mb-14 max-w-4xl mx-auto leading-relaxed font-medium px-4">
         募集から当日、そして終了後の心のこもったフォローまで<br className="hidden md:inline" />
         これまでバラバラの道具で苦労していたことが<br className="hidden md:inline" />
-        <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">今日から「Event Manager」これ一台で完結します</span>
+        <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">今日から「絆太郎」これ一台で完結します</span>
       </p>
 
       {/* アクションボタン */}
@@ -466,7 +466,7 @@ export default function Home() {
               <div className="mt-24">
                  <div className="text-center mb-16">
                     <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">
-                       「Event Manager」の<br className="sm:hidden"/>導入メリットと強み
+                       「絆太郎」の<br className="sm:hidden"/>導入メリットと強み
                     </h3>
                  </div>
 
