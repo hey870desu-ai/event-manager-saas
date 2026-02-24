@@ -93,6 +93,9 @@ export async function POST(request: Request) {
          personalBody = personalBody.replace(/{qr}/g, "");
       }
 
+      // ★1. まず、カードを出すかどうかの判定を直前に入れる
+      const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -101,14 +104,19 @@ export async function POST(request: Request) {
             <div style="${styles.header}"><span style="${styles.logoText}">${displaySender}</span></div>
             <div style="${styles.content}">
               <div style="${styles.messageBox}">${personalBody}</div>
-              <div style="${styles.card}">
-                <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
-                  <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
-                  <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
-                  <div style="${styles.label}">会場</div><div style="${styles.value}">${venueName}</div>
-                  <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 Googleカレンダーに追加</a>
+              
+              {/* ★2. ここを判定で囲うことで、絆リストの時は消えるっぺ！ */}
+              ${showEventCard ? `
+                <div style="${styles.card}">
+                  <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
+                    <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
+                    <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
+                    <div style="${styles.label}">会場</div><div style="${styles.value}">${venueName}</div>
+                    <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 Googleカレンダーに追加</a>
+                  </div>
                 </div>
-              </div>
+              ` : ''}
+
             </div>
             <div style="${styles.footer}"><p style="margin: 0;">${displaySender}</p></div>
           </div>
@@ -117,7 +125,8 @@ export async function POST(request: Request) {
       `;
 
       await transporter.sendMail({
-        from: `"${displaySender}" <${process.env.GMAIL_USER}>`,
+        from: `"${displaySender}" <info@event-manager.app>`,
+        replyTo: body.replyTo || process.env.GMAIL_USER,
         to: recipient.email, 
         subject: subject,
         html: htmlContent,
