@@ -37,14 +37,27 @@ export default function TenantLoginPage() {
 
       <div className="max-w-md w-full relative z-10">
         
-        {/* ロゴエリア */}
-        <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl mb-4">
-            <Building2 className="text-indigo-500" size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Tenant Portal</h1>
-          <p className="text-slate-500 text-sm mt-2">ご契約者様 専用ページ</p>
-        </div>
+        {/* ▼ 絆太郎：ログインポータル・ロゴエリア */}
+<div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+  {/* ロゴを囲む枠：icon.webp が映えるように少し調整 */}
+  <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl mb-6">
+    <img 
+      src="/icon.webp" 
+      alt="絆太郎ロゴ" 
+      className="w-12 h-12 object-contain" 
+    />
+  </div>
+
+  {/* タイトル：Tenant Portal から「絆太郎」へ！ */}
+  <h1 className="text-3xl font-black text-white tracking-tight">
+    絆太郎 <span className="text-lg font-medium text-slate-400">Event Manager</span>
+  </h1>
+
+  {/* サブテキスト：より主催者様に寄り添った言葉に */}
+  <p className="text-slate-500 text-sm mt-3 font-medium">
+    セミナー主催者様 専用ポータル
+  </p>
+</div>
 
         {/* ログインカード */}
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 text-center">
