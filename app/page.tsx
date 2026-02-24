@@ -60,22 +60,26 @@ export default function Home() {
         絆を深めるセミナー運営
       </div>
 
-      {/* ▼ Hero Section: 色を濃くし、「」を削除して洗練させる */}
-<h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
-  {/* 1行目：text-slate-400/70 から text-slate-500 に変更して濃くする */}
-  <span className="block mb-2 text-slate-500">セミナーの 案内</span>
-  {/* 2行目：「」を削除 */}
-  <span className="block mb-2 text-slate-600">スマートな 受付</span>
-  {/* 3行目：「」を削除 */}
-  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
-    絆を深める<span className="whitespace-nowrap"> ファン作り </span>
+           {/* 見出し部分の修正案 */}
+<h1 className="text-5xl md:text-8xl font-black text-slate-900 mb-8 leading-[1.2] tracking-tight">
+  {/* PCでは1行、スマホでは改行 */}
+  セミナーの案内
+  <span className="hidden md:inline"> </span>
+  <br className="md:hidden" />
+  スマートな受付
+  
+  <br />
+
+  {/* 下の行：グラデーションで強調 */}
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-cyan-500">
+    絆を深める ファン作り
   </span>
 </h1>
 
       {/* サブ：一本の線で繋がる安心感 */}
       <p className="text-lg md:text-2xl text-slate-500 mb-14 max-w-4xl mx-auto leading-relaxed font-medium px-4">
         募集から当日、そして終了後の心のこもったフォローまで<br className="hidden md:inline" />
-        これまでバラバラの道具で苦労していたことが<br className="hidden md:inline" />
+        これまでバラバラの道具で苦労していた<br className="hidden md:inline" />
         <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">LP作成からフォーム作成・名簿管理を「絆太郎」で完結</span>
       </p>
 
