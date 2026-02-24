@@ -1,7 +1,9 @@
 // 📂 app/api/send-thankyou/route.ts
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // カレンダーURL生成 (変更なし)
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
@@ -59,10 +61,6 @@ export async function POST(request: Request) {
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
     };
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
-    });
 
     for (const recipient of recipients) {
       let personalBody = baseBody;
@@ -124,15 +122,14 @@ export async function POST(request: Request) {
         </html>
       `;
 
-      await transporter.sendMail({
-        from: `"${displaySender}" <info@event-manager.app>`,
-        replyTo: body.replyTo || process.env.GMAIL_USER,
-        to: recipient.email, 
-        subject: subject,
-        html: htmlContent,
-      });
-    }
-
+      await resend.emails.send({
+    from: `${displaySender} <info@event-manager.app>`,
+    to: recipient.email, 
+    subject: subject,
+    replyTo: body.replyTo || 'hey870desu@gmail.com', // 送信元の混乱を防ぐために reply_to (アンダーバー) を使うぞい
+    html: htmlContent,
+  });
+}
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Email Send Error:', error);
