@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock } from "lucide-react";
+import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
@@ -35,7 +35,7 @@ const EMAIL_TEMPLATES = [
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager-saas.vercel.app/unsubscribe?email={email}
+https://event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -52,7 +52,7 @@ https://event-manager-saas.vercel.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager-saas.vercel.app/unsubscribe?email={email}
+https://event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -77,7 +77,7 @@ https://event-manager-saas.vercel.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager-saas.vercel.app/unsubscribe?email={email}
+https://event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -102,7 +102,7 @@ https://event-manager-saas.vercel.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager-saas.vercel.app/unsubscribe?email={email}
+https://event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -123,7 +123,7 @@ https://event-manager-saas.vercel.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager-saas.vercel.app/unsubscribe?email={email}
+hhttps://event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   }
 ];
@@ -313,6 +313,7 @@ const fetchTargets = async () => {
           subject: isTest ? `[TEST] ${subject}` : subject,
           body: body,
           senderName: tenantData?.name || "絆太郎",
+          replyTo: user?.email,
           eventTitle: displayTitle, 
           eventDate: displayDate, 
           venueName: displayVenue, 
@@ -343,17 +344,20 @@ const fetchTargets = async () => {
   return (
     <div className="min-h-screen bg-[#0f111a] text-slate-300 p-6 md:p-10 space-y-8 animate-in fade-in">
       
-      <div className="flex items-center gap-4 border-b border-slate-800 pb-6">
-        <Link href="/admin" className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
-            <Mail className="text-indigo-500"/> Marketing Mail
-          </h1>
-          <p className="text-slate-400 text-sm">顧客リスト抽出 & 一斉配信システム</p>
-        </div>
-      </div>
+      {/* 📂 app/admin/marketing/page.tsx 内の見出し部分 */}
+
+<div className="flex items-center gap-4 border-b border-slate-800 pb-6">
+  <Link href="/admin" className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition-colors">
+    <ArrowLeft size={20} />
+  </Link>
+  <div>
+    <h1 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
+      {/* Mail から Heart に変更だっぺ！ */}
+      <Heart className="text-rose-500" fill="currentColor" size={28}/> 絆リスト
+    </h1>
+    <p className="text-slate-400 text-sm font-medium">これまでに出会った大切な方々へ、感謝とご縁を届ける</p>
+  </div>
+</div>
 
       <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
