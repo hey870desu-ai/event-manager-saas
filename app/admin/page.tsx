@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight } from "lucide-react"; 
+import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -127,6 +127,7 @@ export default function AdminDashboard() {
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   // ▼ ここから貼り付ける ▼
   const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
   const [targetParticipant, setTargetParticipant] = useState<ReservationData | null>(null);
@@ -163,7 +164,8 @@ export default function AdminDashboard() {
   // テナント情報をここで確定させる
   const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
   
-  const isFreePlan = false;
+  // ★ ここを書き換え：プランが 'FREE' なら true になるようにする
+  const isFreePlan = currentTenantData?.plan === 'FREE';
 
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
     e.stopPropagation();
@@ -662,15 +664,20 @@ useEffect(() => {
           {/* 右側：メニューボタン群（スマホで横スクロール可能） */}
           <div className="flex gap-3 overflow-x-auto py-2 px-1 hide-scrollbar -mr-4 pr-4 md:mr-0 md:pr-0 w-full justify-end items-center">
              
-             {/* メールマーケティング */}
-             <button 
+             {/* 📂 ヘッダー内のボタン部分を見つけて差し替え */}
+<button 
   onClick={() => {
-  
-    router.push("/admin/marketing");
+    if (isFreePlan) {
+      setIsUpgradeModalOpen(true); // フリープランなら警告を出す
+    } else {
+      router.push("/admin/marketing"); // 有料ならページ移動
+    }
   }}
   className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
 >
-  <Mail size={16}/> <span className="hidden lg:inline">メールマーケティング</span>
+  <Mail size={16}/> 
+  <span className="hidden lg:inline">メールマーケティング</span>
+  {isFreePlan && <Lock size={12} className="ml-1 text-slate-400" />} {/* 鍵アイコンを添えると親切！ */}
 </button>
             
             {/* 分析・データ管理 */}
@@ -1627,6 +1634,41 @@ useEffect(() => {
           </div>
         </div>
       )}
+      {/* 📂 ファイルの一番下（モーダル類が集まっている場所）に追加 */}
+{isUpgradeModalOpen && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[300]">
+    <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-md w-full text-center shadow-2xl animate-in zoom-in duration-300">
+      <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+        <Shield size={40} />
+      </div>
+      
+      <h3 className="text-2xl font-black text-slate-900 mb-4">
+        スタンダードプラン専用機能
+      </h3>
+      
+      <p className="text-slate-600 font-bold mb-8 leading-relaxed">
+        メールマーケティング機能は、<br />
+        <span className="text-indigo-600">スタンダードプラン（月額）</span>限定です。<br />
+        アップグレードして、ファン作りを加速させましょう！
+      </p>
+      
+      <div className="flex flex-col gap-3">
+        <button 
+          onClick={() => router.push("/dashboard")} 
+          className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+        >
+          プランを確認・変更する
+        </button>
+        <button 
+          onClick={() => setIsUpgradeModalOpen(false)} 
+          className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-all"
+        >
+          今は閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
