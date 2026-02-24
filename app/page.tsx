@@ -15,7 +15,7 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-black text-xl tracking-tighter cursor-pointer">
             <Sparkles className="text-indigo-600" size={24} />
-            Event Manager
+            絆太郎
           </div>
           <nav className="flex items-center gap-4">
             <Link href="#features" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
@@ -47,15 +47,15 @@ export default function Home() {
       
       {/* ターゲットメッセージ */}
       <div className="inline-block px-5 py-2 mb-10 text-xs font-black tracking-[0.2em] text-indigo-600 uppercase bg-indigo-50 rounded-full border border-indigo-100">
-        Build Lasting Connections
+        絆を深めるセミナー運営
       </div>
 
       {/* メイン：絆を深める3ステップ */}
-      <h1 className="text-5xl md:text-8xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
+      <h1 className="text-4xl md:text-7xl font-black mb-12 leading-[1.1] tracking-tighter text-slate-900">
         <span className="block mb-2 text-slate-400/70">セミナーの「案内」</span>
         <span className="block mb-2 text-slate-600">スマートな「受付」</span>
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500">
-          絆を深める「ファン作り」
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-blue-500 to-emerald-500 leading-tight block">
+          絆を深める<span className="whitespace-nowrap">「ファン作り」</span>
         </span>
       </h1>
 
