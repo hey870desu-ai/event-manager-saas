@@ -676,7 +676,7 @@ useEffect(() => {
   className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
 >
   <Mail size={16}/> 
-  <span className="hidden lg:inline">メールマーケティング</span>
+  <span className="hidden lg:inline">絆リスト</span>
   {isFreePlan && <Lock size={12} className="ml-1 text-slate-400" />} {/* 鍵アイコンを添えると親切！ */}
 </button>
             
