@@ -662,7 +662,10 @@ const fetchTargets = async () => {
                       }`}
                     >
                       {sending ? <RefreshCw className="animate-spin" size={18}/> : scheduledTime ? <Clock size={18}/> : <Send size={18}/>}
-                      {scheduledTime ? "配信予約を確定" : `${recipients.length}名に一斉送信`}
+                      {scheduledTime 
+    ? "配信予約を確定" 
+    : `${selectedEmails.size > 0 ? selectedEmails.size : recipients.length}名に想いを届ける`
+  }
                     </button>
                  </div>
               </div>
