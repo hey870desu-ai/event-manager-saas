@@ -124,6 +124,8 @@ export default function AdminDashboard() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
+  // ✅ これを足すだけで波線は消えるぞい！
+  const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   // ▼ ここから貼り付ける ▼
   const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
@@ -1510,68 +1512,91 @@ useEffect(() => {
            </div>
         </div>
       )}
-      {/* ★★★ 絆太郎：おもてなしウェルカムモーダル ★★★ */}
-      {isWelcomeModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          {/* 背景の強力ぼかし */}
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-700"></div>
+{isWelcomeModalOpen && (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl"></div>
 
-          {/* モーダル本体（すりガラス） */}
-          <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden animate-in zoom-in duration-500">
-            
-            {/* 華やかな装飾 */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl"></div>
-
-            <div className="relative p-8 md:p-12 text-center">
-              {/* 絆太郎ロゴ */}
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-3xl shadow-xl mb-8 border border-slate-100 animate-bounce-slow">
-                <img src="/icon.webp" alt="絆太郎" className="w-14 h-14 object-contain" />
-              </div>
-
-              <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">
-                絆太郎へようこそ！
-              </h2>
-              <p className="text-slate-600 font-medium mb-10 leading-relaxed text-lg">
-                今日からあなたのセミナー運営が、<br className="hidden md:inline" />
-                もっと楽しく、もっと「絆」が深まるものに変わります。
-              </p>
-
-              {/* 3ステップのおさらい（LPと統一！） */}
-              <div className="grid gap-4 text-left mb-12">
-                {[
-                  { title: "セミナーの案内", desc: "文字を入れるだけで、想いが伝わるページが完成", color: "text-blue-600", bg: "bg-blue-50" },
-                  { title: "スマートな受付", desc: "当日はスマホをかざすだけ。笑顔で迎える準備を", color: "text-indigo-600", bg: "bg-indigo-50" },
-                  { title: "絆を深めるファン作り", desc: "一度きりで終わらせない、次のご縁を大切に", color: "text-emerald-600", bg: "bg-emerald-50" },
-                ].map((item, idx) => (
-                  <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm transition-transform hover:scale-[1.02]`}>
-                    <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color}`}>
-                      <Check size={18} strokeWidth={3} />
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-slate-900">{item.title}</h4>
-                      <p className="text-xs text-slate-500 font-bold mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* 絆を広めるボタン */}
-              <button
-                onClick={closeWelcomeModal}
-                className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-300 flex items-center justify-center gap-2 group text-xl"
-              >
-                さっそく「絆」を広める
-                <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </button>
-              
-              <p className="mt-6 text-slate-400 text-xs font-bold">
-                ※右上の「Information」からいつでも使いかたを確認できます
-              </p>
-            </div>
+    <div className="relative w-full max-w-2xl bg-white/95 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden">
+      
+      {/* 1枚目：【歓迎スライド】 */}
+      {modalStep === 1 && (
+        <div className="p-8 md:p-12 text-center animate-in fade-in slide-in-from-right-8 duration-500">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-lg mb-6 border border-slate-100">
+            <img src="/icon.webp" alt="絆太郎" className="w-12 h-12 object-contain" />
           </div>
+          <h2 className="text-3xl font-black text-slate-900 mb-4">絆太郎へようこそ！</h2>
+          <p className="text-slate-600 mb-10">
+            あなたの想いを形にし、参加者との絆を一生ものにする。<br/>
+            そんなセミナー運営を全力でサポートするっぺ！
+          </p>
+          <button
+            onClick={() => setModalStep(2)} // 2枚目へ！
+            className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 group text-xl"
+          >
+            具体的な使いかたを見る
+            <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
       )}
+
+      {/* 2枚目：【具体ガイドスライド】 */}
+      {modalStep === 2 && (
+        <div className="p-8 md:p-12 animate-in fade-in slide-in-from-right-8 duration-500">
+          <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 rounded-xl"><Sparkles className="text-indigo-600" size={20}/></div>
+            使いかた 3つのステップ
+          </h2>
+
+          <div className="space-y-6 mb-10">
+            {[
+              { 
+                step: "01", 
+                title: "新規イベントを作成", 
+                desc: "右上の「新規イベント」ボタンから、タイトルや日時を入れるだけで募集ページが即完成！", 
+                icon: <Plus className="text-blue-600"/> 
+              },
+              { 
+                step: "02", 
+                title: "当日はQRコードを掲示", 
+                desc: "一覧の「QR表示」からアンケートQRを出せます。参加者に読み取ってもらうだけで受付とアンケートが同時に完了！", 
+                icon: <QrCode className="text-indigo-600"/> 
+              },
+              { 
+                step: "03", 
+                title: "心のこもった御礼メール", 
+                desc: "「参加者リスト」から、ボタン一つで御礼メールを送信。これで次回の予約にも繋がる「絆」ができるぞい！", 
+                icon: <Mail className="text-emerald-600"/> 
+              }
+            ].map((item, idx) => (
+              <div key={idx} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-white border-2 border-slate-100 shadow-sm flex items-center justify-center font-black text-slate-400 text-xs">
+                    {item.step}
+                  </div>
+                  {idx !== 2 && <div className="w-0.5 h-full bg-slate-100 my-1"></div>}
+                </div>
+                <div className="pb-4">
+                  <h4 className="font-black text-slate-900 flex items-center gap-2">
+                    {item.title}
+                  </h4>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed mt-1">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={closeWelcomeModal}
+            className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all shadow-xl shadow-indigo-200 text-lg"
+          >
+            準備完了！さっそく使ってみる
+          </button>
+        </div>
+      )}
+
+    </div>
+  </div>
+)}
     </div>
   );
 }
