@@ -220,9 +220,18 @@ useEffect(() => {
   const hasBranches = safeBranches.length > 0;
 
   const filteredEvents = events.filter(e => {
-    if (targetBranch === "all") return true;
-    return e.branchTag === targetBranch;
-  });
+  // 1. 「全部署・全イベント」なら、文句なしで表示
+  if (targetBranch === "all") return true;
+
+  // 2. プルダウンで何かが選ばれている場合
+  // e.branchTag（タグ）が一致するか、
+  // もしくは e.tenantId が一致していれば「そのテナントのイベント」として認めるっぺ！
+  return (
+    e.branchTag === targetBranch || 
+    e.tenantId === tenantData?.id || // 👈 tenantId が合ってればOKにするっぺ！
+    (e.organizer && e.organizer.includes(targetBranch))
+  );
+});
 
 const fetchTargets = async () => {
     if (!tenantData) return;
