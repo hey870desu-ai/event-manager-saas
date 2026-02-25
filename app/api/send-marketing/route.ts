@@ -50,10 +50,7 @@ export async function POST(request: Request) {
                   <span style="${styles.logoText}">${senderName}</span>
                 </div>
                 <div style="${styles.content}">
-                  <div style="${styles.content}">
-  {/* ここにあった名前の行が消えて、本文（messageBody）だけになるぞい */}
-  <div style="${styles.messageBody}">${personalizedBody}</div>
-</div>
+              
                   <div style="${styles.messageBody}">${personalizedBody}</div>
                 </div>
                 <div style="${styles.footer}">
