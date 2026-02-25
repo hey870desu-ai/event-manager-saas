@@ -155,23 +155,38 @@ export default function MarketingPage() {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set()); // チェックしたメアドを覚える箱
   
 
-  useEffect(() => {
+useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         try {
-          let tenantId = "demo";
-          if (currentUser.email !== SUPER_ADMIN_EMAIL) {
-            const userDoc = await getDoc(doc(db, "admin_users", currentUser.email!));
-            if (userDoc.exists()) {
-              tenantId = userDoc.data().tenantId || "demo";
-            }
-          }
+          // ★1. まずは空にする。最初から "demo" を入れてはいけないっぺ！
+          let currentId = "";
+
+          // ★2. 特権管理者（塙さん）であっても、まずは admin_users に所属を探しに行く
+          const userDoc = await getDoc(doc(db, "admin_users", currentUser.email!));
           
-          const tData = await fetchTenantData(tenantId);
+          if (userDoc.exists()) {
+            // admin_users に登録があれば、その ID（caredesignworksなど）を正しく取得
+            currentId = userDoc.data().tenantId;
+          } else if (currentUser.email === SUPER_ADMIN_EMAIL) {
+            // 登録がない特権管理者の場合のみ、予備で demo を使う
+            currentId = "demo";
+          }
+
+          // IDが見つからない場合は処理を止める（demoに勝手に飛ばさない）
+          if (!currentId) {
+             console.error("所属テナントが見つからないっぺ！admin_usersの設定を確認してくんちぇ。");
+             setLoading(false);
+             return;
+          }
+
+          // ★3. 判明したID（caredesignworks）で、そのテナント専用のデータを取得
+          const tData = await fetchTenantData(currentId);
           setTenantData(tData);
 
-          const q = query(collection(db, "events"), where("tenantId", "==", tenantId));
+          // イベント取得のクエリも、この正しいIDで実行だっぺ！
+          const q = query(collection(db, "events"), where("tenantId", "==", currentId));
           const snap = await getDocs(q);
           const list = snap.docs
             .map(d => ({ id: d.id, ...d.data() } as any))
