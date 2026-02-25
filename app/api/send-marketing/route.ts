@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         from: `${senderName} <info@event-manager.app>`,
         to: [recipient.email],
         replyTo: replyTo || "info@event-manager.app",
-        subject: `【★新ルート★】 ${subject}`, //
+        subject: subject,
         html: `
           <!DOCTYPE html>
           <html>
