@@ -376,19 +376,16 @@ const handleSaveMemo = async (email: string, memo: string) => {
     }
 
     try {
-      const res = await fetch('/api/send-thankyou', {
+      const res = await fetch('/api/send-marketing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          recipients: finalRecipients, 
-          subject: isTest ? `[TEST] ${subject}` : subject,
-          body: body,
-          senderName: tenantData?.name || "絆太郎",
-          replyTo: user?.email,
-          eventTitle: displayTitle, 
-          eventDate: displayDate, 
-          venueName: displayVenue, 
-          scheduledAt: scheduledTime || null
+        recipients: finalRecipients, 
+        subject: isTest ? `[TEST] ${subject}` : subject,
+        body: body,
+        senderName: tenantData?.name || "絆太郎",
+        replyTo: user?.email,
+        themeColor: tenantData?.themeColor,
         }),
       });
 
