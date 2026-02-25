@@ -31,7 +31,10 @@ export async function POST(request: Request) {
     // 📩 送信処理（一斉送信）
     const sendPromises = recipients.map(async (recipient: any) => {
       // 本文中の「参加者各位」を個別の「名前 様」に変換するっぺ！
-      const personalizedBody = emailBody.replace(/参加者各位/g, `${recipient.name} 様`);
+      const personalizedBody = emailBody.replace(
+  /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g, 
+  `${recipient.name} 様`
+);
       
       return resend.emails.send({
         from: `${senderName} <info@event-manager.app>`,
@@ -47,7 +50,10 @@ export async function POST(request: Request) {
                   <span style="${styles.logoText}">${senderName}</span>
                 </div>
                 <div style="${styles.content}">
-                  <div style="${styles.greeting}">${recipient.name} 様</div>
+                  <div style="${styles.content}">
+  {/* ここにあった名前の行が消えて、本文（messageBody）だけになるぞい */}
+  <div style="${styles.messageBody}">${personalizedBody}</div>
+</div>
                   <div style="${styles.messageBody}">${personalizedBody}</div>
                 </div>
                 <div style="${styles.footer}">
