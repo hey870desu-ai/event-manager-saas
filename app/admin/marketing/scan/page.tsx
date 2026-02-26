@@ -1,9 +1,11 @@
 // 📂 app/admin/marketing/scan/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
-import { Camera, RefreshCw, CheckCircle2, ArrowLeft, UploadCloud } from "lucide-react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react"; // useEffectを足してな！
+import { Camera, RefreshCw, CheckCircle2, ArrowLeft, UploadCloud, UserPlus, Building2, Mail,Link } from "lucide-react"; // アイコン追加
+import { db } from "@/lib/firebase"; // ここは塙さんの環境に合わせてな！
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation"; // 移動用の道具
 
 export default function OcrScannerTest() {
   const [imgData, setImgData] = useState<string | null>(null);
@@ -35,40 +37,35 @@ export default function OcrScannerTest() {
     const canvas = canvasRef.current;
 
     if (video && canvas) {
-      // 1. 動画の実際のサイズが取れているか確認
-      const width = video.videoWidth;
-      const height = video.videoHeight;
-
-      if (width === 0 || height === 0) {
-        alert("まだカメラの準備ができてねぇっぺ！もう一回押してみてな。");
-        return;
-      }
+      // 💡 Pixel対応：videoWidthが取れない場合の予備サイズ
+      const width = video.videoWidth || video.clientWidth;
+      const height = video.videoHeight || video.clientHeight;
 
       const context = canvas.getContext("2d");
       canvas.width = width;
       canvas.height = height;
 
       try {
-        // 2. キャンバスに描画
+        // 画像を描画
         context?.drawImage(video, 0, 0, width, height);
         
-        // 3. 画像データとして抽出（画質を少し下げてAIが読みやすくするっぺ）
-        const data = canvas.toDataURL("image/jpeg", 0.7);
+        // 💡 Androidのメモリ負荷を減らすために画質を0.5まで落としてみるべ
+        const data = canvas.toDataURL("image/jpeg", 0.5);
+        
+        if (data === "data:,") { // 撮れてない時のサインだっぺ
+          throw new Error("Empty image");
+        }
+
         setImgData(data);
         
-        console.log("パシャリ！撮れたぞい！");
-
-        // 4. カメラを止める（省エネだっぺ）
+        // カメラ停止
         if (video.srcObject) {
           const stream = video.srcObject as MediaStream;
-          stream.getTracks().forEach(track => track.stop());
+          stream.getTracks().forEach(t => t.stop());
         }
       } catch (err) {
-        console.error("Capture error:", err);
-        alert("写真が撮れなかったっぺ...ブラウザを更新してみてな！");
+        alert("写真が撮れなかったっぺ。もう一度ボタンを押してみてな！");
       }
-    } else {
-      alert("カメラの準備が整ってねぇぞい！");
     }
   };
 
@@ -91,6 +88,35 @@ export default function OcrScannerTest() {
     }
   };
 
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 💾 データベースへ保存（ここでソースを指定するっぺ！）
+  const saveToKizunaList = async () => {
+    if (!result) return;
+    setIsSaving(true);
+    try {
+      // 💡 保存先を共通の「kizuna_contacts」にするのがおすすめだっぺ
+      await addDoc(collection(db, "kizuna_contacts"), {
+        name: result.name || "",
+        company: result.company || "",
+        email: result.email || "",
+        source: "scan",        // ✨ これが「名刺スキャン」の看板！
+        category: "sales",      // ✨ 営業ツール用のカテゴリ
+        createdAt: serverTimestamp(),
+        // tenantId: "塙さんのテナントID", // ログイン情報から取れるなら入れるべ！
+      });
+
+      alert("営業用の「絆」として登録したっぺ！");
+      router.push("/admin/marketing"); // 終わったらリストへ戻る
+    } catch (err) {
+      console.error(err);
+      alert("保存に失敗したっぺ...");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0f111a] text-slate-300 p-6 flex flex-col items-center">
       <div className="w-full max-w-md space-y-6">
@@ -102,7 +128,14 @@ export default function OcrScannerTest() {
         {/* プレビューエリア */}
         <div className="relative aspect-[3/2] bg-slate-900 rounded-2xl border-2 border-dashed border-slate-700 overflow-hidden flex items-center justify-center">
           {!imgData ? (
-            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <video 
+  ref={videoRef} 
+  autoPlay 
+  playsInline 
+  muted // Androidではmutedがないと自動再生されないことがあるっぺ
+  onLoadedMetadata={() => console.log("カメラ準備完了だっぺ！")}
+  className="w-full h-full object-cover" 
+/>
           ) : (
             <img src={imgData} className="w-full h-full object-contain" />
           )}
@@ -133,14 +166,36 @@ export default function OcrScannerTest() {
         </div>
 
         {/* 解析結果表示 */}
+        {/* 解析結果表示 ＆ 保存ボタン */}
         {result && (
           <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-2xl animate-in zoom-in">
             <h2 className="text-emerald-400 font-bold mb-4 flex items-center gap-2"><CheckCircle2 size={18}/> 解析完了！</h2>
-            <div className="space-y-3">
-              <div><label className="text-[10px] text-slate-500 uppercase">お名前</label><p className="text-white font-bold">{result.name || "不明"}</p></div>
-              <div><label className="text-[10px] text-slate-500 uppercase">会社名</label><p className="text-white">{result.company || "不明"}</p></div>
-              <div><label className="text-[10px] text-slate-500 uppercase">メールアドレス</label><p className="text-white">{result.email || "不明"}</p></div>
+            
+            <div className="space-y-3 mb-6">
+              {/* 入力欄にしておけば、AIが間違えてもその場で直せるっぺ！ */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase">お名前</label>
+                <input value={result.name} onChange={(e)=>setResult({...result, name: e.target.value})} className="bg-slate-800 w-full p-2 rounded text-white outline-none focus:ring-1 ring-indigo-500" />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase">会社名</label>
+                <input value={result.company} onChange={(e)=>setResult({...result, company: e.target.value})} className="bg-slate-800 w-full p-2 rounded text-white outline-none focus:ring-1 ring-indigo-500" />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase">メールアドレス</label>
+                <input value={result.email} onChange={(e)=>setResult({...result, email: e.target.value})} className="bg-slate-800 w-full p-2 rounded text-white outline-none focus:ring-1 ring-indigo-500" />
+              </div>
             </div>
+
+            {/* ✨ 保存ボタン登場！ */}
+            <button 
+              onClick={saveToKizunaList} 
+              disabled={isSaving}
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isSaving ? <RefreshCw className="animate-spin" /> : <UserPlus size={20}/>}
+              {isSaving ? "保存中だっぺ..." : "この内容で絆リストに登録"}
+            </button>
           </div>
         )}
       </div>
