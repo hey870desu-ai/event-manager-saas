@@ -663,6 +663,16 @@ useEffect(() => {
 
           {/* 右側：メニューボタン群（スマホで横スクロール可能） */}
           <div className="flex gap-3 overflow-x-auto py-2 px-1 hide-scrollbar -mr-4 pr-4 md:mr-0 md:pr-0 w-full justify-end items-center">
+
+            {/* ✨ 新機能：名刺スキャン（OCR）ボタン */}
+<button 
+  onClick={() => router.push("/admin/marketing/scan")}
+  className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-md shadow-indigo-200 active:scale-95"
+>
+  <ScanLine size={16} /> {/* 既存のアイコンと形が違う ScanLine で差別化！ */}
+  <span className="hidden lg:inline">名刺スキャン</span>
+  <Sparkles size={12} className="ml-1 text-yellow-300 animate-pulse hidden sm:inline" />
+</button>
              
              {/* 📂 ヘッダー内のボタン部分を見つけて差し替え */}
 <button 
