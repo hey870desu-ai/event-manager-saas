@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -103,6 +103,7 @@ ${orgName}
 export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [events, setEvents] = useState<EventData[]>([]);
   const [permissionError, setPermissionError] = useState(false);
   const [currentUserTenant, setCurrentUserTenant] = useState<string>("");
@@ -631,97 +632,104 @@ useEffect(() => {
           border: none; /* 枠線を消す */
         }
       `}</style>
-      {/* ▲▲▲ 追加ここまで ▲▲▲ */}
-      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center gap-4">
-          
-          {/* ▼ 管理画面：ロゴとインフォメーション（絆太郎版） */}
-<div className="flex items-center gap-3 shrink-0">
-  <div className="flex items-center gap-2.5">
-    {/* 1. BarChart3 アイコンをロゴ画像に差し替え！ */}
-    <img 
-      src="/icon.webp" 
-      alt="絆太郎" 
-      className="h-8 w-8 object-contain drop-shadow-sm" 
-    />
+      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+  <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center relative">
     
-    {/* 2. 名前はそのまま「絆太郎 Event Manager」を活かすべ */}
-    <h1 className="text-xl font-bold text-slate-800 hidden sm:block tracking-tight">
-      絆太郎 <span className="text-sm font-medium text-slate-400">Event Manager</span>
-    </h1>
-  </div>
+    {/* 左側：ロゴとインフォ */}
+    <div className="flex items-center gap-3 shrink-0">
+      <img src="/icon.webp" alt="絆太郎" className="h-8 w-8 object-contain" />
+      <h1 className="text-xl font-bold text-slate-800 hidden sm:block">絆太郎</h1>
+      
+      {/* インフォメーションボタン（これだけは外に出しておくと便利だっぺ！） */}
+      <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full hover:bg-orange-50 transition-all border border-slate-200">
+        <Megaphone size={14} /> 
+        <span className="hidden md:inline text-xs font-bold">Information</span>
+      </button>
+    </div>
 
-  {/* インフォメーションボタン */}
-  <button 
-    onClick={() => router.push("/admin/info")} 
-    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-full transition-all text-xs font-bold border border-slate-200"
-  >
-    <Megaphone size={14} /> 
-    <span className="hidden md:inline">Information</span>
-  </button>
-</div>
+    {/* 【PC版】横並びメニュー（md以上の画面で見える） */}
+    <div className="hidden md:flex gap-2 items-center">
+      {/* 1. 名刺スキャン */}
+      <button onClick={() => router.push("/admin/marketing/scan")} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center shadow-sm hover:bg-indigo-500 transition-all">
+        <ScanLine size={16} /> <span>名刺スキャン</span>
+      </button>
+      {/* 2. 絆リスト */}
+      <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <Mail size={16}/> <span>絆リスト</span>
+      </button>
+      {/* 3. 分析 */}
+      <button onClick={() => router.push("/admin/analytics")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <BarChart2 size={16}/> <span>分析</span>
+      </button>
+      {/* 4. 当日受付 */}
+      <button onClick={() => router.push("/admin/scan")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <ScanBarcode size={16}/> <span>当日受付</span>
+      </button>
+      {/* 5. 契約 */}
+      <button onClick={() => router.push("/dashboard")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-slate-100">
+        <CreditCard size={16}/> <span>契約</span>
+      </button>
+      
+      <div className="w-px h-4 bg-slate-200 mx-1" /> {/* 仕切り線 */}
+      
+      {/* 6. 設定 / 7. ログアウト */}
+      <button onClick={()=>setIsSettingsOpen(true)} className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500"><Settings size={20}/></button>
+      <button onClick={handleLogout} className="p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-500"><LogOut size={20}/></button>
+    </div>
 
-          {/* 右側：メニューボタン群（スマホで横スクロール可能） */}
-          <div className="flex gap-3 overflow-x-auto py-2 px-1 hide-scrollbar -mr-4 pr-4 md:mr-0 md:pr-0 w-full justify-end items-center">
+    {/* 【スマホ版】メニュー切り替えボタン（md未満の画面で見える） */}
+    <button 
+      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      className="md:hidden p-2 text-slate-600 bg-slate-100 rounded-lg active:scale-95 transition-all"
+    >
+      {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+    </button>
 
-            {/* ✨ 新機能：名刺スキャン（OCR）ボタン */}
-<button 
-  onClick={() => router.push("/admin/marketing/scan")}
-  className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-md shadow-indigo-200 active:scale-95"
->
-  <ScanLine size={16} /> {/* 既存のアイコンと形が違う ScanLine で差別化！ */}
-  <span className="hidden lg:inline">名刺スキャン</span>
-  <Sparkles size={12} className="ml-1 text-yellow-300 animate-pulse hidden sm:inline" />
-</button>
-             
-             {/* 📂 ヘッダー内のボタン部分を見つけて差し替え */}
-<button 
-  onClick={() => {
-    if (isFreePlan) {
-      setIsUpgradeModalOpen(true); // フリープランなら警告を出す
-    } else {
-      router.push("/admin/marketing"); // 有料ならページ移動
-    }
-  }}
-  className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
->
-  <Mail size={16}/> 
-  <span className="hidden lg:inline">絆リスト</span>
-  {isFreePlan && <Lock size={12} className="ml-1 text-slate-400" />} {/* 鍵アイコンを添えると親切！ */}
-</button>
-            
-            {/* 分析・データ管理 */}
-            <button onClick={() => router.push("/admin/analytics")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
-               <BarChart2 size={16}/> <span className="hidden lg:inline">分析・データ管理</span>
-            </button>
-            
-            {/* 当日受付・QR */}
-            <button onClick={() => router.push("/admin/scan")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-orange-50 border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
-               <ScanBarcode size={16}/> <span className="hidden lg:inline">当日受付・QR</span>
-            </button>
+    {/* 【スマホ用】スライドメニュー本体 */}
+    {isMobileMenuOpen && (
+      <div className="absolute top-16 left-0 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl flex flex-col p-4 gap-2 animate-in slide-in-from-top duration-300 md:hidden z-50">
+        
+        {/* 1. 名刺スキャン（特等席！） */}
+        <button onClick={() => { router.push("/admin/marketing/scan"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200">
+          <ScanLine size={24} /> <span className="text-base">名刺スキャン（AI解析）</span>
+        </button>
 
-            {/* お問い合わせ管理 (スーパー管理者のみ) */}
-            {isSuperAdminMode && (
-              <button 
-                onClick={() => router.push("/admin/contacts")} 
-                className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm"
-              >
-                 <MessageSquare size={16}/> 
-                 <span className="hidden lg:inline">お問い合わせ管理</span>
-              </button>
-            )}
-
-            {/* 契約・請求ボタン */}
-            <button onClick={() => router.push("/dashboard")} className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-lg transition-all text-xs font-bold whitespace-nowrap shadow-sm">
-               <CreditCard size={16}/> <span className="hidden lg:inline">契約・請求</span>
-            </button>
-
-            {/* 設定・ログアウト */}
-            <button onClick={()=>setIsSettingsOpen(true)} className="shrink-0 p-1.5 hover:bg-slate-100 rounded-md text-slate-500 transition-colors"><Settings size={20}/></button>
-            <button onClick={handleLogout} className="shrink-0 p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-500 transition-colors"><LogOut size={20}/></button>
-          </div>
+        <div className="grid grid-cols-1 gap-2 mt-1">
+          {/* 2. 絆リスト */}
+          <button onClick={() => { setIsMobileMenuOpen(false); isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing"); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <Mail size={22} className="text-orange-500" /> <span className="text-base">絆リスト</span>
+          </button>
+          
+          {/* 3. 分析・データ管理 */}
+          <button onClick={() => { router.push("/admin/analytics"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <BarChart2 size={22} className="text-blue-500" /> <span className="text-base">分析・データ管理</span>
+          </button>
+          
+          {/* 4. 当日受付・QR */}
+          <button onClick={() => { router.push("/admin/scan"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <ScanBarcode size={22} className="text-emerald-500" /> <span className="text-base">当日受付・QR</span>
+          </button>
+          
+          {/* 5. 契約・請求 */}
+          <button onClick={() => { router.push("/dashboard"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <CreditCard size={22} className="text-slate-500" /> <span className="text-base">契約・請求</span>
+          </button>
         </div>
-      </header>
+
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {/* 6. 設定 */}
+          <button onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }} className="flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-600 rounded-2xl text-sm font-bold">
+            <Settings size={20} /> 設定
+          </button>
+          {/* 7. ログアウト */}
+          <button onClick={handleLogout} className="flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold">
+            <LogOut size={20} /> ログアウト
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
 {/* ▼▼▼ 修正：黒背景をやめ、清潔感のある薄いエメラルドグリーンに変更 ▼▼▼ */}
