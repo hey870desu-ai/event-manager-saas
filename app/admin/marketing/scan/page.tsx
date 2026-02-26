@@ -27,20 +27,36 @@ export default function BusinessCardScanner() {
     }
   };
 
-  // 🧪 AI解析を呼び出す（画質が良いので解析精度も上がるっぺ！）
+  // 🧪 AI解析を呼び出す（デバッグ強化版だっぺ！）
   const analyzeImage = async () => {
     if (!imgData) return;
     setLoading(true);
     try {
+      // 💡 送信する前に、画像のサイズがデカすぎないかコンソールで確認するべ
+      console.log("送信する画像データの長さ:", imgData.length);
+
       const res = await fetch("/api/admin/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imgData }),
       });
+      
       const data = await res.json();
+
+      // ✨ ここがポイント！APIがエラーを返したら、その内容を捕まえる！
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `サーバーエラー (Code: ${res.status})`);
+      }
+      
+      // 成功したら結果をセット
       setResult(data);
-    } catch (err) {
-      alert("AI解析に失敗したっぺ...。");
+
+    } catch (err: any) {
+      // エラー内容をコンソールに出す
+      console.error("OCR Error Details:", err);
+      
+      // 💡 塙さんのスマホ画面に、エラーの正体を表示するだっぺ！
+      alert(`AIが読み取れなかった原因だっぺ：\n\n「${err.message}」\n\n※このメッセージを教えてくんちぇ！`);
     } finally {
       setLoading(false);
     }
