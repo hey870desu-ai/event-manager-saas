@@ -300,7 +300,7 @@ const fetchTargets = async () => {
     } finally {
       setLoadingTargets(false);
     }
-  };
+  }
 
   // ★テンプレート適用関数
   const applyTemplate = (templateId: string) => {
