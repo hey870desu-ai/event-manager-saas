@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock } from "lucide-react"; 
+import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
