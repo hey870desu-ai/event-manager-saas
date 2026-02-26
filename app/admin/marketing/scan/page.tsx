@@ -29,22 +29,46 @@ export default function OcrScannerTest() {
     }
   };
 
-  // 📸 シャッターを切る
+  // 📸 シャッターを切る（強化版だっぺ！）
   const capture = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
+
     if (video && canvas) {
+      // 1. 動画の実際のサイズが取れているか確認
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      if (width === 0 || height === 0) {
+        alert("まだカメラの準備ができてねぇっぺ！もう一回押してみてな。");
+        return;
+      }
+
       const context = canvas.getContext("2d");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      const data = canvas.toDataURL("image/jpeg");
-      setImgData(data);
-      
-      // カメラを止める
-      const stream = video.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+      canvas.width = width;
+      canvas.height = height;
+
+      try {
+        // 2. キャンバスに描画
+        context?.drawImage(video, 0, 0, width, height);
+        
+        // 3. 画像データとして抽出（画質を少し下げてAIが読みやすくするっぺ）
+        const data = canvas.toDataURL("image/jpeg", 0.7);
+        setImgData(data);
+        
+        console.log("パシャリ！撮れたぞい！");
+
+        // 4. カメラを止める（省エネだっぺ）
+        if (video.srcObject) {
+          const stream = video.srcObject as MediaStream;
+          stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (err) {
+        console.error("Capture error:", err);
+        alert("写真が撮れなかったっぺ...ブラウザを更新してみてな！");
+      }
+    } else {
+      alert("カメラの準備が整ってねぇぞい！");
     }
   };
 
