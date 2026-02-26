@@ -1,162 +1,180 @@
 // 📂 app/admin/marketing/scan/page.tsx
 "use client";
 
-import { useState } from "react";
-import { Camera, RefreshCw, CheckCircle2, ArrowLeft, UserPlus, Building2, Mail, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, RefreshCw, CheckCircle2, ArrowLeft, UserPlus, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export default function BusinessCardScanner() {
+export default function ProfessionalScanner() {
   const router = useRouter();
   const [imgData, setImgData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 📸 スマホの標準カメラを起動して画像を受け取る
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImgData(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // 🧪 AI解析を呼び出す（デバッグ強化版だっぺ！）
-  const analyzeImage = async () => {
-    if (!imgData) return;
-    setLoading(true);
+  // 📷 カメラ起動
+  const startCamera = async () => {
+    setImgData(null);
+    setResult(null);
     try {
-      // 💡 送信する前に、画像のサイズがデカすぎないかコンソールで確認するべ
-      console.log("送信する画像データの長さ:", imgData.length);
-
-      const res = await fetch("/api/admin/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imgData }),
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false 
       });
-      
-      const data = await res.json();
-
-      // ✨ ここがポイント！APIがエラーを返したら、その内容を捕まえる！
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `サーバーエラー (Code: ${res.status})`);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-      
-      // 成功したら結果をセット
-      setResult(data);
-
-    } catch (err: any) {
-      // エラー内容をコンソールに出す
-      console.error("OCR Error Details:", err);
-      
-      // 💡 塙さんのスマホ画面に、エラーの正体を表示するだっぺ！
-      alert(`AIが読み取れなかった原因だっぺ：\n\n「${err.message}」\n\n※このメッセージを教えてくんちぇ！`);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      alert("カメラの起動に失敗だっぺ。設定を確認してな！");
     }
   };
 
-  // 💾 営業用「絆リスト」に保存
-  const saveToKizunaList = async () => {
-    if (!result) return;
-    setIsSaving(true);
-    try {
-      await addDoc(collection(db, "kizuna_contacts"), {
-        ...result,
-        source: "scan", // ✨ これでセミナーとは別の「営業先」として管理！
-        createdAt: serverTimestamp(),
-      });
-      alert("営業用の「絆」として登録したっぺ！");
-      router.push("/admin/marketing");
-    } catch (err) {
-      alert("保存に失敗したっぺ...");
-    } finally {
-      setIsSaving(false);
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  // 📸 枠の中だけを切り取ってシャッターを切る（クロップ機能）
+  const capture = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // 名刺の黄金比（約1.6:1）に合わせて切り抜く計算
+    const vWidth = video.videoWidth;
+    const vHeight = video.videoHeight;
+    
+    // 画面中央の 80% の幅をターゲットにする
+    const cropWidth = vWidth * 0.8;
+    const cropHeight = cropWidth / 1.6;
+    const startX = (vWidth - cropWidth) / 2;
+    const startY = (vHeight - cropHeight) / 2;
+
+    canvas.width = 640; // 解析用にサイズを最適化
+    canvas.height = 400;
+
+    // 💡 ここで「枠の中だけ」をキャンバスに写し取る！
+    ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+    
+    const data = canvas.toDataURL("image/jpeg", 0.8);
+    setImgData(data);
+
+    // カメラ停止
+    if (video.srcObject) {
+      (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0f111a] text-slate-300 p-6 flex flex-col items-center font-sans">
-      <div className="w-full max-w-md space-y-6">
-        
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between">
-          <Link href="/admin/marketing" className="p-3 bg-slate-800/50 rounded-2xl text-slate-400 hover:text-white transition-colors">
-            <ArrowLeft size={20}/>
-          </Link>
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
-            <Sparkles className="text-indigo-500" size={20} /> 名刺AIスキャナー
-          </h1>
-          <div className="w-10"></div>
-        </div>
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans overflow-hidden">
+      
+      {/* 上部ヘッダー */}
+      <div className="p-4 flex items-center justify-between z-10 bg-black/50 backdrop-blur-md">
+        <Link href="/admin/marketing" className="text-white"><ArrowLeft size={24}/></Link>
+        <h1 className="text-sm font-black tracking-widest uppercase flex items-center gap-2">
+          <Sparkles className="text-indigo-500" size={16}/> Business Card AI Scanner
+        </h1>
+        <div className="w-6"></div>
+      </div>
 
-        {/* 写真表示エリア */}
-        <div className="relative aspect-[3/2] bg-slate-900 rounded-[2rem] border-2 border-dashed border-slate-700 overflow-hidden flex items-center justify-center shadow-2xl">
-          {!imgData ? (
-            <div className="text-center p-6">
-              <Camera size={48} className="mx-auto mb-4 text-slate-600 opacity-50" />
-              <p className="text-sm text-slate-500 font-bold">名刺を撮影するか<br/>写真を選んでくんちぇ</p>
+      {/* スキャナー本体エリア */}
+      <div className="relative flex-1 flex items-center justify-center bg-slate-900">
+        {!imgData ? (
+          <>
+            <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+            
+            {/* 💡 枠のデザイン（ここがレベル高い演出だっぺ！） */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              {/* 半透明のマスク */}
+              <div className="absolute inset-0 bg-black/60" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 10% 100%, 10% 30%, 90% 30%, 90% 70%, 10% 70%, 10% 100%, 100% 100%, 100% 0%)' }}></div>
+              
+              {/* 名刺の枠線 */}
+              <div className="w-[85%] aspect-[1.6/1] border-2 border-indigo-400 rounded-xl relative shadow-[0_0_20px_rgba(79,70,229,0.5)]">
+                {/* 四隅のコーナーガイド */}
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-lg"></div>
+                
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.3em] animate-pulse">Scanning...</p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <img src={imgData} className="w-full h-full object-contain animate-in fade-in" alt="preview" />
-          )}
-        </div>
-
-        {/* 操作ボタン：ここが魔法の入り口だっぺ！ */}
-        <div className="flex flex-col gap-4">
-          {!imgData ? (
-            <label className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 cursor-pointer active:scale-95 transition-all">
-              <Camera size={24} strokeWidth={3}/> 
-              名刺を撮る / 選択
-              {/* 💡 capture="environment" がスマホの背面カメラを直撃するっぺ！ */}
-              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
-            </label>
-          ) : !result ? (
-            <div className="space-y-3">
-              <button onClick={analyzeImage} disabled={loading} className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3">
-                {loading ? <RefreshCw className="animate-spin" /> : <RefreshCw size={24}/>}
-                {loading ? "AI解析中だっぺ..." : "AIで名刺を読み取る"}
-              </button>
-              <button onClick={() => setImgData(null)} className="w-full py-3 text-slate-500 font-bold">撮り直す</button>
-            </div>
-          ) : null}
-        </div>
-
-        {/* 解析結果 & 保存 */}
-        {result && (
-          <div className="bg-slate-900 border border-emerald-500/30 p-6 rounded-[2rem] shadow-2xl animate-in zoom-in">
-             <h2 className="text-emerald-400 font-black mb-6 flex items-center gap-2">
-               <CheckCircle2 size={20}/> 解析に成功したっぺ！
-             </h2>
-             
-             <div className="space-y-4 mb-8 text-sm">
-                <div className="border-b border-slate-800 pb-2">
-                  <label className="text-[10px] text-slate-500 font-black uppercase">Name</label>
-                  <input value={result.name} onChange={e=>setResult({...result, name:e.target.value})} className="w-full bg-transparent text-white font-bold outline-none" />
-                </div>
-                <div className="border-b border-slate-800 pb-2">
-                  <label className="text-[10px] text-slate-500 uppercase">Company</label>
-                  <input value={result.company} onChange={e=>setResult({...result, company:e.target.value})} className="w-full bg-transparent text-white outline-none" />
-                </div>
-                <div className="border-b border-slate-800 pb-2">
-                  <label className="text-[10px] text-slate-500 uppercase">Email</label>
-                  <input value={result.email} onChange={e=>setResult({...result, email:e.target.value})} className="w-full bg-transparent text-white outline-none" />
-                </div>
-             </div>
-
-             <button onClick={saveToKizunaList} disabled={isSaving} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-2">
-               {isSaving ? <RefreshCw className="animate-spin" /> : <UserPlus size={20}/>}
-               営業用リストに保存する
-             </button>
+            
+            <p className="absolute bottom-10 text-xs text-indigo-300 font-bold bg-black/40 px-4 py-2 rounded-full">
+              枠の中に名刺を合わせてくんちぇ
+            </p>
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+            <img src={imgData} className="w-full max-w-sm rounded-lg shadow-2xl border border-white/20" alt="captured" />
+            <p className="mt-4 text-xs text-slate-500">切り抜き完了だっぺ！</p>
           </div>
         )}
       </div>
+
+      {/* 下部操作エリア */}
+      <div className="p-8 bg-black flex flex-col items-center gap-6">
+        {!imgData ? (
+          <button 
+            onClick={capture}
+            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1 active:scale-90 transition-transform"
+          >
+            <div className="w-full h-full bg-white rounded-full"></div>
+          </button>
+        ) : (
+          <div className="w-full space-y-3">
+            {!result ? (
+              <>
+                <button 
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const res = await fetch("/api/admin/ocr", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: imgData }),
+                      });
+                      const data = await res.json();
+                      setResult(data);
+                    } catch (err) { alert("AI解析に失敗だっぺ..."); } finally { setLoading(false); }
+                  }}
+                  className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2"
+                >
+                  {loading ? <RefreshCw className="animate-spin" /> : "AIでクリーンアップ解析"}
+                </button>
+                <button onClick={startCamera} className="w-full py-3 text-slate-500 font-bold">撮り直す</button>
+              </>
+            ) : (
+              <div className="bg-slate-900 p-6 rounded-[2rem] border border-emerald-500/30 animate-in slide-in-from-bottom-4">
+                <h3 className="text-emerald-400 font-black mb-4 flex items-center gap-2">
+                   <CheckCircle2 size={18}/> 絆リストへ登録準備完了！
+                </h3>
+                <div className="space-y-2 text-sm mb-6">
+                  <p><span className="text-slate-500">氏名:</span> {result.name}</p>
+                  <p><span className="text-slate-500">会社:</span> {result.company}</p>
+                </div>
+                <button className="w-full py-4 bg-emerald-600 text-white font-black rounded-xl">
+                  絆リストに保存する
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
