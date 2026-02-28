@@ -96,6 +96,28 @@ export default function TenantBillingPage() {
       setLoading(false);
     }
   };
+  // ★追加：Stripeポータル（解約・カード変更）を開くっぺ！
+  const handleManageBilling = async () => {
+    if (!tenant) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("管理画面を開けませんでした");
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-indigo-500"></div></div>;
   
@@ -137,28 +159,36 @@ export default function TenantBillingPage() {
           
           <div className="grid md:grid-cols-3 gap-4 mb-10">
             {/* 1. プラン情報（アップグレード導線付き） */}
-            <div className={`bg-slate-900 border ${isFree ? 'border-slate-800' : 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'} p-6 rounded-xl relative overflow-hidden group`}>
-               <p className="text-xs text-slate-500 font-bold mb-1">現在のプラン</p>
-               <div className="flex items-baseline gap-2 mb-3">
-                 <p className="text-3xl font-black text-white capitalize tracking-tight">{tenant.plan || "Free"}</p>
-                 {isFree && <span className="text-xs text-slate-400">プラン</span>}
-               </div>
+            {/* 1. プラン情報 */}
+<div className={`bg-slate-900 border ${isFree ? 'border-slate-800' : 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'} p-6 rounded-xl relative overflow-hidden group`}>
+   <p className="text-xs text-slate-500 font-bold mb-1">現在のプラン</p>
+   <div className="flex items-baseline gap-2 mb-3">
+     <p className="text-3xl font-black text-white capitalize tracking-tight">{tenant.plan || "Free"}</p>
+   </div>
 
-               {/* ▼▼▼ フリープランの場合のみアップグレードボタンを表示 ▼▼▼ */}
-               {isFree ? (
-                 <button 
-                   onClick={handleUpgrade}
-                   className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
-                 >
-                   <Sparkles size={14} className="text-yellow-300 animate-pulse"/> 
-スタンダードにアップグレード
-                 </button>
-               ) : (
-                 <div className="text-xs text-emerald-400 flex items-center gap-1 font-bold">
-                   <CheckCircle2 size={14}/> プレミアム機能 利用中
-                 </div>
-               )}
-            </div>
+   {isFree ? (
+     <button 
+       onClick={handleUpgrade}
+       className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
+     >
+       <Sparkles size={14} className="text-yellow-300 animate-pulse"/> 
+       スタンダードにアップグレード
+     </button>
+   ) : (
+     <div className="space-y-3">
+       <div className="text-xs text-emerald-400 flex items-center gap-1 font-bold">
+         <CheckCircle2 size={14}/> プレミアム機能 利用中
+       </div>
+       {/* 💡 これが「おもてなし」の管理ボタンだっぺ！ */}
+       <button 
+         onClick={handleManageBilling}
+         className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-slate-700 transition-all"
+       >
+         <CreditCard size={14}/> お支払い情報の管理・解約
+       </button>
+     </div>
+   )}
+</div>
 
             {/* 2. 会員ID（はみ出し対策済み） */}
             <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-center">
