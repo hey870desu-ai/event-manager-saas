@@ -1,4 +1,3 @@
-// 📂 app/api/checkout/route.ts (セミナー決済・手数料2%版)
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -8,64 +7,75 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { 
-      tenantId, 
-      eventId, 
-      eventTitle, 
-      amount,       // セミナーの金額（例：5000）
-      email,        // 参加者のメールアドレス
-      stripeAccountId // ★重要：テナント側のStripeアカウントID
-    } = body;
+    // 1. 画面から送られてきた情報をしっかり受け取る
+    const { priceId, email, name, tenantId } = await request.json();
 
-    if (!stripeAccountId) {
-      return NextResponse.json({ error: 'テナントのStripe連携が完了していません' }, { status: 400 });
+    // 💡 塙さんの「本番用ID」の対応表だっぺ
+    const SUBSCRIPTION_ID = "price_1T5bMRFKTe5xmQgVwY3t1MDn"; // 3,300円サブスク
+    const SPOT_ID = "price_1T5bMRFKTe5xmQgVK3PzgoWk";         // 5,500円スポット
+
+    // 2. どっちのモードで動かすか決める
+    const mode = priceId === SUBSCRIPTION_ID ? 'subscription' : 'payment';
+
+    console.log(`💳 決済処理開始: mode=${mode}, tenantId=${tenantId}`);
+
+    // 3. 顧客（Customer）を特定・または作成する
+    // これをやることで銀行振込ができるようになるぞい！
+    let customerId;
+    const existingCustomers = await stripe.customers.list({ email, limit: 1 });
+
+    if (existingCustomers.data.length > 0) {
+      // すでに登録済みならそのIDを使う
+      customerId = existingCustomers.data[0].id;
+    } else {
+      // 初めての人なら新しく作る
+      const newCustomer = await stripe.customers.create({
+        email,
+        name: name || "名無し",
+        metadata: { tenantId } 
+      });
+      customerId = newCustomer.id;
     }
 
-    // --- 手数料の計算 (2.0%) ---
-    // 例：10,000円の場合、200円があなたのStripe口座に入ります
-    const applicationFeeAmount = Math.floor(Number(amount) * 0.02);
-
-    // Stripeの「支払い画面」を作成
+    // 4. Stripe決済セッションを作成する
+    // ここで注文内容や目印（metadata）をガチッと固めるっぺ！
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'jpy',
-            product_data: {
-              name: eventTitle,
-            },
-            unit_amount: Number(amount),
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment', // 単発決済
-      customer_email: email,
+      customer: customerId, // 準備した顧客IDをセット！
       
-      // ★ここが手数料徴収の心臓部
-      payment_intent_data: {
-        application_fee_amount: applicationFeeAmount, // あなたの手数料（2%）
-        transfer_data: {
-          destination: stripeAccountId, // 残りの金額をテナントへ送金
+      // カード・コンビニ・銀行振込を全部使えるようにしたっぺ
+      payment_method_types: ['card', 'konbini', 'customer_balance'],
+      payment_method_options: {
+        customer_balance: {
+          funding_type: 'bank_transfer',
+          bank_transfer: {
+            type: 'jp_bank_transfer',
+          },
         },
       },
 
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/t/${tenantId}/e/${eventId}`,
+      line_items: [{
+        price: priceId, // 3,300円か5,500円のID
+        quantity: 1,
+      }],
+      mode: mode, // subscription か payment
       
+      // 成功した時とキャンセルした時の戻り先URL
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/admin/marketing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/admin/marketing/scan`,
+      
+      // 💡 Webhookが「絆太郎の決済だ！」と判別するための目印だっぺ！
       metadata: {
+        type: 'kizuna_taro_service',
         tenantId: tenantId,
-        eventId: eventId,
-        type: 'event_payment'
-      },
+        plan_mode: mode
+      }
     });
 
+    // 5. Stripeの決済画面URLをフロントエンドに返す
     return NextResponse.json({ url: session.url });
 
   } catch (error: any) {
-    console.error('Checkout Error:', error);
-    return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
+    console.error("❌ Checkout Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

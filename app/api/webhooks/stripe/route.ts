@@ -25,6 +25,48 @@ export async function POST(req: Request) {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
+  // ============================================================
+  // 🏆 0. 🆕 絆太郎サービス決済（3300円スタンダード / 5500円スポット）
+  // ============================================================
+  if (session.metadata?.type === 'kizuna_taro_service') {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      if (session.payment_status === 'paid') {
+        const { tenantId, plan_mode } = session.metadata;
+
+        if (tenantId) {
+          try {
+            // 💡 塙さんのプラン名に合わせて更新するっぺ！
+            const planName = plan_mode === 'subscription' ? 'standard' : 'spot';
+
+            await adminDb.collection('tenants').doc(tenantId).update({
+              plan: planName, // 'standard' または 'spot' を入れるぞい
+              stripeSubscriptionId: session.subscription || null,
+              updatedAt: new Date(),
+            });
+
+            // お礼メールも「スタンダードプラン」などの名称で送るっぺ
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
+            await fetch(`${baseUrl}/api/send-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: session.customer_details?.email,
+                name: "お客様",
+                type: 'upgrade_confirmation',
+                planName: planName === 'standard' ? 'スタンダードプラン' : 'スポット5500円プラン',
+              }),
+            });
+            
+            console.log(`✨ [KizunaTaro] Tenant ${tenantId} updated to ${planName}`);
+          } catch (e) {
+            console.error('❌ KizunaTaro Update Error:', e);
+          }
+        }
+        return NextResponse.json({ received: true });
+      }
+    }
+  }
+
   // ▼▼▼ 1. SaaSプランの更新（修正版） ▼▼▼
   // ▼▼▼ 1. SaaSプランの更新（修正版） ▼▼▼
 if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
@@ -41,7 +83,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
         });
 
         // ② ★重要：ここでお礼メール送信APIを叩く！
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
         await fetch(`${baseUrl}/api/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -115,7 +157,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
 
             // C. メール送信APIを叩く
             // （Webhookはサーバー側で動くので、自分のAPIをfetchで叩きます）
-            const baseUrl = "https://event-manager.app"; // ★ ここを実際のURLに書き換えてください
+            const baseUrl = "https://www.event-manager.app";
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
