@@ -11,8 +11,9 @@ export async function POST(request: Request) {
     const { priceId, email, name, tenantId } = await request.json();
 
     // 💡 塙さんの「本番用ID」の対応表だっぺ
-    const SUBSCRIPTION_ID = "price_1T5bMRFKTe5xmQgVwY3t1MDn"; // 3,300円サブスク
-    const SPOT_ID = "price_1T5bMRFKTe5xmQgVK3PzgoWk";         // 5,500円スポット
+    const SUBSCRIPTION_ID = process.env.STRIPE_PRICE_ID_STANDARD;
+    const SPOT_ID         = process.env.STRIPE_PRICE_ID_SPOT;
+    const PRO_ID          = process.env.STRIPE_PRICE_ID_PRO;
 
     // 2. どっちのモードで動かすか決める
     const mode = priceId === SUBSCRIPTION_ID ? 'subscription' : 'payment';
