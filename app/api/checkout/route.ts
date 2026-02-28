@@ -11,11 +11,15 @@ export async function POST(request: Request) {
     const { priceId, email, name, tenantId } = await request.json();
 
     // 💡 塙さんの「本番用ID」の対応表だっぺ
-    const SUBSCRIPTION_ID = process.env.STRIPE_PRICE_ID_STANDARD;
-    const SPOT_ID         = process.env.STRIPE_PRICE_ID_SPOT;
-    const PRO_ID          = process.env.STRIPE_PRICE_ID_PRO;
+    // 📂 app/api/checkout/route.ts
 
-    // 2. どっちのモードで動かすか決める
+    // 💡 ここ！Vercelに登録した名前に「完全に」合わせるっぺ！
+    const SUBSCRIPTION_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD;
+    const SPOT_ID         = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SPOT;
+    const PRO_ID          = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO;
+
+    // これで SUBSCRIPTION_ID が正しく読み込まれれば、
+    // スタンダードの時にちゃんと 'subscription' が選ばれるようになるぞい！
     const mode = priceId === SUBSCRIPTION_ID ? 'subscription' : 'payment';
 
     console.log(`💳 決済処理開始: mode=${mode}, tenantId=${tenantId}`);
