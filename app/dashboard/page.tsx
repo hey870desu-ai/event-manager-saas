@@ -57,33 +57,35 @@ export default function TenantBillingPage() {
 
   const handleLogout = async () => { await signOut(auth); router.push("/login"); };
   
-  // ★修正: アップグレード専用のAPIを叩くように変更
+  // ★修正版：本番用APIと連動させるっぺ！
   const handleUpgrade = async () => {
     if(!tenant || !user) return;
     
-    // 確認ダイアログ
+    // 1. 環境変数からスタンダードプランのIDを取得（NEXT_PUBLIC_ を付けるの忘れないでな！）
+    const STANDARD_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD;
+
     if(!confirm("スタンダードプラン（月額3,300円）の申し込み画面へ移動しますか？")) return;
 
     setLoading(true);
 
     try {
-      // 🚩 宛先を '/api/stripe/upgrade' に変更！
-      const res = await fetch('/api/stripe/upgrade', {
+      // 🚩 宛先をさっき作った API に合わせるぞい！
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          tenantId: tenant.id, // 誰が
-          email: user.email    // 誰のメールアドレスで
+          tenantId: tenant.id,
+          email: user.email,
+          name: tenant.name,
+          priceId: STANDARD_PRICE_ID // 👈 これを絶対に入れるっぺ！
         }),
       });
       
       const data = await res.json();
       
       if (data.url) {
-        // Stripeの決済画面へジャンプ！
         window.location.href = data.url;
       } else {
-        // エラーメッセージを表示
         console.error("API Error:", data.error);
         alert(`エラー: ${data.error || "支払い画面の作成に失敗しました"}`);
         setLoading(false);
