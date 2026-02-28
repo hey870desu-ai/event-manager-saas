@@ -110,7 +110,7 @@ export default function TenantBillingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert("管理画面を開けませんでした");
+        alert(`管理画面エラーだっぺ！: ${data.error}`);
         setLoading(false);
       }
     } catch (e) {
