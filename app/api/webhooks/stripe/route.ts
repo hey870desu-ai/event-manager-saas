@@ -40,6 +40,7 @@ export async function POST(req: Request) {
 
             await adminDb.collection('tenants').doc(tenantId).update({
               plan: planName, // 'standard' または 'spot' を入れるぞい
+              stripeCustomerId: session.customer as string,
               stripeSubscriptionId: session.subscription || null,
               updatedAt: new Date(),
             });
@@ -78,6 +79,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
         // ① プランをFirestoreで更新
         await adminDb.collection('tenants').doc(tenantId).update({
           plan: planType,
+          stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription,
           updatedAt: new Date(),
         });
