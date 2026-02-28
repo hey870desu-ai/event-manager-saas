@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       customer: customerId, // 準備した顧客IDをセット！
       
       // カード・コンビニ・銀行振込を全部使えるようにしたっぺ
-      payment_method_types: ['card',  'customer_balance'],
+      payment_method_types: ['card' ],
       payment_method_options: {
         customer_balance: {
           funding_type: 'bank_transfer',
