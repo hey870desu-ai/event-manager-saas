@@ -72,7 +72,7 @@ export default function SuccessPage() {
         </div>
 
         <button
-          onClick={() => router.push("/admin/marketing")}
+          onClick={() => router.push("/dashboard")}
           className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-2xl font-black flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/25 group"
         >
           管理画面へ戻る
