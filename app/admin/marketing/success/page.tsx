@@ -39,15 +39,15 @@ export default function SuccessPage() {
           <CheckCircle2 className="text-emerald-400" size={40} />
         </div>
 
-        <h1 className="text-3xl font-black text-white mb-2 tracking-tight">
-          決済完了だっぺ！
-        </h1>
-        <p className="text-slate-400 mb-8 leading-relaxed">
-          塙さん、ありがとうございます！<br />
-          スタンダードプランへのアップグレードが<br />
-          無事に完了しました。これから「絆」を<br />
-          もっと深めていきましょう！
-        </p>
+        <h1 className="text-2xl font-black text-white mb-3 tracking-tight">
+    アップグレードが完了しました
+  </h1>
+  <p className="text-slate-400 mb-8 leading-relaxed text-sm">
+    この度はスタンダードプランへのお申し込み、<br />
+    誠にありがとうございます。<br />
+    全てのスタンダード機能をご利用いただけるようになりました。<br />
+    引き続き「絆太郎」をよろしくお願いいたします。
+  </p>
 
         <div className="space-y-4 mb-8">
           <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 flex items-center gap-4 text-left">
