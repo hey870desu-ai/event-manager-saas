@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin'; // 💡 admin用の設定を使ってるか確認してな！
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27-preview' as any,
+  apiVersion: '2023-10-16' as any,
 });
 
 export async function POST(req: Request) {
