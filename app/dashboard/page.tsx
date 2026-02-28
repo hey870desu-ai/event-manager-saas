@@ -57,45 +57,51 @@ export default function TenantBillingPage() {
 
   const handleLogout = async () => { await signOut(auth); router.push("/login"); };
   
-  // ★修正版：本番用APIと連動させるっぺ！
-  const handleUpgrade = async () => {
-    if(!tenant || !user) return;
+// 1. 関数のカッコの中に (planType: 'standard' | 'spot') を追加するんだっぺ！
+const handleUpgrade = async (planType: 'standard' | 'spot') => {
+  if(!tenant || !user) return;
+  
+  // 💡 ここで「mode」と「priceId」を定義してやるのがポイントだぞい
+  const mode = planType === 'standard' ? 'subscription' : 'payment';
+  const priceId = planType === 'standard' 
+    ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD 
+    : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SPOT;
+
+  const planLabel = planType === 'standard' ? "スタンダード（月額）" : "スポット（5,500円）";
+
+  if(!confirm(`${planLabel} の申し込み画面へ移動しますか？`)) return;
+
+  setLoading(true);
+
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        tenantId: tenant.id,
+        email: user.email,
+        name: tenant.name,
+        priceId: priceId, // 👈 ここもさっき定義した priceId にするっぺ
+        mode: mode,       // 👈 これで波線が消える！
+        planType: planType // 👈 これで波線が消える！
+      }),
+    });
     
-    // 1. 環境変数からスタンダードプランのIDを取得（NEXT_PUBLIC_ を付けるの忘れないでな！）
-    const STANDARD_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD;
-
-    if(!confirm("スタンダードプラン（月額3,300円）の申し込み画面へ移動しますか？")) return;
-
-    setLoading(true);
-
-    try {
-      // 🚩 宛先をさっき作った API に合わせるぞい！
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tenantId: tenant.id,
-          email: user.email,
-          name: tenant.name,
-          priceId: STANDARD_PRICE_ID // 👈 これを絶対に入れるっぺ！
-        }),
-      });
-      
-      const data = await res.json();
-      
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error("API Error:", data.error);
-        alert(`エラー: ${data.error || "支払い画面の作成に失敗しました"}`);
-        setLoading(false);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("通信エラーが発生しました");
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      console.error("API Error:", data.error);
+      alert(`エラー: ${data.error || "失敗しました"}`);
       setLoading(false);
     }
-  };
+  } catch (e) {
+    console.error(e);
+    alert("通信エラーが発生しました");
+    setLoading(false);
+  }
+};
+
   // ★追加：Stripeポータル（解約・カード変更）を開くっぺ！
   const handleManageBilling = async () => {
     if (!tenant) return;
@@ -167,14 +173,24 @@ export default function TenantBillingPage() {
    </div>
 
    {isFree ? (
-     <button 
-       onClick={handleUpgrade}
-       className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40"
-     >
-       <Sparkles size={14} className="text-yellow-300 animate-pulse"/> 
-       スタンダードにアップグレード
-     </button>
-   ) : (
+  <div className="flex flex-col gap-3 mt-2">
+    {/* スタンダード用 */}
+    <button 
+      onClick={() => handleUpgrade('standard')}
+      className="w-full py-2 px-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+    >
+      <Sparkles size={14}/> スタンダード（月額3,300円）
+    </button>
+    
+    {/* スポット用（これを追加！） */}
+    <button 
+      onClick={() => handleUpgrade('spot')}
+      className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-slate-700 transition-all"
+    >
+      <CheckCircle2 size={14}/> スポット利用（5,500円/回）
+    </button>
+  </div>
+) : (
      <div className="space-y-3">
        <div className="text-xs text-emerald-400 flex items-center gap-1 font-bold">
          <CheckCircle2 size={14}/> プレミアム機能 利用中

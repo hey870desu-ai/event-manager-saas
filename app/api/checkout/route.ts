@@ -8,19 +8,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(request: Request) {
   try {
     // 1. 画面から送られてきた情報をしっかり受け取る
-    const { priceId, email, name, tenantId } = await request.json();
-
-    // 💡 塙さんの「本番用ID」の対応表だっぺ
-    // 📂 app/api/checkout/route.ts
-
-    // 💡 ここ！Vercelに登録した名前に「完全に」合わせるっぺ！
-    const SUBSCRIPTION_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD;
-    const SPOT_ID         = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SPOT;
-    const PRO_ID          = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO;
-
-    // これで SUBSCRIPTION_ID が正しく読み込まれれば、
-    // スタンダードの時にちゃんと 'subscription' が選ばれるようになるぞい！
-    const mode = priceId === SUBSCRIPTION_ID ? 'subscription' : 'payment';
+    const { priceId, email, name, tenantId, mode, planType } = await request.json();
+    
 
     console.log(`💳 決済処理開始: mode=${mode}, tenantId=${tenantId}`);
 
@@ -49,14 +38,6 @@ export async function POST(request: Request) {
       
       // カード・コンビニ・銀行振込を全部使えるようにしたっぺ
       payment_method_types: ['card' ],
-      payment_method_options: {
-        customer_balance: {
-          funding_type: 'bank_transfer',
-          bank_transfer: {
-            type: 'jp_bank_transfer',
-          },
-        },
-      },
 
       line_items: [{
         price: priceId, // 3,300円か5,500円のID
@@ -72,7 +53,8 @@ export async function POST(request: Request) {
       metadata: {
         type: 'kizuna_taro_service',
         tenantId: tenantId,
-        plan_mode: mode
+        plan_mode: mode,
+        plan: planType
       }
     });
 
