@@ -202,5 +202,25 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
     }
   }
 
+  // ============================================================
+  // 🔚 3. サブスクリプション終了（解約確定）時の処理
+  // ============================================================
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const tenantId = subscription.metadata?.tenantId;
+
+    if (tenantId) {
+      try {
+        await adminDb.collection('tenants').doc(tenantId).update({
+          plan: 'free', // 期間が終わったので無料プランに戻すぞい
+          updatedAt: new Date(),
+        });
+        console.log(`📉 [Webhook] Tenant ${tenantId} has been returned to free plan.`);
+      } catch (e) {
+        console.error('❌ Failed to revert to free plan:', e);
+      }
+    }
+  }
+
   return NextResponse.json({ received: true });
 }
