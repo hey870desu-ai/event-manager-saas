@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     // 🅱️ 即時配信
     const displaySender = senderName || tenantName || "イベント事務局";
     const calendarUrl = createGoogleCalendarUrl(`【${displaySender}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
+    const brandColor = "#0ea5e9";
 
     const styles = {
       body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
