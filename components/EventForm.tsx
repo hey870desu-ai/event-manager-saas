@@ -25,7 +25,7 @@ type CustomField = {
 type Props = {
   event?: any;
   onSuccess: () => void;
-  isFreePlan: boolean;
+  isFreePlan?: boolean;
 };
 
 type TimeSlot = {
@@ -42,7 +42,7 @@ type Lecturer = {
   image: string;
 };
 
-export default function EventForm({ event, onSuccess, isFreePlan }: Props) {
+export default function EventForm({ event, onSuccess, isFreePlan= false }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploadingLecturer, setUploadingLecturer] = useState(false);
   // ★追加: 今編集しているイベントのIDを管理する（新規作成後の連続保存対策）
