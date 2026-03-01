@@ -218,10 +218,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} style={{ background: themeColor }} className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] hover:opacity-90">
-        <span className="text-xl tracking-wide">参加する</span>
-        <div className="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform"><ChevronRight size={20} /></div>
-      </button>
+      <button 
+  onClick={() => setIsOpen(true)} 
+  /* ▼ ここをオレンジ単色から、エッジの効いたグラデーションに変更だばい！ */
+  style={{ background: 'linear-gradient(135deg, #FF0080 0%, #7928CA 100%)' }} 
+  className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] hover:opacity-90"
+>
+  <span className="text-xl tracking-wide">参加する</span>
+  <div className="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform">
+    <ChevronRight size={20} />
+  </div>
+</button>
 
       {isOpen && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 font-sans">
@@ -491,7 +498,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
     ) : (
       isPaid ? (
-        <>{priceAmount.toLocaleString()}円で支払う <CreditCard size={18} /></>
+        <>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>
       ) : (
         <>上記の内容で申し込む <Send size={18} /></>
       )
