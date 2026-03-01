@@ -466,13 +466,28 @@ useEffect(() => {
     e.preventDefault();
 
     // 🔒【修正】無料プランでも、このイベント専用の「スポット決済」が済んでいれば公開OKにするぞい！
+  // 🔒 無料プランのユーザーが「公開」しようとした時のゲートキーパーだばい
   if (formData.status === 'published' && isFreePlan && !event?.isSpotPaid) {
-  if (confirm("イベントを公開するには、以下のいずれかが必要です：\n\n1. スタンダードプランへの加入\n2. スポット利用（5,500円/回）の決済\n\n決済案内ページへ移動しますか？")) {
-    // 将来的に、eventIdを付けてStripeへ飛ばすURLにするっぺ
-    window.location.href = `/dashboard/billing?eventId=${currentEventId}`;
+    // ★ 文言をより「スポット利用」を意識したものに変更したっぺ！
+    const message = `
+【イベント公開の確認】
+
+現在「無料プラン」をご利用中のため、このイベントを一般公開するには以下のいずれかが必要です：
+
+① スタンダードプランへのアップグレード（月額3,300円）
+② スポット利用料のお支払い（5,500円 / 1イベント）
+
+※一度スポット決済をすると、このイベントの日付は固定されます。
+お支払い画面へ移動しますか？
+    `.trim();
+
+  if (confirm(message)) {
+      // ここでStripeの決済ページや、プラン選択ページへ飛ばすっぺ！
+      // 後のために eventId をクエリパラメータで渡しておくのがコツだぞい
+      window.location.href = `/dashboard/billing?eventId=${currentEventId}&type=spot`;
+    }
+    return; // 決済しないなら保存を中断するっぺ
   }
-  return;
-}
 
     if (!formData.tenantId || formData.tenantId === "demo") {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");

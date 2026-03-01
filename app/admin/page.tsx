@@ -168,9 +168,25 @@ export default function AdminDashboard() {
   // ★ ここを書き換え：プランが 'FREE' なら true になるようにする
   const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
 
+ // 📂 app/admin/page.tsx 147行目付近
+
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
     e.stopPropagation();
-    if (!confirm('このイベントを複製しますか？\n（タイトルに「のコピー」が付き、下書き状態で作成されます）')) return;
+
+    // ★ 塙さん流・都会的でプロフェッショナルな案内文だばい！
+    const message = isFreePlan 
+      ? `このイベントを複製しますか？
+
+【重要：お支払いの案内】
+現在「無料プラン」をご利用中のため、複製したイベントを「公開」するには、以下のいずれかが必要になります：
+
+① スポット利用料（5,500円）の決済
+② スタンダードプランへのアップグレード
+
+※複製直後は「下書き」状態で作成されます。`.trim()
+      : 'このイベントを複製しますか？\n（タイトルに「のコピー」が付き、下書き状態で作成されます）';
+
+    if (!confirm(message)) return;
     
     setDuplicatingId(event.id);
     try {
@@ -180,12 +196,13 @@ export default function AdminDashboard() {
       await addDoc(collection(db, 'events'), {
         ...eventData,
         title: `${eventData.title} のコピー`, // タイトルを変更
-        status: 'draft', // ステータスは下書きに戻す
+        status: 'draft', // ステータスは必ず下書きに戻すっぺ！
+        isSpotPaid: false, // ★重要：コピー先は「未払い」状態からスタートだぞい！
         createdAt: serverTimestamp(),
       });
     } catch (error) {
       console.error("Duplicate error:", error);
-      alert("複製に失敗しました");
+      alert("複製に失敗しました。"); // 標準語でスマートに！
     } finally {
       setDuplicatingId(null);
     }
