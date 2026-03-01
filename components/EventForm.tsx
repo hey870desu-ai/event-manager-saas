@@ -686,8 +686,8 @@ useEffect(() => {
     value={formData.date} 
     onChange={handleChange} 
     
-    // ★ ここがキモ！「スポット決済済み」且つ「公開中」なら入力を無効化するぞい
-    disabled={event?.isSpotPaid && formData.status === 'published'}
+    // ★ 条件をシンプルにするっぺ！「支払い済み（isSpotPaid）」なら、下書きだろうが何だろうが編集不可！
+    disabled={event?.isSpotPaid}
     
     // 見た目も「触れない感」を出すために opacity（透明度）を下げるっぺ
     className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none transition-all ${
