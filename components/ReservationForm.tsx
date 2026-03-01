@@ -91,7 +91,7 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
   const themeColor = safeTenant?.themeColor || "#f97316";
   const customFields: CustomField[] = event.customFields || [];
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
     setErrorMessage("");
@@ -108,9 +108,12 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
         }
       });
 
+      // ★ 改造ポイント1: Stripeが連携済みかどうかを判定するっぺ！
+      const isStripeReady = !!safeTenant?.stripeConnectId;
+
       const reservationData = {
-        tenantId,
-        eventId,
+        tenantId: safeTenantId,
+        eventId: safeEventId,
         eventTitle: event.title,
         contactName: event.contactName || "運営事務局",
         contactEmail: event.contactEmail || "", 
@@ -121,39 +124,41 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
         type: participationType,
         customAnswers: customAnswers,
         notes: formData.get("notes")?.toString() || "",
-        selectedTicket: selectedTicket.name, // ★どのチケットか保存
+        selectedTicket: selectedTicket.name,
         
-        // ★修正: 有料なら「支払い待ち」、無料なら「確定」
-        status: isPaid ? "payment_pending" : "confirmed", 
+        // ★ 改造ポイント2: ステータスの判定を細かくするぞい
+        // 1. 有料 且つ Stripeあり -> 支払い待ち
+        // 2. 有料 且つ Stripeなし -> 当日現金払い (on_site)
+        // 3. 無料 -> 確定
+        status: isPaid 
+          ? (isStripeReady ? "payment_pending" : "on_site") 
+          : "confirmed", 
+        
         createdAt: serverTimestamp(),
         emailed: false,
         checkedIn: false,
-        price: isPaid ? priceAmount : 0, // 価格も保存
+        price: isPaid ? priceAmount : 0,
       };
 
       if (!safeEventId) throw new Error("Event ID is missing");
       
       // 1. まずFirestoreに保存
       const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
-      // ★ これを追加
-setNewReservationId(docRef.id);
-      // ▼▼▼ ログを出すっぺ！これで判定の嘘がバレるぞい ▼▼▼
-      console.log("💰 最終判定:", { isPaid, priceAmount, eventPrice: event.price });
+      setNewReservationId(docRef.id);
 
-      // ▼▼▼ 有料イベントの場合：Stripeへ飛ばす ▼▼▼
-      if (isPaid) {
-        // ★修正：イベント専用のAPI（checkout-event）を呼ぶようにするっぺ！
+      // ★ 改造ポイント3: 分かれ道の切り替えだっぺ！
+      if (isPaid && isStripeReady) {
+        // 【Aパターン】有料 且つ Stripe連携済み：Stripe決済画面へ！
         const res = await fetch('/api/stripe/checkout-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             eventId: safeEventId,
             tenantId: safeTenantId,
-            amount: priceAmount, // 金額
+            amount: priceAmount,
             eventTitle: `${event.title} (${selectedTicket.name})`,
             email: reservationData.email,
             reservationId: docRef.id,
-            // 豊嶋さんのStripeアカウントIDを渡して、手数料を引く準備をするっぺ
             stripeAccountId: safeTenant?.stripeConnectId 
           }),
         });
@@ -163,16 +168,15 @@ setNewReservationId(docRef.id);
           window.location.href = data.url; 
           return;
         }
-      }
-
-      // ✅ 修正後：確実に「有料ではない（false）」時だけ実行するっぺ！
-     if (isPaid === false) {
+      } else {
+        // 【Bパターン】無料イベント、もしくは「有料だけどStripe未連携（現金払い）」の場合
+        // その場で即座にメールを飛ばすぞい！
         try {
           await fetch('/api/send-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              subject: `【仮受付テスト】${event.title}`, // ★ この1行を追加！
+              subject: isPaid ? `【当日払い受付】${event.title}` : `【受付完了】${event.title}`,
               name: reservationData.name,
               email: reservationData.email,
               type: reservationData.type,
@@ -185,24 +189,23 @@ setNewReservationId(docRef.id);
               zoomPasscode: event.zoomPasscode,
               reservationId: docRef.id,
               tenantName: safeTenant?.orgName || safeTenant?.name,
-              themeColor: tenantData?.themeColor,
+              themeColor: themeColor,
               replyTo: safeTenant?.ownerEmail,
               customAnswers: customAnswers,
-
-              // 問い合わせ先情報
               contactName: event.contactName || safeTenant?.name || "運営事務局",
               contactEmail: event.contactEmail || "",
               contactPhone: event.contactPhone || "",
-              eventPrice: event.price 
+              eventPrice: isPaid ? `${priceAmount}円（当日会場にてお支払い）` : "無料"
             }),
           });
         } catch (mailError) { 
           console.error("Mail error:", mailError); 
         }
-      }
 
-      setStatus("success");
-      if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
+        // Stripeに飛ばない場合は、ここで「成功画面」を表示させるっぺ
+        setStatus("success");
+        if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
+      }
       
     } catch (error) {
       console.error("Error:", error);
