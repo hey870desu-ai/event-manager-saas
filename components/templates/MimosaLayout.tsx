@@ -230,20 +230,46 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 border-t border-yellow-50 pt-8">
-                    <div className="text-center">
-                      <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">参加費</p>
-                      <div className="text-xl font-black text-slate-900">
-  {(!event.price || event.price === "0" || event.price === "無料") 
-    ? "無料" 
-    : isNaN(Number(event.price)) 
-      ? event.price 
-      : `${Number(event.price).toLocaleString()}円`}
-</div>
+                  {/* 🎫 修正：ミモザ・チケットリスト */}
+                  <div className="space-y-4 border-t border-yellow-50 pt-8">
+                    <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest text-center md:text-left">
+                      チケット・参加費用
+                    </p>
+                    
+                    <div className="space-y-3">
+                      {(event.tickets && event.tickets.length > 0) ? (
+                        event.tickets.map((t: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-[#FCF9EE]/80 border border-yellow-100 transition-all hover:bg-white hover:shadow-sm group/t">
+                            <div className="flex flex-col">
+                              <span className="text-[8px] font-bold text-yellow-600 uppercase mb-0.5">Ticket</span>
+                              <span className="text-sm font-black text-slate-800">{t.name}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-lg font-black font-mono text-slate-900">
+                                {t.price === 0 ? "無料" : `¥${t.price.toLocaleString()}`}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        /* バックアップ表示 */
+                        <div className="flex justify-between items-center p-4 rounded-2xl bg-[#FCF9EE]/80 border border-yellow-100">
+                          <span className="text-sm font-black text-slate-800">参加費</span>
+                          <span className="text-lg font-black font-mono text-slate-900">
+                            {(!event.price || event.price === "0" || event.price === "無料") 
+                              ? "無料" 
+                              : `¥${Number(event.price).toLocaleString()}`}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-center border-l border-yellow-50">
-                      <p className="text-[10px] font-bold text-yellow-600 uppercase mb-1">定員</p>
-                      <div className="text-xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "なし"}</div>
+
+                    {/* 定員情報をさりげなく下に配置 */}
+                    <div className="flex items-center justify-center md:justify-start gap-2 px-2 opacity-60">
+                      <Users size={14} className="text-yellow-600" />
+                      <p className="text-[10px] font-bold text-slate-500">
+                        定員：{event.capacity ? `${event.capacity}名（先着順）` : "制限なし"}
+                      </p>
                     </div>
                   </div>
                 </div>
