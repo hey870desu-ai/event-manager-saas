@@ -490,54 +490,81 @@ useEffect(() => {
   };
 
   const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
-     e.stopPropagation();
-     
-  
-  // ▲▲▲ 追加ここまで ▲▲▲ 
-       
-      setDownloadingId(eventId);
-      const formatPhone = (input: any) => {
-        if (!input) return "";
-        const num = input.toString().replace(/[^0-9]/g, "");
-        if (num.length === 11) { return num.replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3"); }
-        if (num.length === 10) {
-           if (num.startsWith("03") || num.startsWith("06")) { return num.replace(/^(\d{2})(\d{4})(\d{4})$/, "$1-$2-$3"); }
-           return num.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3");
-        }
-        return input.toString().replace(/[="]/g, "").trim();
-      };
+  e.stopPropagation();
+  setDownloadingId(eventId);
 
-      try {
-        const s = await getDocs(query(collection(db, "events", eventId, "reservations")));
-        const r = s.docs.map(d => d.data() as ReservationData).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
-        if(!r.length) { alert("データなし"); return; }
-        const csv = [
-          "ステータス,名前,メール,電話,会社,部署,形式,職種,きっかけ,紹介,会員,日時", 
-          ...r.map(x => {
-            const cleanPhone = formatPhone(x.phone);
-            return [
-              `"${x.checkedIn ? "受付済" : "未"}"`,
-              `"${x.name}"`,
-              `"${x.email}"`,
-              `"${cleanPhone}"`,
-              `"${x.company}"`,
-              `"${x.department}"`,
-              `"${x.type}"`,
-              `"${x.jobTitles}"`,
-              `"${x.source}"`,
-              `"${x.referrer}"`,
-              `"${x.membership}"`,
-              `"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`
-            ].join(",");
-          })
-        ].join("\r\n");
-        const a = document.createElement("a"); 
-        a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], {type:"text/csv"})); 
-        a.download = `${title}_リスト.csv`; 
-        a.click();
-      } catch(e) { alert("失敗"); } finally { setDownloadingId(null); }
+  // 電話番号の整形関数
+  const formatPhone = (input: any) => {
+    if (!input) return "";
+    const num = input.toString().replace(/[^0-9]/g, "");
+    if (num.length === 11) return num.replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3");
+    if (num.length === 10) {
+      if (num.startsWith("03") || num.startsWith("06")) return num.replace(/^(\d{2})(\d{4})(\d{4})$/, "$1-$2-$3");
+      return num.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3");
+    }
+    return input.toString().replace(/[="]/g, "").trim();
   };
 
+  try {
+    // 1. まずイベント情報を取得して、今の質問項目(customFields)を特定するっぺ！
+    const eventSnap = await getDoc(doc(db, "events", eventId));
+    if (!eventSnap.exists()) { alert("イベントが見つかりません"); return; }
+    const eventData = eventSnap.data();
+    const customFields = eventData.customFields || []; // 今の質問リスト
+
+    // 2. 予約データを取得
+    const s = await getDocs(query(collection(db, "events", eventId, "reservations")));
+    const r = s.docs.map(d => d.data() as any).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    if(!r.length) { alert("データなし"); return; }
+
+    // 3. CSVヘッダーの作成
+    // 基本項目 ＋ 今のカスタム質問のラベルだけを並べるぞい
+    const baseHeaders = ["ステータス", "名前", "メール", "電話", "形式", "金額"];
+    const customLabels = customFields.map((f: any) => f.label);
+    const headers = [...baseHeaders, ...customLabels, "申込日時"];
+
+    // 4. 各行のデータ作成
+    const csvRows = r.map(x => {
+      const cleanPhone = formatPhone(x.phone);
+      
+      // 基本データの配列
+      const row = [
+        `"${x.checkedIn ? "受付済" : "未受付"}"`,
+        `"${x.name || ""}"`,
+        `"${x.email || ""}"`,
+        `"${cleanPhone}"`,
+        `"${x.type === 'online' ? "オンライン" : "会場"}"`,
+        `"${x.price || 0}"`
+      ];
+
+      // ★ カスタム回答を「今の質問順」に並べるっぺ！
+      customLabels.forEach((label: string) => {
+        const answer = x.customAnswers ? x.customAnswers[label] : "";
+        // 配列（チェックボックス）ならスラッシュ区切りにするぞい
+        const formattedAnswer = Array.isArray(answer) ? answer.join("/") : (answer || "");
+        row.push(`"${formattedAnswer.toString().replace(/"/g, '""')}"`); // ダブルクォーテーションをエスケープ
+      });
+
+      // 最後に日時を追加
+      row.push(`"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`);
+      
+      return row.join(",");
+    });
+
+    // 5. CSVの合体とダウンロード
+    const csv = [headers.join(","), ...csvRows].join("\r\n");
+    const a = document.createElement("a"); 
+    a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], {type:"text/csv"})); 
+    a.download = `${title}_参加者リスト.csv`; 
+    a.click();
+
+  } catch(err) { 
+    console.error(err);
+    alert("CSVの作成に失敗しました"); 
+  } finally { 
+    setDownloadingId(null); 
+  }
+};
 // ... (export default function の中にある downloadFeedbackCSV をこれに書き換え) ...
 
   const downloadFeedbackCSV = () => {
