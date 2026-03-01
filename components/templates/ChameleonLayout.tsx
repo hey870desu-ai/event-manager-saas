@@ -259,19 +259,33 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
                     </div>
                   </div>
 
-                  {/* 2. 会場 & アクセス */}
+                  {/* --- 会場 & アクセス（地図復活版だっぺ！） --- */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">会場 & アクセス</p>
-                    <h3 className="text-xl font-black text-slate-900 mb-3">{event.venueName}</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">会場 & アクセス</p>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 text-center md:text-left">{event.venueName}</h3>
+                    
                     {event.venueAddress && (
-                      <p className="text-sm font-bold text-slate-600 mb-4 px-4 md:px-0 flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-600 mb-4 text-center md:text-left px-4 md:px-0 flex items-center justify-center md:justify-start gap-2">
                         <MapPin size={16} style={{ color: dynamicColor }} className="shrink-0" />
                         <span>{event.venueAddress}</span>
                       </p>
                     )}
+
                     {event.venueAccess && (
                       <div className="text-sm font-bold text-slate-500 mb-5 bg-slate-50 p-4 rounded-xl border-l-4 leading-relaxed" style={{ borderColor: dynamicColor }}>
                         {event.venueAccess}
+                      </div>
+                    )}
+
+                    {/* ★ ここだっぺ！地図を再インストール！ */}
+                    {event.venueAddress && (
+                      <div className="rounded-xl overflow-hidden border-2 border-slate-100 shadow-inner aspect-video mb-6">
+                        <iframe 
+                          width="100%" 
+                          height="100%" 
+                          style={{ border: 0 }} 
+                          src={`https://www.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&z=15&output=embed`}
+                        ></iframe>
                       </div>
                     )}
                   </div>
