@@ -220,12 +220,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     <>
       <button 
   onClick={() => setIsOpen(true)} 
-  /* ▼ ここをオレンジ単色から、エッジの効いたグラデーションに変更だばい！ */
+  /* 背景は塙さんこだわりのDXグラデーションだばい */
   style={{ background: 'linear-gradient(135deg, #FF0080 0%, #7928CA 100%)' }} 
-  className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] hover:opacity-90"
+  className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.05] active:scale-[0.98] overflow-hidden"
 >
-  <span className="text-xl tracking-wide">参加する</span>
-  <div className="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform">
+  {/* ▼▼▼ ちらっと光るエフェクト（ここが魔法の筋だっぺ！） ▼▼▼ */}
+  <div className="absolute top-0 -left-[100%] h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] transition-all duration-700 group-hover:left-[100%] pointer-events-none" />
+  {/* ▲▲▲ 修正ここまで ▲▲▲ */}
+
+  <span className="text-xl tracking-wide relative z-10">参加する</span>
+  <div className="bg-white/20 rounded-full p-1 group-hover:translate-x-1 transition-transform relative z-10">
     <ChevronRight size={20} />
   </div>
 </button>
