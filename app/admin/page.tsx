@@ -23,7 +23,7 @@ const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
 type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
-type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean; };
+type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string; };
 
 // テンプレート定義
 const MAIL_TEMPLATES = {
@@ -1008,41 +1008,106 @@ useEffect(() => {
                        <th className="p-2 w-10 text-center"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={participants.length > 0 && selectedParticipantIds.length === participants.length} onChange={toggleSelectAll} /></th>
                        <th className="p-2 md:p-4 whitespace-nowrap">受付</th>
                        <th className="p-2 md:p-4">参加者情報</th>
+                       <th className="p-2 md:p-4">お支払い</th> {/* ★ これを追加！ */}
                        <th className="hidden md:table-cell p-4">会社</th>
                        <th className="hidden md:table-cell p-4">形式</th>
                        <th className="p-2 md:p-4 text-center">個別送信</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800">
-                     {participants.map(p=>(
-                       <tr key={p.id} className={p.checkedIn?'bg-emerald-900/10':''}>
-                         <td className="p-2 text-center align-middle"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={selectedParticipantIds.includes(p.id)} onChange={() => toggleSelectParticipant(p.id)} /></td>
-                         <td className="p-2 md:p-4 align-middle">
-                           <button onClick={()=>toggleCheckIn(p)} className={`w-full md:w-auto px-2 md:px-3 py-2 md:py-1.5 rounded text-xs font-bold flex justify-center items-center gap-1 transition-all active:scale-95 ${p.checkedIn?'bg-emerald-500 text-white shadow-emerald-500/20':'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                             {p.checkedIn?<Check size={16} strokeWidth={3}/>:<UserCheck size={16}/>} 
-                             <span className="hidden md:inline">{p.checkedIn?"受付済":"受付する"}</span>
-                           </button>
-                         </td>
-                         <td className="p-2 md:p-4">
-                           <div className="font-bold text-white text-sm md:text-base mb-0.5">{p.name}</div>
-                           <div className="md:hidden space-y-1">
-                             <div className="text-xs text-slate-400">🏢 {p.company}</div>
-                             <div className="flex items-center gap-2">
-                               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${p.type==='online'?'border-blue-500/30 text-blue-400':'border-orange-500/30 text-orange-400'}`}>{p.type==='online'?'オンライン':'会場参加'}</span>
-                             </div>
-                           </div>
-                           <div className="text-xs text-slate-500 hidden md:block">{p.email}</div>
-                         </td>
-                         <td className="p-4 text-sm text-slate-300 hidden md:table-cell">{p.company}</td>
-                         <td className="p-4 hidden md:table-cell"><span className={`text-xs px-2 py-1 rounded border ${p.type==='online'?'border-blue-500/30 text-blue-400':'border-orange-500/30 text-orange-400'}`}>{p.type==='online'?'Online':'Venue'}</span></td>
-                         <td className="p-2 md:p-4 text-center">
-   <button onClick={()=>openMailModal(p)} className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-colors" title="個別にメール">
-     <Mail size={16}/>
-   </button>
-</td>
-                       </tr>
-                     ))}
-                   </tbody>
+  {participants.map((p) => (
+    <tr key={p.id} className={p.checkedIn ? 'bg-emerald-900/10' : ''}>
+      {/* 1. チェックボックス */}
+      <td className="p-2 text-center align-middle">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-indigo-500 cursor-pointer"
+          checked={selectedParticipantIds.includes(p.id)}
+          onChange={() => toggleSelectParticipant(p.id)}
+        />
+      </td>
+
+      {/* 2. 受付ボタン */}
+      <td className="p-2 md:p-4 align-middle">
+        <button
+          onClick={() => toggleCheckIn(p)}
+          className={`w-full md:w-auto px-2 md:px-3 py-2 md:py-1.5 rounded text-xs font-bold flex justify-center items-center gap-1 transition-all active:scale-95 ${
+            p.checkedIn
+              ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+              : 'bg-slate-800 text-slate-400 border border-slate-700'
+          }`}
+        >
+          {p.checkedIn ? <Check size={16} strokeWidth={3} /> : <UserCheck size={16} />}
+          <span className="hidden md:inline">{p.checkedIn ? "受付済" : "受付する"}</span>
+        </button>
+      </td>
+
+      {/* 3. 参加者情報 */}
+      <td className="p-2 md:p-4">
+        <div className="font-bold text-white text-sm md:text-base mb-0.5">{p.name}</div>
+        <div className="md:hidden space-y-1">
+          <div className="text-xs text-slate-400">🏢 {p.company}</div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                p.type === 'online' ? 'border-blue-500/30 text-blue-400' : 'border-orange-500/30 text-orange-400'
+              }`}
+            >
+              {p.type === 'online' ? 'オンライン' : '会場参加'}
+            </span>
+          </div>
+        </div>
+        <div className="text-xs text-slate-500 hidden md:block">{p.email}</div>
+      </td>
+
+      {/* ★ 追加：お支払い金額（ここが今回のキモだっぺ！） */}
+      <td className="p-2 md:p-4 align-middle">
+        <div className="flex flex-col gap-1">
+          {/* 金額の表示 */}
+          <span className="text-white font-black text-sm md:text-base">
+            ¥{(Number((p as any).amount) || 0).toLocaleString()}
+          </span>
+          
+          {/* 支払いステータスの出し分け */}
+          {(p as any).paymentStatus === 'paid' ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
+              <Check size={10} strokeWidth={3} /> 決済済み
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30 w-fit">
+              当日現金
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* 4. 会社名（PCのみ） */}
+      <td className="p-4 text-sm text-slate-300 hidden md:table-cell">{p.company}</td>
+
+      {/* 5. 形式（PCのみ） */}
+      <td className="p-4 hidden md:table-cell">
+        <span
+          className={`text-xs px-2 py-1 rounded border ${
+            p.type === 'online' ? 'border-blue-500/30 text-blue-400' : 'border-orange-500/30 text-orange-400'
+          }`}
+        >
+          {p.type === 'online' ? 'Online' : 'Venue'}
+        </span>
+      </td>
+
+      {/* 6. 個別メールボタン */}
+      <td className="p-2 md:p-4 text-center">
+        <button
+          onClick={() => openMailModal(p)}
+          className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-colors"
+          title="個別にメール"
+        >
+          <Mail size={16} />
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
                  </table>
                )}
             </div>
