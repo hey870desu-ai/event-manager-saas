@@ -21,7 +21,7 @@ import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, U
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
-type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string; };
+type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string;isSpotPaid?: boolean; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
 type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string; };
 
@@ -950,7 +950,12 @@ useEffect(() => {
                    {/* 共通スタイル：border-slate-300, text-slate-600 に変更 */}
                    <button 
                      onClick={(e) => { 
-  e.stopPropagation(); 
+  e.stopPropagation();
+  // ★ ここに制限を移動！スポット未払いのフリーユーザーはお断りだばい
+    if (isFreePlan && !ev.isSpotPaid) {
+      setIsUpgradeModalOpen(true);
+      return;
+    } 
   setQrEvent(ev); 
   setIsQrModalOpen(true); 
 }}
@@ -989,10 +994,7 @@ useEffect(() => {
                    <button 
                      onClick={(e) => {
   e.stopPropagation();
-  if (isFreePlan && ev.status !== 'published') {
-    setIsUpgradeModalOpen(true); // 👈 無料で下書きならアップグレードを促す！
-    return;
-  }
+  
   navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);
   setCopiedId(ev.id);
   setTimeout(() => setCopiedId(null), 2000);
@@ -1835,14 +1837,16 @@ useEffect(() => {
         <Shield size={40} />
       </div>
       
+      {/* ★ タイトルを修正：両方のプラン名を並べるぞい！ */}
       <h3 className="text-2xl font-black text-slate-900 mb-4">
-        スタンダードプラン専用機能
+        スタンダードプラン・スポット利用 限定機能
       </h3>
       
+      {/* ★ 説明文もより丁寧に修正っぺ */}
       <p className="text-slate-600 font-bold mb-8 leading-relaxed">
-        メールマーケティング機能は、<br />
-        <span className="text-indigo-600">スタンダードプラン（月額）</span>限定です。<br />
-        アップグレードして、ファン作りを加速させましょう！
+        データ出力や分析機能は、<br />
+        <span className="text-indigo-600">スタンダードプラン</span>のお客様、または<br />
+        <span className="text-orange-600">スポット利用（単発決済）</span>のお客様専用です。
       </p>
       
       <div className="flex flex-col gap-3">
@@ -1850,7 +1854,7 @@ useEffect(() => {
           onClick={() => router.push("/dashboard")} 
           className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
         >
-          プランを確認・変更する
+          プランを確認・お支払い
         </button>
         <button 
           onClick={() => setIsUpgradeModalOpen(false)} 
