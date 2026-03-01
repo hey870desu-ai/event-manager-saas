@@ -1111,10 +1111,37 @@ useEffect(() => {
                  </table>
                )}
             </div>
-            <div className="p-3 bg-slate-900 text-xs text-slate-400 flex justify-between shrink-0">
-              <span>Total: {participants.length}</span>
-              <span className="text-emerald-400 font-bold">受付済: {participants.filter(p=>p.checkedIn).length}</span>
-            </div>
+            {/* ▼▼▼ フッター：合計金額の計算と表示をパワーアップ！ ▼▼▼ */}
+<div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+  {/* 左側：人数統計 */}
+  <div className="flex gap-4 text-xs text-slate-400">
+    <span>申込数: <span className="text-white font-bold">{participants.length}</span> 名</span>
+    <span>受付済: <span className="text-emerald-400 font-bold">{participants.filter(p=>p.checkedIn).length}</span> 名</span>
+  </div>
+
+  {/* 右側：金額合計（ここが塙さんのこだわりだっぺ！） */}
+  <div className="flex flex-wrap justify-end gap-3 md:gap-6">
+    {/* 1. 全体の売上予定額 */}
+    <div className="flex flex-col items-end">
+      <span className="text-[10px] text-slate-500 uppercase font-bold">売上予定（合計）</span>
+      <span className="text-white font-black text-lg">
+        ¥{participants.reduce((sum, p) => sum + (Number((p as any).price) || 0), 0).toLocaleString()}
+      </span>
+    </div>
+
+    {/* 2. 当日現金で回収するべき残額 */}
+    <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
+      <span className="text-[10px] text-orange-400 uppercase font-bold">当日現金（未回収分）</span>
+      <span className="text-orange-500 font-black text-lg">
+        ¥{participants
+          .filter(p => (p as any).status !== 'paid') // 決済済み以外を集計
+          .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
+          .toLocaleString()}
+      </span>
+    </div>
+  </div>
+</div>
+{/* ▲▲▲ 修正ここまで ▲▲▲ */}
           </div>
         </div>
       )}
