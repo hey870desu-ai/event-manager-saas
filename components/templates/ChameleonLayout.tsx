@@ -246,13 +246,12 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
               )}
             </div>
             
-            {/* 2. 開催概要カード（スマホでの隠れ防止 & 日本語ラベル統一） */}
-            <div className="lg:sticky lg:top-8 space-y-6">
-              
+            {/* --- 開催概要カード（ここから丸ごと差し替えだっぺ！） --- */}
               <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-xl border border-slate-100 overflow-hidden relative">
                 <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: dynamicColor }}></div>
                 
                 <div className="space-y-8 mb-10">
+                  {/* 1. 開催日時 */}
                   <div className="group">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">開催日時</p>
                     <div className="text-3xl font-black text-slate-900 text-center md:text-left">{full}</div>
@@ -261,45 +260,61 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
                     </div>
                   </div>
 
+                  {/* 2. 会場 & アクセス */}
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 text-center md:text-left">会場 & アクセス</p>
                     <h3 className="text-xl font-black text-slate-900 mb-3 text-center md:text-left">{event.venueName}</h3>
-
-                    {/* ★住所テキストを追加 */}
-  {event.venueAddress && (
-    <p className="text-sm font-bold text-slate-600 mb-4 text-center md:text-left px-4 md:px-0 flex items-center justify-center md:justify-start gap-2">
-      <MapPin size={16} style={{ color: dynamicColor }} className="shrink-0" />
-      <span>{event.venueAddress}</span>
-    </p>
-  )}
-                    
-                    {/* ★アクセス情報の表示 */}
+                    {event.venueAddress && (
+                      <p className="text-sm font-bold text-slate-600 mb-4 text-center md:text-left px-4 md:px-0 flex items-center justify-center md:justify-start gap-2">
+                        <MapPin size={16} style={{ color: dynamicColor }} className="shrink-0" />
+                        <span>{event.venueAddress}</span>
+                      </p>
+                    )}
                     {event.venueAccess && (
                       <div className="text-sm font-bold text-slate-500 mb-5 bg-slate-50 p-4 rounded-2xl border-l-4 leading-relaxed" style={{ borderColor: dynamicColor }}>
                         {event.venueAccess}
                       </div>
                     )}
-
-                    {event.venueAddress && (
-                      <div className="rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner aspect-video mb-6">
-                        <iframe width="100%" height="100%" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}></iframe>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-2xl bg-slate-50 text-center">
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">参加費</p>
-                      <div className="text-xl font-black text-slate-900">{event.price ? `${Number(event.price).toLocaleString()}円` : "無料"}</div>
+                  {/* 3. チケットリスト（新設だっぺ！） */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100/50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-center md:text-left">チケット・参加費用</p>
+                    <div className="space-y-2">
+                      {(event.tickets && event.tickets.length > 0) ? (
+                        event.tickets.map((t: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-md">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ticket</span>
+                              <span className="text-sm font-black text-slate-800">{t.name}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-lg font-black font-mono" style={{ color: dynamicColor }}>
+                                {t.price === 0 ? "無料" : `¥${t.price.toLocaleString()}`}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex justify-between items-center p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <span className="text-sm font-black text-slate-800">参加費</span>
+                          <span className="text-lg font-black font-mono" style={{ color: dynamicColor }}>
+                            {event.price === "無料" ? "無料" : `¥${Number(event.price).toLocaleString()}`}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 text-center">
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">定員</p>
-                      <div className="text-xl font-black text-slate-900">{event.capacity ? `${event.capacity}名` : "制限なし"}</div>
+                    {/* 定員 */}
+                    <div className="flex items-center justify-center md:justify-start gap-2 px-2 py-1 opacity-60">
+                      <Users size={14} className="text-slate-400" />
+                      <p className="text-[10px] font-bold text-slate-500">
+                        定員：{event.capacity ? `${event.capacity}名（先着順）` : "制限なし"}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* 申し込みフォーム */}
+                {/* 4. 申し込みフォーム */}
                 <div className="pt-8 border-t border-slate-100">
                   <div className="text-center mb-8">
                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">申し込みフォーム</span>
@@ -307,35 +322,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
                   <ReservationForm tenantId={tenantId} eventId={eventId} event={event} tenantData={tenant} onSuccess={handleFormSuccess}/>
                 </div>
               </div>
-
-              {/* 3. お問い合わせカード */}
-              <div className="bg-white rounded-[2.5rem] p-8 shadow-lg border border-slate-100">
-                <h3 className="font-black text-slate-900 flex items-center justify-center md:justify-start gap-2 mb-6 text-sm uppercase tracking-widest">
-                  <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: dynamicColor }}></div>
-                  お問い合わせ
-                </h3>
-                <div className="space-y-5">
-                   <div className="text-center md:text-left">
-                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">主催者</p>
-                      <p className="font-bold text-slate-800 text-sm">{event.contactName || tenant?.name}</p>
-                   </div>
-                   <div className="space-y-3">
-                      {event.contactEmail && (
-                        <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
-                          <Mail size={18} style={{ color: dynamicColor }}/>
-                          <span className="truncate">{event.contactEmail}</span>
-                        </a>
-                      )}
-                      {event.contactPhone && (
-                        <a href={`tel:${event.contactPhone}`} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
-                          <Phone size={18} style={{ color: dynamicColor }}/>
-                          {event.contactPhone}
-                        </a>
-                      )}
-                   </div>
-                </div>
-              </div>
-            </div>
+              {/* --- 開催概要カード（ここまで） --- */}
           </div>
         </div>
 
