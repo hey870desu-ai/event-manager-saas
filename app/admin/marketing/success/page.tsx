@@ -3,34 +3,69 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Sparkles, Rocket, ArrowRight, Heart } from "lucide-react";
-import confetti from "canvas-confetti"; // 💡 もし入ってなければ npm install canvas-confetti
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import confetti from "canvas-confetti";
 
 export default function SuccessPage() {
   const router = useRouter();
+  const [plan, setPlan] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🎊 お祝いの紙吹雪を飛ばすっぺ！
+    // 1. お祝いの演出（紙吹雪）
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
     const interval: any = setInterval(function() {
       const timeLeft = animationEnd - Date.now();
       if (timeLeft <= 0) return clearInterval(interval);
-
       const particleCount = 50 * (timeLeft / duration);
       confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
       confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
     }, 250);
 
-    return () => clearInterval(interval);
+    // 2. 決済されたプランを特定するためにデータを取得
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const adminDoc = await getDoc(doc(db, "admin_users", user.email!));
+          if (adminDoc.exists()) {
+            const tenantId = adminDoc.data().tenantId;
+            const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
+            if (tenantDoc.exists()) {
+              setPlan(tenantDoc.data().plan);
+            }
+          }
+        } catch (e) {
+          console.error("Data fetch error:", e);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, []);
+
+  if (loading) return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-slate-500">確認中...</div>;
+
+  // プランに応じた文言の切り替え
+  const isSpot = plan === 'spot';
+  const heading = isSpot ? "お申し込みが完了しました" : "アップグレードが完了しました";
+  const description = isSpot 
+    ? "この度はスポット利用（1回開催権利）へのお申し込み、\n誠にありがとうございます。\n該当のイベントを今すぐ「公開」して運用いただけます。" 
+    : "この度はスタンダードプランへのお申し込み、\n誠にありがとうございます。\n全てのスタンダード機能をご利用いただけるようになりました。";
+  const planLabel = isSpot ? "スポットプラン" : "スタンダードプラン";
 
   return (
     <div className="min-h-screen bg-[#0f111a] flex items-center justify-center px-4 overflow-hidden">
-      {/* 背景の装飾 */}
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-600/20 rounded-full blur-[120px]" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-violet-600/20 rounded-full blur-[120px]" />
 
@@ -40,14 +75,12 @@ export default function SuccessPage() {
         </div>
 
         <h1 className="text-2xl font-black text-white mb-3 tracking-tight">
-    アップグレードが完了しました
-  </h1>
-  <p className="text-slate-400 mb-8 leading-relaxed text-sm">
-    この度はスタンダードプランへのお申し込み、<br />
-    誠にありがとうございます。<br />
-    全てのスタンダード機能をご利用いただけるようになりました。<br />
-    引き続き「絆太郎」をよろしくお願いいたします。
-  </p>
+          {heading}
+        </h1>
+        <div className="text-slate-400 mb-8 leading-relaxed text-sm whitespace-pre-wrap">
+          {description}
+          <p className="mt-4">引き続き「絆太郎」をよろしくお願いいたします。</p>
+        </div>
 
         <div className="space-y-4 mb-8">
           <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 flex items-center gap-4 text-left">
@@ -55,8 +88,8 @@ export default function SuccessPage() {
               <Sparkles size={20} />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase">利用可能プラン</p>
-              <p className="text-white font-bold">スタンダードプラン</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">現在のプラン</p>
+              <p className="text-white font-bold">{planLabel}</p>
             </div>
           </div>
           
@@ -65,8 +98,8 @@ export default function SuccessPage() {
               <Rocket size={20} />
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase">ステータス</p>
-              <p className="text-white font-bold">全ての機能が解放されました</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">ステータス</p>
+              <p className="text-white font-bold">イベントの公開が可能になりました</p>
             </div>
           </div>
         </div>
@@ -81,7 +114,7 @@ export default function SuccessPage() {
 
         <div className="mt-8 flex items-center justify-center gap-2 text-slate-600 text-xs font-bold">
           <Heart size={14} className="text-pink-500/50" />
-          <span>絆太郎 - Bantaro Project</span>
+          <span>絆太郎 - Bantarou Project</span>
         </div>
       </div>
     </div>

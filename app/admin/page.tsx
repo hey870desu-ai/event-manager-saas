@@ -943,7 +943,7 @@ useEffect(() => {
   onClick={(e) => {
     e.stopPropagation();
     if (ev.status !== 'published') {
-      alert("このイベントは「下書き」だっぺ！\n公開するまでは、お客さんはこのURLにアクセスしても見れない設定にするぞい。");
+      alert("このイベントは現在「下書き」状態です。公開設定に変更するまで、参加者はこのURLにアクセスしても閲覧できません。");
       return;
     }
     window.open(`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
