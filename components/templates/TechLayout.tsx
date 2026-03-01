@@ -255,20 +255,25 @@ if (submitted) {
             </div>
           </div>
 
-              {/* 🎫 チケットリスト（テック・デザイン特化版） */}
+              {/* 🎫 修正：日本語化 ＆ 見やすさアップ版 */}
               <div className="space-y-4 pt-8 border-t border-white/5">
-                <p className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40 mb-2">Ticket Options</p>
-                <div className="space-y-2">
+                {/* 見出しを日本語にして、少しだけ大きく（text-xs）したぞい */}
+                <div className="text-xs font-black tracking-widest mb-3" style={{ color: themeColor }}>
+                  チケット・参加費用
+                </div>
+                
+                <div className="space-y-3">
                   {(event.tickets && event.tickets.length > 0) ? (
                     event.tickets.map((t: any, idx: number) => (
                       <div key={idx} className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-200">{t.name}</span>
-                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">参加チケット</span>
+                          {/* ここも日本語だっぺ！ */}
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mb-0.5">参加チケット</span>
+                          <span className="text-sm font-bold text-slate-200">{t.name}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-lg font-bold font-mono text-white">
-                            {t.price === 0 ? "FREE" : `¥${t.price.toLocaleString()}`}
+                          <span className="text-xl font-bold font-mono text-white">
+                            {t.price === 0 ? "無料" : `¥${t.price.toLocaleString()}`}
                           </span>
                         </div>
                       </div>
@@ -276,16 +281,18 @@ if (submitted) {
                   ) : (
                     <div className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10">
                       <span className="text-sm font-bold text-slate-200">参加費</span>
-                      <span className="text-lg font-bold font-mono text-white">
-                        {(!event.price || event.price === "0" || event.price === "無料") ? "FREE" : event.price}
+                      <span className="text-xl font-bold font-mono text-white">
+                        {(!event.price || event.price === "0" || event.price === "無料") ? "無料" : isNaN(Number(event.price)) ? event.price : `¥${Number(event.price).toLocaleString()}`}
                       </span>
                     </div>
                   )}
                 </div>
-                {/* 定員をさりげなく下に */}
-                <div className="flex items-center gap-2 opacity-30 px-1">
-                  <p className="text-[9px] font-bold text-slate-400 tracking-[0.2em]">
-                    CAPACITY: {event.capacity ? `${event.capacity} SEATS` : "NO LIMIT"}
+
+                {/* 👥 定員情報を日本語でハッキリ（opacityを消して、文字を大きくしたぞい） */}
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: themeColor }}></div>
+                  <p className="text-sm font-bold text-slate-400 tracking-wider">
+                    定員：{event.capacity ? `${Number(event.capacity).toLocaleString()}名` : "制限なし"}
                   </p>
                 </div>
               </div>
