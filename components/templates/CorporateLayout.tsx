@@ -323,7 +323,7 @@ if (submitted) {
                 {event.venueAddress && (
                   <iframe 
                     width="100%" height="100%" style={{ border: 0 }} 
-                    src={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&output=embed`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&z=15&output=embed`}
                   ></iframe>
                 )}
               </div>
