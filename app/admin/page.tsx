@@ -1065,11 +1065,11 @@ useEffect(() => {
         <div className="flex flex-col gap-1">
           {/* 金額の表示 */}
           <span className="text-white font-black text-sm md:text-base">
-            ¥{(Number((p as any).amount) || 0).toLocaleString()}
+            ¥{(Number((p as any).price) || 0).toLocaleString()}
           </span>
           
           {/* 支払いステータスの出し分け */}
-          {(p as any).paymentStatus === 'paid' ? (
+          {(p as any).status === 'paid' ? (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
               <Check size={10} strokeWidth={3} /> 決済済み
             </span>
