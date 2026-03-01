@@ -46,6 +46,16 @@ export default function ReservationForm({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
+  const tickets = (event.tickets && event.tickets.length > 0) 
+    ? event.tickets 
+    : [{ id: "legacy", name: "通常参加", price: event.price === "無料" ? 0 : parseInt(event.price) || 0 }];
+
+  const [selectedTicketId, setSelectedTicketId] = useState(tickets[0]?.id || "");
+  const selectedTicket = tickets.find((t: any) => t.id === selectedTicketId) || tickets[0];
+
+  // 判定用：選んだチケットが有料かどうか
+  const isPaid = selectedTicket && selectedTicket.price > 0;
+  const priceAmount = isPaid ? selectedTicket.price : 0;
   const [agreed, setAgreed] = useState(false);
   const [newReservationId, setNewReservationId] = useState("");
  // ✅ 修正後のコード（データのフラグを直接使う）
@@ -74,12 +84,6 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
   // 3. IDの定義 (重複していたのを1つにまとめました)
   const safeEventId = eventId || event?.id || (params?.event as string);
   const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
-
-  // 4. 価格計算（判定を100%確実にするっぺ）
-  const priceVal = event?.price; 
-  // 「無料」という文字が入っていない、かつ「0より大きい数字」のときだけ有料(isPaid)とする
-  const isPaid = priceVal !== undefined && priceVal !== null && priceVal !== "無料" && Number(priceVal) > 0;
-  const priceAmount = isPaid ? Number(priceVal) : 0;
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -117,6 +121,7 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
         type: participationType,
         customAnswers: customAnswers,
         notes: formData.get("notes")?.toString() || "",
+        selectedTicket: selectedTicket.name, // ★どのチケットか保存
         
         // ★修正: 有料なら「支払い待ち」、無料なら「確定」
         status: isPaid ? "payment_pending" : "confirmed", 
@@ -145,7 +150,7 @@ setNewReservationId(docRef.id);
             eventId: safeEventId,
             tenantId: safeTenantId,
             amount: priceAmount, // 金額
-            eventTitle: event.title,
+            eventTitle: `${event.title} (${selectedTicket.name})`,
             email: reservationData.email,
             reservationId: docRef.id,
             // 豊嶋さんのStripeアカウントIDを渡して、手数料を引く準備をするっぺ
@@ -258,6 +263,49 @@ setNewReservationId(docRef.id);
 
                 <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#0f111a]">
                   <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* --- ここからチケット選択セクションを追加 --- */}
+<div className="space-y-4 mb-8">
+  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2 flex items-center gap-2">
+    チケット選択
+  </h3>
+  <div className="grid grid-cols-1 gap-3">
+    {tickets.map((t: any) => (
+      <label
+        key={t.id}
+        className={`
+          relative p-4 rounded-xl border flex justify-between items-center transition-all cursor-pointer group
+          ${selectedTicketId === t.id ? "bg-slate-800/80" : "bg-slate-900 hover:bg-slate-800/40"}
+        `}
+        style={{ borderColor: selectedTicketId === t.id ? themeColor : '#334155' }}
+      >
+        <input
+          type="radio"
+          name="ticket"
+          value={t.id}
+          checked={selectedTicketId === t.id}
+          onChange={() => setSelectedTicketId(t.id)}
+          className="hidden"
+        />
+        <div className="flex flex-col gap-1">
+          <span className={`font-bold transition-colors ${selectedTicketId === t.id ? "text-white" : "text-slate-400"}`}>
+            {t.name}
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="font-mono font-black text-lg" style={{ color: selectedTicketId === t.id ? themeColor : '#64748b' }}>
+            {t.price === 0 ? "無料" : `¥${t.price.toLocaleString()}`}
+          </span>
+        </div>
+        {selectedTicketId === t.id && (
+          <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-lg animate-in zoom-in">
+            <CheckCircle size={16} />
+          </div>
+        )}
+      </label>
+    ))}
+  </div>
+</div>
+{/* --- ここまでチケット選択セクション --- */}
                     
                     {/* ▼▼▼ 基本情報（必須3項目のみに修正） ▼▼▼ */}
                     <div className="space-y-6">
