@@ -809,7 +809,6 @@ useEffect(() => {
   }} 
   className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center"
 >
->
   <Plus size={20} strokeWidth={3}/> 新規イベント
 </button>
         </div>
