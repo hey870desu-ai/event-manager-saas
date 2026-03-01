@@ -502,6 +502,13 @@ useEffect(() => {
 
   const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
   e.stopPropagation();
+
+  // ★ ここに追加！フリープランなら門前払いだばい！
+  if (isFreePlan) {
+    setIsUpgradeModalOpen(true);
+    return;
+  }
+
   setDownloadingId(eventId);
 
   // 電話番号の整形関数
@@ -955,7 +962,12 @@ useEffect(() => {
 
                    <button 
                      onClick={(e) => { 
-  e.stopPropagation(); 
+  e.stopPropagation();
+  // ★ ここに追加！
+    if (isFreePlan) {
+      setIsUpgradeModalOpen(true);
+      return;
+    } 
   setCurrentEventForList(ev); 
   setIsFeedbackOpen(true); 
 }}
@@ -1041,7 +1053,7 @@ useEffect(() => {
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
-               <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
+               <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
   <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
 </button>
             </div>
