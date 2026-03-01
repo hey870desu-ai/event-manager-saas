@@ -165,28 +165,22 @@ export default function AdminDashboard() {
   // テナント情報をここで確定させる
   const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
   
-  // ★ ここを書き換え：プランが 'FREE' なら true になるようにする
+  // 両方の判定を持っておくのがコツだばい！
   const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
+  const isStandard = currentTenantData?.plan?.toUpperCase() === 'STANDARD';
 
  // 📂 app/admin/page.tsx 147行目付近
 
   const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
-    e.stopPropagation();
+  e.stopPropagation();
 
-    // ★ 塙さん流・都会的でプロフェッショナルな案内文だばい！
-    const message = isFreePlan 
-      ? `このイベントを複製しますか？
+  // ★ スタンダード（サブスク）以外は、たとえスポットでお金を払ってても複製は禁止だぞい！
+  if (!isStandard) {
+    alert("【機能制限】イベントの複製は、スタンダードプラン専用の機能です。");
+    return;
+  }
 
-【重要：お支払いの案内】
-現在「無料プラン」をご利用中のため、複製したイベントを「公開」するには、以下のいずれかが必要になります：
-
-① スポット利用料（5,500円）の決済
-② スタンダードプランへのアップグレード
-
-※複製直後は「下書き」状態で作成されます。`.trim()
-      : 'このイベントを複製しますか？\n（タイトルに「のコピー」が付き、下書き状態で作成されます）';
-
-    if (!confirm(message)) return;
+  if (!confirm('このイベントを複製しますか？')) return;
     
     setDuplicatingId(event.id);
     try {
@@ -804,11 +798,19 @@ useEffect(() => {
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-2xl font-bold text-slate-800">Events</h2>
           <button 
-            onClick={() => { setSelectedEvent(null); setIsEventModalOpen(true); }} 
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center"
-          >
-            <Plus size={20} strokeWidth={3}/> 新規イベント
-          </button>
+  onClick={() => { 
+    // ★ スタンダードじゃない（＝フリーの人）は1件制限だっぺ！
+    if (!isStandard && events.length >= 1) {
+      alert("【作成制限】現在、管理できるイベントは1件までとなっております。別のイベントを作成するには、現在のイベントを削除するか、スタンダードプランをご検討ください。");
+      return;
+    }
+    setSelectedEvent(null); 
+    setIsEventModalOpen(true); 
+  }} 
+  className="..."
+>
+  <Plus size={20} strokeWidth={3}/> 新規イベント
+</button>
         </div>
         
         {/* グリッドをやめて、縦積みのリストにする (max-w-6xl で幅広に) */}
