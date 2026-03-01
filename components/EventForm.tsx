@@ -42,6 +42,12 @@ type Lecturer = {
   image: string;
 };
 
+type Ticket = {
+  id: string;
+  name: string;
+  price: number;
+};
+
 export default function EventForm({ event, onSuccess, isFreePlan= false }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploadingLecturer, setUploadingLecturer] = useState(false);
@@ -125,6 +131,32 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
 
   // ★追加：複数講師の管理
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
+
+  // ★追加：複数チケット（価格）の管理
+const [tickets, setTickets] = useState<Ticket[]>([
+  { id: "default", name: "通常参加", price: 0 }
+]);
+
+// ★追加：チケット操作用の関数
+const addTicket = () => {
+  setTickets([...tickets, { id: Math.random().toString(36).substring(2), name: "", price: 0 }]);
+};
+
+const updateTicket = (index: number, field: keyof Ticket, value: any) => {
+  const newTickets = [...tickets];
+  newTickets[index] = { ...newTickets[index], [field]: value };
+  setTickets(newTickets);
+};
+
+const removeTicket = (index: number) => {
+  if (tickets.length <= 1) {
+    alert("最低でも1つはチケット（価格）設定が必要だっぺ！");
+    return;
+  }
+  if (confirm("このチケット設定を削除しますか？")) {
+    setTickets(tickets.filter((_, i) => i !== index));
+  }
+};
 
   // ★追加：講師リスト操作用の関数群
   const addLecturer = () => {
@@ -248,6 +280,14 @@ useEffect(() => {
           image: event.lecturerImage || ""
         }]);
       }
+
+      if (event.tickets && Array.isArray(event.tickets)) {
+  setTickets(event.tickets);
+} else if (event.price) {
+  // 古いデータ（単一価格）がある場合は、それを1つ目のチケットとして読み込むっぺ
+  const legacyPrice = event.price === "無料" ? 0 : parseInt(event.price) || 0;
+  setTickets([{ id: "legacy", name: "通常参加", price: legacyPrice }]);
+}
 
       if (event.timeTable) {
         const lines = event.timeTable.split('\n');
@@ -475,6 +515,8 @@ useEffect(() => {
         location: formData.venueName,
         updatedAt: new Date(),
         branchTag: formData.branchTag || "本部",
+        tickets: tickets, // ★チケットリストを保存
+        price: tickets[0]?.price === 0 ? "無料" : tickets[0]?.price.toString(),
         
         // ★追加：講師リストを保存
         lecturers: lecturers,
@@ -625,24 +667,66 @@ useEffect(() => {
         <input type="text" name="capacity" value={formData.capacity} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" />
       </div>
 
-      <div>
-        <label className="block text-xs text-slate-500 mb-2 font-bold flex items-center gap-2">参加費</label>
-        <div className="space-y-3">
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-700 w-fit">
-            <button type="button" onClick={() => setFormData(prev => ({ ...prev, price: "無料" }))} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${formData.price === "無料" ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>無料</button>
-            <button type="button" onClick={() => setFormData(prev => ({ ...prev, price: formData.price === "無料" ? "1000" : formData.price }))} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${formData.price !== "無料" ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>有料</button>
+      <div className="md:col-span-2"> {/* 横幅を広く使うために調整だっぺ */}
+  <label className="block text-xs text-slate-500 mb-4 font-bold flex items-center gap-2">
+    <CheckCircle size={14} className="text-indigo-400"/> チケット・参加費設定（複数設定可能）
+  </label>
+  
+  <div className="space-y-3">
+    {tickets.map((ticket, index) => (
+      <div key={ticket.id} className="flex flex-col md:flex-row gap-3 bg-slate-950 p-4 rounded-xl border border-slate-700/50 animate-in fade-in slide-in-from-left-2 group">
+        {/* チケット名入力 */}
+        <div className="flex-1">
+          <label className="text-[10px] text-slate-500 block mb-1">チケット名称</label>
+          <input 
+            type="text" 
+            value={ticket.name} 
+            onChange={(e) => updateTicket(index, "name", e.target.value)} 
+            placeholder="例：第1部のみ参加 / 懇親会セット など" 
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none" 
+          />
+        </div>
+
+        {/* 金額入力 */}
+        <div className="w-full md:w-48">
+          <label className="text-[10px] text-slate-500 block mb-1">金額 (0円で無料表示)</label>
+          <div className="relative flex items-center">
+            <span className="absolute left-3 text-slate-500 text-xs font-mono">¥</span>
+            <input 
+              type="number" 
+              value={ticket.price} 
+              onChange={(e) => updateTicket(index, "price", parseInt(e.target.value) || 0)} 
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2.5 pl-7 pr-10 text-white text-sm focus:border-indigo-500 outline-none font-mono font-bold" 
+            />
+            <span className="absolute right-3 text-[10px] text-slate-500">円</span>
           </div>
-          
-          {/* 金額入力 (有料の時のみ表示) */}
-          {formData.price !== "無料" && (
-            <div className="relative flex items-center gap-2 max-w-[200px] animate-in fade-in slide-in-from-left-2">
-              <span className="absolute left-3 text-slate-500 font-mono">¥</span>
-              <input type="number" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-3 pl-8 pr-10 text-white focus:border-indigo-500 outline-none font-mono font-bold" />
-              <span className="absolute right-3 text-sm text-slate-400 font-bold">円</span>
-            </div>
-          )}
+        </div>
+
+        {/* 削除ボタン */}
+        <div className="flex items-end pb-1.5">
+          <button 
+            type="button" 
+            onClick={() => removeTicket(index)} 
+            className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+            title="削除"
+          >
+            <Trash2 size={20}/>
+          </button>
         </div>
       </div>
+    ))}
+    
+    {/* 追加ボタン */}
+    <button 
+      type="button" 
+      onClick={addTicket} 
+      className="w-full py-3 border-2 border-dashed border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-900/10 rounded-xl text-slate-500 hover:text-indigo-400 text-sm font-bold flex items-center justify-center gap-2 transition-all group"
+    >
+      <Plus size={18} className="group-hover:scale-110 transition-transform"/> 
+      チケット種別（価格）を追加する
+    </button>
+  </div>
+</div>
     </div>
   </div>
 </div>
