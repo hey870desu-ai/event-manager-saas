@@ -369,6 +369,21 @@ useEffect(() => {
     
     setCustomFields(newFields);
   };
+
+  const moveTimeSlot = (index: number, direction: 'up' | 'down') => {
+  const newSlots = [...timeSlots];
+  
+  if (direction === 'up') {
+    if (index === 0) return; // 一番上なら何もしない
+    [newSlots[index], newSlots[index - 1]] = [newSlots[index - 1], newSlots[index]];
+  } else {
+    if (index === timeSlots.length - 1) return; // 一番下なら何もしない
+    [newSlots[index], newSlots[index + 1]] = [newSlots[index + 1], newSlots[index]];
+  }
+  
+  setTimeSlots(newSlots);
+};
+
   const moveSurveyField = (index: number, direction: 'up' | 'down') => {
     const newFields = [...surveyFields];
     if (direction === 'up') {
@@ -954,17 +969,45 @@ useEffect(() => {
            
            <div className="bg-slate-950 rounded-lg border border-slate-800 p-4">
               <label className="block text-xs text-slate-500 mb-3 flex items-center gap-1"><Layout size={14}/> タイムテーブル構成</label>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                {timeSlots.map((slot, idx) => (
-                  <div key={idx} className="flex gap-2 items-center group">
-                    <input type="time" value={slot.start} onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
-                    <span className="text-slate-500 text-xs">-</span>
-                    <input type="time" value={slot.end} onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
-                    <input type="text" placeholder="内容 (例: 基調講演)" value={slot.label} onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-white" />
-                    <button type="button" onClick={() => removeTimeSlot(idx)} className="p-1.5 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
-                  </div>
-                ))}
-              </div>
+              {/* タイムテーブル構成のループ部分 */}
+<div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+  {timeSlots.map((slot, idx) => (
+    <div key={idx} className="flex gap-2 items-center group bg-slate-900/50 p-1 rounded-lg border border-transparent hover:border-slate-700 transition-all">
+      {/* グリップアイコン（飾り） */}
+      <div className="text-slate-700"><GripVertical size={14} /></div>
+      
+      <input type="time" value={slot.start} onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
+      <span className="text-slate-500 text-xs">-</span>
+      <input type="time" value={slot.end} onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
+      <input type="text" placeholder="内容" value={slot.label} onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white" />
+      
+      {/* ★追加: 上下ボタンエリア */}
+      <div className="flex items-center gap-0.5">
+        <button 
+          type="button" 
+          onClick={() => moveTimeSlot(idx, 'up')}
+          disabled={idx === 0}
+          className="p-1 text-slate-500 hover:text-indigo-400 disabled:opacity-0 transition-all"
+        >
+          <ArrowUp size={14} />
+        </button>
+        <button 
+          type="button" 
+          onClick={() => moveTimeSlot(idx, 'down')}
+          disabled={idx === timeSlots.length - 1}
+          className="p-1 text-slate-500 hover:text-indigo-400 disabled:opacity-0 transition-all"
+        >
+          <ArrowDown size={14} />
+        </button>
+        
+        {/* 削除ボタン */}
+        <button type="button" onClick={() => removeTimeSlot(idx)} className="p-1 text-slate-600 hover:text-red-400 transition-colors">
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
               <button type="button" onClick={addTimeSlot} className="mt-3 w-full py-2 flex items-center justify-center gap-2 border border-dashed border-slate-700 rounded text-xs text-slate-400 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-900/10 transition-colors"><Plus size={14}/> 行を追加する</button>
            </div>
         </div>
