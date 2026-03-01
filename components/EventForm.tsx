@@ -25,6 +25,7 @@ type CustomField = {
 type Props = {
   event?: any;
   onSuccess: () => void;
+  isFreePlan: boolean;
 };
 
 type TimeSlot = {
@@ -41,7 +42,7 @@ type Lecturer = {
   image: string;
 };
 
-export default function EventForm({ event, onSuccess }: Props) {
+export default function EventForm({ event, onSuccess, isFreePlan }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploadingLecturer, setUploadingLecturer] = useState(false);
   // ★追加: 今編集しているイベントのIDを管理する（新規作成後の連続保存対策）
@@ -409,6 +410,15 @@ useEffect(() => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 🔒【ここから追加】無料プランの「公開」ブロック機能だっぺ！
+    if (formData.status === 'published' && isFreePlan) {
+      if (confirm("イベントを公開するには、スタンダードプランへの加入、またはスポット利用（5,500円）が必要です。\n契約ページへ移動して手続きを行う？")) {
+        window.location.href = "/dashboard";
+      }
+      return;
+    }
+    // 🔒【ここまで追加】
+
     if (!formData.tenantId || formData.tenantId === "demo") {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
     return;
@@ -581,7 +591,7 @@ useEffect(() => {
            <label className="block text-xs text-slate-400 font-bold mb-2">公開ステータス</label>
            <select name="status" value={formData.status} onChange={handleChange} className={`w-full border border-slate-700 rounded-lg p-3 font-bold outline-none cursor-pointer transition-colors ${formData.status === 'published' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50' : 'bg-slate-950 text-slate-400'}`}>
              <option value="draft">下書き (準備中)</option>
-             <option value="published">公開する</option>
+             <option value="published">{isFreePlan ? "🔒 公開する (アップグレードが必要)" : "🚀 公開する"}</option>
            </select>
         </div>
       </div>

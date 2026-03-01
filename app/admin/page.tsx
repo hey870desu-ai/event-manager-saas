@@ -923,21 +923,40 @@ useEffect(() => {
                    </button>
                    
                    <button 
-                     onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);setCopiedId(ev.id);setTimeout(()=>setCopiedId(null),2000);}} 
+                     onClick={(e) => {
+  e.stopPropagation();
+  if (isFreePlan && ev.status !== 'published') {
+    setIsUpgradeModalOpen(true); // 👈 無料で下書きならアップグレードを促す！
+    return;
+  }
+  navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);
+  setCopiedId(ev.id);
+  setTimeout(() => setCopiedId(null), 2000);
+}}
                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
                        {copiedId===ev.id?<Check size={18} className="text-emerald-500"/>:<Share2 size={18}/>}
                        <span className="hidden lg:inline">URL</span>
                    </button>
                    
-                   <a 
-                     href={`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`} 
-                     target="_blank" 
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-slate-100 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
-                   >
-                       <ExternalLink size={18}/>
-                       <span className="hidden lg:inline">公開P</span>
-                   </a>
+                   <button 
+  onClick={(e) => {
+    e.stopPropagation();
+    if (ev.status !== 'published') {
+      alert("このイベントは「下書き」だっぺ！\n公開するまでは、お客さんはこのURLにアクセスしても見れない設定にするぞい。");
+      return;
+    }
+    window.open(`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
+  }}
+  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border shadow-sm font-bold text-xs ${
+    ev.status === 'published' 
+    ? "bg-white hover:bg-slate-100 text-slate-600 border-slate-300" 
+    : "bg-slate-50 text-slate-400 border-dashed border-slate-300 cursor-not-allowed"
+  }`}
+>
+  {ev.status === 'published' ? <ExternalLink size={18}/> : <Lock size={18}/>}
+  <span className="hidden lg:inline">{ev.status === 'published' ? '公開P' : '非公開中'}</span>
+</button>
                 </div>
               </div>
               {/* ▲▲▲ 差し替えここまで ▲▲▲ */}
@@ -952,7 +971,7 @@ useEffect(() => {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col">
              <div className="p-4 border-b border-slate-800 flex justify-between bg-[#0f111a] sticky top-0 z-10"><h2 className="text-xl font-bold text-white">イベント編集</h2><button onClick={()=>setIsEventModalOpen(false)}><X/></button></div>
-             <div className="p-6"><EventForm event={selectedEvent} onSuccess={()=>setIsEventModalOpen(false)}/></div>
+             <div className="p-6"><EventForm event={selectedEvent} onSuccess={()=>setIsEventModalOpen(false)}isFreePlan={isFreePlan}/></div>
           </div>
         </div>
       )}

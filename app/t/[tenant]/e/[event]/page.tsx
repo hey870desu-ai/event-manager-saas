@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import EventClient from "./EventClient";
+import { Lock } from "lucide-react";
 
 type Props = {
   params: { tenant: string; event: string };
@@ -38,6 +39,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!eventSnap.exists()) return defaultMetadata;
 
     const event = eventSnap.data();
+    // 🔒 下書き状態なら、SNS用の情報を「準備中」にすげ替えるっぺ！
+   if (event.status !== 'published') {
+   return {
+    title: "準備中 | 絆太郎",
+    description: "このイベントは現在、公開準備中だっぺ！",
+    openGraph: { title: "Coming Soon", images: [] },
+  };
+}
     const tenant = tenantSnap.exists() ? tenantSnap.data() : { name: "Event Manager" };
     const tenantName = tenant.name || "Event Manager";
 
@@ -82,8 +91,8 @@ export default async function EventPage({ params }: Props) {
   const { tenant: tenantId, event: eventId } = resolvedParams;
 
   // 2. サーバー側でデータを取る
-  let eventData = null;
-  let tenantData = null;
+  let eventData: any = null;
+  let tenantData: any = null;
 
   try {
     // イベント情報の取得
@@ -103,10 +112,31 @@ export default async function EventPage({ params }: Props) {
     console.error("データ取得エラー:", error);
   }
 
-  // 3. データが見つからない場合
-  if (!eventData) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Event Not Found</div>;
-  }
+  // 🔒 下書き状態なら、お客さんには「準備中」の標準的な画面を表示するぞい！
+if (eventData.status !== 'published') {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+      <div className="max-w-sm">
+        {/* アイコン */}
+        <div className="w-20 h-20 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Lock size={40} />
+        </div>
+        
+        {/* メッセージ */}
+        <h2 className="text-2xl font-bold text-slate-800 mb-4">ただいま準備中です</h2>
+        <div className="text-slate-500 font-medium leading-relaxed space-y-2">
+          <p>このイベントページは現在、主催者様が公開に向けて準備を進めております。</p>
+          <p>公開まで、今しばらくお待ちください。</p>
+        </div>
+
+        {/* フッター */}
+        <div className="mt-8 pt-8 border-t border-slate-200">
+          <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Kizuna-Taro Event Manager</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   // 4. データを EventClient に渡す
   return (
