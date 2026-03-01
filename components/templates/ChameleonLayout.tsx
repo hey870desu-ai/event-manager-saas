@@ -324,15 +324,75 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
           </div>
         </div>
 
-        {/* フッター */}
-        <footer className="mt-20 py-12 text-center border-t border-slate-200/50">
-          <div className="flex flex-col items-center gap-6">
-            {tenant?.logoUrl && <img src={tenant.logoUrl} className="h-8 opacity-60 grayscale hover:grayscale-0 transition-all" alt="logo"/>}
-            <div className="text-[10px] font-black text-slate-400 tracking-[0.5em] uppercase">
-              © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
+        {/* ✉️ お問い合わせセクション & フッター */}
+        <footer className="mt-20 pb-16">
+          {/* 横並びのお問い合わせバー（ピリッと引き締まったデザインだっぺ！） */}
+          <div className="max-w-6xl mx-auto mb-16 px-4">
+            <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-100 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+              {/* 左側にアクセントライン */}
+              <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: dynamicColor }}></div>
+              
+              {/* タイトルエリア */}
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="p-3 rounded-xl" style={{ backgroundColor: `${dynamicColor}15`, color: dynamicColor }}>
+                  <Mail size={24} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">お問い合わせ</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact Organizer</p>
+                </div>
+              </div>
+
+              {/* 横並びの情報エリア */}
+              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12 flex-1 justify-end">
+                {/* 1. 主催者名 */}
+                <div className="flex flex-col items-center md:items-start">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter mb-1">Organizer</span>
+                  <div className="flex items-center gap-2">
+                    <User size={14} style={{ color: dynamicColor }} />
+                    <span className="text-sm font-bold text-slate-700">{event.contactName || tenant?.name}</span>
+                  </div>
+                </div>
+
+                {/* 2. メールアドレス */}
+                {event.contactEmail && (
+                  <div className="flex flex-col items-center md:items-start">
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter mb-1">Email</span>
+                    <a href={`mailto:${event.contactEmail}`} className="flex items-center gap-2 group/link hover:opacity-70 transition-opacity">
+                      <Mail size={14} style={{ color: dynamicColor }} />
+                      <span className="text-sm font-bold text-slate-700 underline decoration-slate-200 underline-offset-4 group-hover/link:decoration-indigo-300">
+                        {event.contactEmail}
+                      </span>
+                    </a>
+                  </div>
+                )}
+
+                {/* 3. 電話番号 */}
+                {event.contactPhone && (
+                  <div className="flex flex-col items-center md:items-start">
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter mb-1">Phone</span>
+                    <a href={`tel:${event.contactPhone}`} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                      <Phone size={14} style={{ color: dynamicColor }} />
+                      <span className="text-sm font-bold text-slate-700">{event.contactPhone}</span>
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="px-4 py-1 rounded-full bg-slate-900 text-white text-[8px] font-bold tracking-widest uppercase opacity-20">
-              Powered by 絆太郎 Event Manager
+          </div>
+
+          {/* コピーライトエリア */}
+          <div className="text-center pt-12 border-t border-slate-200/50">
+            <div className="flex flex-col items-center gap-6">
+              {tenant?.logoUrl && (
+                <img src={tenant.logoUrl} className="h-8 opacity-60 grayscale hover:grayscale-0 transition-all" alt="logo"/>
+              )}
+              <div className="text-[10px] font-black text-slate-400 tracking-[0.5em] uppercase">
+                © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
+              </div>
+              <div className="px-4 py-1 rounded-full bg-slate-900 text-white text-[8px] font-bold tracking-widest uppercase opacity-20">
+                Powered by 絆太郎 Event Manager
+              </div>
             </div>
           </div>
         </footer>
