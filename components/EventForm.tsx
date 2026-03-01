@@ -465,14 +465,14 @@ useEffect(() => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🔒【ここから追加】無料プランの「公開」ブロック機能だっぺ！
-    if (formData.status === 'published' && isFreePlan) {
-      if (confirm("イベントを公開するには、スタンダードプランへの加入、またはスポット利用（5,500円）が必要です。\n契約ページへ移動して手続きを行う？")) {
-        window.location.href = "/dashboard";
-      }
-      return;
-    }
-    // 🔒【ここまで追加】
+    // 🔒【修正】無料プランでも、このイベント専用の「スポット決済」が済んでいれば公開OKにするぞい！
+  if (formData.status === 'published' && isFreePlan && !event?.isSpotPaid) {
+  if (confirm("イベントを公開するには、以下のいずれかが必要です：\n\n1. スタンダードプランへの加入\n2. スポット利用（5,500円/回）の決済\n\n決済案内ページへ移動しますか？")) {
+    // 将来的に、eventIdを付けてStripeへ飛ばすURLにするっぺ
+    window.location.href = `/dashboard/billing?eventId=${currentEventId}`;
+  }
+  return;
+}
 
     if (!formData.tenantId || formData.tenantId === "demo") {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
@@ -667,7 +667,36 @@ useEffect(() => {
 
     {/* 日時設定 */}
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <div><label className="block text-xs text-slate-500 mb-2">開催日 <span className="text-red-500">*</span></label><input required type="date" name="date" value={formData.date} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none" /></div>
+      <div>
+  <label className="block text-xs text-slate-500 mb-2 flex justify-between items-center">
+    <span>開催日 <span className="text-red-500">*</span></span>
+    
+    {/* ★ 追加：スポット決済済みの場合に「ロック中」の警告を出すっぺ！ */}
+    {event?.isSpotPaid && (
+      <span className="text-[10px] text-amber-500 flex items-center gap-1 font-bold animate-pulse">
+        <Lock size={10} /> スポット決済済みのため日付固定
+      </span>
+    )}
+  </label>
+  
+  <input 
+    required 
+    type="date" 
+    name="date" 
+    value={formData.date} 
+    onChange={handleChange} 
+    
+    // ★ ここがキモ！「スポット決済済み」且つ「公開中」なら入力を無効化するぞい
+    disabled={event?.isSpotPaid && formData.status === 'published'}
+    
+    // 見た目も「触れない感」を出すために opacity（透明度）を下げるっぺ
+    className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-indigo-500 outline-none transition-all ${
+      (event?.isSpotPaid && formData.status === 'published') 
+        ? 'opacity-50 cursor-not-allowed bg-slate-900' 
+        : ''
+    }`} 
+  />
+</div>
       <div className="grid grid-cols-2 gap-2 md:col-span-2">
         <div><label className="block text-xs text-slate-500 mb-2">開始</label><input type="time" name="startTime" value={formData.startTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
         <div><label className="block text-xs text-slate-500 mb-2">終了</label><input type="time" name="endTime" value={formData.endTime} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white" /></div>
