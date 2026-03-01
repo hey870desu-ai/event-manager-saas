@@ -131,7 +131,7 @@ if (eventData.status !== 'published') {
 
         {/* フッター */}
         <div className="mt-8 pt-8 border-t border-slate-200">
-          <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">Kizuna-Taro Event Manager</p>
+          <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">BanTaro Event Manager</p>
         </div>
       </div>
     </div>
