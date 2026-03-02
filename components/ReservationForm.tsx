@@ -508,7 +508,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     {status === "loading" ? (
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
     ) : (
-      <>お申し込みを確定する <CheckCircle2 size={18} /></>
+      <>お申し込みを確定する <Send size={18} /></>
     )}
   </button>
 </div>
