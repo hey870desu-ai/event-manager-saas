@@ -12,8 +12,12 @@ import { db } from "@/lib/firebase";
 import Link from "next/link";
 
 type TenantData = {
+  id?: string;           // ★これを追加
   name: string;
+  orgName?: string;      // ★これを追加
   themeColor?: string;
+  stripeConnectId?: string; // ★これを追加
+  ownerEmail?: string;    // ★これを追加
 };
 
 type CustomField = {
@@ -79,11 +83,12 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
   const params = useParams();
 
   // 2. safeTenant を最初に定義！ (これがないと下でエラーになります)
-  const safeTenant = tenantData || tenant;
+  const safeTenant = (tenantData || tenant) as any;
   
   // 3. IDの定義 (重複していたのを1つにまとめました)
   const safeEventId = eventId || event?.id || (params?.event as string);
   const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
+  const isReady = !!safeEventId && !!safeTenantId;
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -492,15 +497,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     <div className="pt-8 border-t border-slate-800 mt-8">
   <button 
     type="submit" 
-    // ▼ ここは今まで通りの安全策だぞい
-    disabled={status === "loading" || !agreed} 
-    style={{ background: agreed ? themeColor : '#334155' }} 
+    // ▼ status が loading か、同意してないか、IDが取れてないときは押させないっぺ！
+    disabled={status === "loading" || !agreed || !isReady} 
+    style={{ background: agreed && isReady ? themeColor : '#334155' }} 
     className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
   >
     {status === "loading" ? (
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
     ) : (
-      /* ★ここをシンプルに統合！有料でも無料でもこの表示にするっぺ */
       <>お申し込みを確定する <CheckCircle2 size={18} /></>
     )}
   </button>
