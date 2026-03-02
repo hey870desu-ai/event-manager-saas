@@ -200,7 +200,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               reservationId: docRef.id,
               tenantName: safeTenant?.orgName || safeTenant?.name,
               themeColor: themeColor,
-              replyTo: safeTenant?.ownerEmail,
+              replyTo: event.contactEmail || safeTenant?.ownerEmail || "",
               customAnswers: customAnswers,
               contactName: event.contactName || safeTenant?.name || "運営事務局",
               contactEmail: event.contactEmail || "",
