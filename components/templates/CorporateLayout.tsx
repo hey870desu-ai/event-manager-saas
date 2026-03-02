@@ -263,7 +263,7 @@ if (submitted) {
                     <div className="flex-1">
                       <p className="text-[10px] font-black text-purple-600 mb-1 uppercase tracking-widest">{lec.title}</p>
                       <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-3">{lec.name}</h3>
-                      <p className="text-sm text-slate-600 leading-relaxed font-medium line-clamp-4">{lec.profile || lec.lecturerProfile}</p>
+                      <p className="text-sm text-slate-600 leading-relaxed font-medium">{lec.profile || lec.lecturerProfile}</p>
                     </div>
                   </div>
                 ))}
