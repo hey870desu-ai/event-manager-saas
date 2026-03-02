@@ -334,56 +334,52 @@ if (submitted) {
         </div>
       </main>
 
-      {/* 4. お問い合わせバー (フッター直前・横並び) */}
-      <section className="max-w-7xl mx-auto px-6 mb-20">
-        <div className="bg-slate-900 rounded-2xl p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="flex items-center gap-6">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-              <Mail size={28} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black">お問い合わせ</h3>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.4em]">Get in touch with us</p>
-            </div>
+      {/* FOOTER: テナント名が自動で入る汎用プロ仕様だばい！ */}
+      <footer className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 py-20 text-white">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
+          
+          {/* A. ロゴと組織名（自動切り替え） */}
+          <div className="flex flex-col items-center gap-4 mb-12">
+            {tenant?.logoUrl && (
+                <img src={tenant.logoUrl} alt={tenant.name} className="h-12 object-contain brightness-0 invert opacity-90" />
+            )}
+            <h2 className="text-2xl font-black tracking-tight text-white/90">
+              {tenant?.name || "Event Organizer"}
+            </h2>
           </div>
 
-          <div className="flex flex-wrap justify-center md:justify-end gap-x-12 gap-y-6">
-            <div className="space-y-1">
-              <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">お問合せ先</p>
+          {/* B. お問い合わせ先セクション */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl text-center border-t border-white/20 pt-12 pb-12">
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Organizer</p>
               <p className="font-bold text-lg">{event.contactName || tenant?.name}</p>
             </div>
             {event.contactEmail && (
-              <div className="space-y-1">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Email</p>
-                <a href={`mailto:${event.contactEmail}`} className="block font-bold text-lg hover:text-purple-400 transition-colors underline underline-offset-8 decoration-white/10">{event.contactEmail}</a>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Email</p>
+                <a href={`mailto:${event.contactEmail}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
+                  {event.contactEmail}
+                </a>
               </div>
             )}
             {event.contactPhone && (
-              <div className="space-y-1">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Tel</p>
-                <a href={`tel:${event.contactPhone}`} className="block font-bold text-lg hover:text-purple-400 transition-colors">{event.contactPhone}</a>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Tel</p>
+                <a href={`tel:${event.contactPhone}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
+                  {event.contactPhone}
+                </a>
               </div>
             )}
           </div>
-        </div>
-      </section>
 
-      {/* FOOTER */}
-      <footer className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 py-24 text-white">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-10">
-          <div className="flex flex-col items-center gap-4">
-            {tenant?.logoUrl && (
-                <img src={tenant.logoUrl} alt={tenant.name} className="h-10 object-contain brightness-0 invert opacity-90" />
-            )}
-            <h2 className="text-xl font-bold tracking-tight text-white/90">{tenant?.name}</h2>
-          </div>
-          <div className="h-[1px] w-32 bg-white/10" />
-          <p className="text-[10px] font-bold tracking-[0.4em] text-white/30 uppercase">
-            © {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"}
+          <div className="h-[1px] w-32 bg-white/20 mb-8" />
+
+          {/* C. コピーライト（年も自動取得だっぺ！） */}
+          <p className="text-[10px] font-bold tracking-[0.4em] text-white/40 uppercase text-center">
+            © {new Date().getFullYear()} {tenant?.name || "絆太郎Event Manager"}
           </p>
         </div>
       </footer>
-
       <style jsx global>{`
         @keyframes subtle-zoom {
           from { transform: scale(1); }
