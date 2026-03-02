@@ -498,19 +498,41 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     )}
 
                     <div className="pt-8 border-t border-slate-800 mt-8">
-  <button 
-    type="submit" 
-    // ▼ status が loading か、同意してないか、IDが取れてないときは押させないっぺ！
-    disabled={status === "loading" || !agreed || !isReady} 
-    style={{ background: agreed && isReady ? themeColor : '#334155' }} 
-    className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-  >
-    {status === "loading" ? (
-      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-    ) : (
-      <>お申し込みを確定する <CheckCircle size={18} /></>
-    )}
-  </button>
+  <button
+
+type="submit"
+
+// ▼ 修正点1: 「読み込み中」または「未同意」の場合にボタンを無効化
+
+disabled={status === "loading" || !agreed}
+
+// ▼ 修正点2: 同意していない時はグレー(#334155)、同意したらテーマカラーに
+
+style={{ background: agreed ? themeColor : '#334155' }}
+
+className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+
+>
+
+{status === "loading" ? (
+
+<div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+
+) : (
+
+isPaid ? (
+
+<>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>
+
+) : (
+
+<>上記の内容で申し込む <Send size={18} /></>
+
+)
+
+)}
+
+</button>
 </div>
                   </form>
                 </div>
