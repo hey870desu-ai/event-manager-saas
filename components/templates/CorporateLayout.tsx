@@ -154,15 +154,6 @@ if (submitted) {
                {event.subtitle}
              </p>
           )}
-
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-4 text-white font-bold tracking-wide animate-in fade-in duration-1000 delay-500">
-            <div className="flex items-center gap-2 bg-white/20 px-6 py-3 rounded-xl backdrop-blur-md border border-white/30 shadow-sm">
-                <Calendar size={18} /> {dateStr} ({weekDay})
-            </div>
-            <div className="flex items-center gap-2 bg-white/20 px-6 py-3 rounded-xl backdrop-blur-md border border-white/30 shadow-sm">
-                <MapPin size={18} /> {event.venueName}
-            </div>
-          </div>
         </div>
 
         {/* シェアボタン群 */}
