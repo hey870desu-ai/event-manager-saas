@@ -99,24 +99,34 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const formElement = e.currentTarget;
-    const formData = new FormData(formElement);
+    // 🚨 【LINE対策：最強の初動】
+    // await（待ち）が発生する前に、全ての値を普通の「文字列」として変数に閉じ込めるっぺ！
+    // これをしないと、LINEブラウザは通信中に「あれ？名前なんだっけ？」とデータを捨てちまうんだばい。
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    
+    const inputName = formData.get("name")?.toString() || "";
+    const inputEmail = formData.get("email")?.toString() || "";
+    const inputPhone = formData.get("phone")?.toString() || "";
+    const inputNotes = formData.get("notes")?.toString() || "";
+
+    // アンケート回答も先に全部抜き出すぞい！
+    const customAnswers: {[key: string]: any} = {};
+    customFields.forEach(field => {
+      if (field.type === "checkbox") {
+         customAnswers[field.label] = formData.getAll(field.id);
+      } else {
+         customAnswers[field.label] = formData.get(field.id)?.toString() || "";
+      }
+    });
 
     setStatus("loading");
     setErrorMessage("");
 
     try {
-           
-      const customAnswers: {[key: string]: any} = {};
-      customFields.forEach(field => {
-        if (field.type === "checkbox") {
-           customAnswers[field.label] = formData.getAll(field.id);
-        } else {
-           customAnswers[field.label] = formData.get(field.id)?.toString() || "";
-        }
-      });
+      // 🚨 IDチェック
+      if (!safeEventId) throw new Error("イベントIDが見つかりません。再読み込みしてくんちぇ。");
 
-      // ★ 改造ポイント1: Stripeが連携済みかどうかを判定するっぺ！
       const isStripeReady = !!safeTenant?.stripeConnectId;
 
       const reservationData = {
@@ -126,29 +136,21 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         contactName: event.contactName || "運営事務局",
         contactEmail: event.contactEmail || "", 
         contactPhone: event.contactPhone || "",
-        name: formData.get("name")?.toString() || "",
-        email: formData.get("email")?.toString() || "",
-        phone: formData.get("phone")?.toString() || "",
+        name: inputName,   // 🚨 上で保存した変数を使う
+        email: inputEmail, // 🚨 上で保存した変数を使う
+        phone: inputPhone, // 🚨 上で保存した変数を使う
         type: participationType,
-        customAnswers: customAnswers,
-        notes: formData.get("notes")?.toString() || "",
+        customAnswers: customAnswers, // 🚨 上で保存した変数を使う
+        notes: inputNotes, // 🚨 上で保存した変数を使う
         selectedTicket: selectedTicket.name,
-        
-        // ★ 改造ポイント2: ステータスの判定を細かくするぞい
-        // 1. 有料 且つ Stripeあり -> 支払い待ち
-        // 2. 有料 且つ Stripeなし -> 当日現金払い (on_site)
-        // 3. 無料 -> 確定
         status: isPaid 
           ? (isStripeReady ? "payment_pending" : "on_site") 
           : "confirmed", 
-        
         createdAt: serverTimestamp(),
         emailed: false,
         checkedIn: false,
         price: isPaid ? priceAmount : 0,
       };
-
-      if (!safeEventId) throw new Error("Event ID is missing");
       
       // 1. まずFirestoreに保存
       const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
@@ -217,7 +219,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       
     } catch (error: any) {
       console.error("Error details:", error);
-      setErrorMessage("エラーが発生しました。");
+      // 🚨 「エラーが発生しました」の後に、本当の理由を表示させるぞい！
+      setErrorMessage(error.message || "通信エラーが発生しました。");
       setStatus("error");
     }
   };
