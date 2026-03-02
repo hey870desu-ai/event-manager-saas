@@ -98,12 +98,15 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const currentForm = e.currentTarget;
+    const formData = new FormData(currentForm);
+
     setStatus("loading");
     setErrorMessage("");
 
     try {
-      const formData = new FormData(e.currentTarget);
-      
+           
       const customAnswers: {[key: string]: any} = {};
       customFields.forEach(field => {
         if (field.type === "checkbox") {
