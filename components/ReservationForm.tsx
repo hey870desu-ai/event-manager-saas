@@ -99,8 +99,8 @@ console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVe
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const currentForm = e.currentTarget;
-    const formData = new FormData(currentForm);
+    const formElement = e.currentTarget;
+    const formData = new FormData(formElement);
 
     setStatus("loading");
     setErrorMessage("");
@@ -215,8 +215,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
       }
       
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (error: any) {
+      console.error("Error details:", error);
       setErrorMessage("エラーが発生しました。");
       setStatus("error");
     }
@@ -498,40 +498,21 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     )}
 
                     <div className="pt-8 border-t border-slate-800 mt-8">
-  <button
-
-type="submit"
-
-// ▼ 修正点1: 「読み込み中」または「未同意」の場合にボタンを無効化
-
-disabled={status === "loading" || !agreed}
-
-// ▼ 修正点2: 同意していない時はグレー(#334155)、同意したらテーマカラーに
-
-style={{ background: agreed ? themeColor : '#334155' }}
-
-className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-
->
-
-{status === "loading" ? (
-
-<div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-
-) : (
-
-isPaid ? (
-
-<>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>
-
-) : (
-
-<>上記の内容で申し込む <Send size={18} /></>
-
-)
-
-)}
-
+  <button 
+    type="submit" 
+    disabled={status === "loading" || !agreed} 
+    style={{ background: agreed ? themeColor : '#334155' }} 
+    className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+  >
+    {status === "loading" ? (
+      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+    ) : (
+      isPaid ? (
+        <>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>
+      ) : (
+        <>上記の内容で申し込む <Send size={18} /></>
+      )
+    )}
 </button>
 </div>
                   </form>
