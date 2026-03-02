@@ -210,7 +210,7 @@ if (submitted) {
           <section className="space-y-8">
             <div className="inline-flex items-center gap-4">
               <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Event Overview</h2>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">セミナー内容</h2>
             </div>
             <div className="prose prose-slate max-w-none">
               <div className="whitespace-pre-wrap text-slate-700 leading-[1.8] font-medium text-lg">
@@ -223,7 +223,7 @@ if (submitted) {
           <section className="space-y-10">
              <div className="inline-flex items-center gap-4">
                <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-               <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Timeline</h2>
+               <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">タイムスケジュール</h2>
              </div>
              
              {hasTimeTableData ? (
@@ -252,7 +252,7 @@ if (submitted) {
             <section className="space-y-12">
               <div className="inline-flex items-center gap-4">
                 <span className="h-[3px] w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></span>
-                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">Speakers</h2>
+                <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em]">講師紹介</h2>
               </div>
               <div className="grid gap-8">
                 {lecturersList.map((lec: any, index: number) => (
@@ -278,7 +278,7 @@ if (submitted) {
           <div className="sticky top-8 space-y-8">
             <div className="bg-slate-50 rounded-3xl p-8 border border-slate-200 shadow-sm">
               <div className="text-center mb-8">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Reservation</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">チケット・参加費用</p>
                 
                 {/* 🎫 チケットリスト (Corporate Ver.) */}
                 <div className="space-y-3 mb-8">
@@ -286,7 +286,7 @@ if (submitted) {
                     event.tickets.map((t: any, idx: number) => (
                       <div key={idx} className="flex justify-between items-center p-4 rounded-xl bg-white border-2 border-slate-100 shadow-sm transition-all hover:border-purple-200">
                         <div className="text-left">
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Ticket</p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">チケット種別</p>
                           <p className="text-xs font-black text-slate-800">{t.name}</p>
                         </div>
                         <div className="text-right">
@@ -303,10 +303,12 @@ if (submitted) {
                     </div>
                   )}
                   {/* 定員 */}
-                  <div className="flex items-center justify-center gap-2 pt-2 opacity-60">
-                    <Users size={14} className="text-slate-400" />
-                    <p className="text-[10px] font-bold text-slate-500">定員：{event.capacity ? `${event.capacity}名` : "制限なし"}</p>
-                  </div>
+<div className="flex items-center justify-center gap-2 pt-4 border-t border-slate-200/50 mt-2">
+  <Users size={18} className="text-indigo-500" />
+  <p className="text-sm font-black text-slate-700">
+    定員：{event.capacity ? `${event.capacity}名` : "制限なし"}
+  </p>
+</div>
                 </div>
 
                 <div className="h-1 w-12 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full"></div>
@@ -356,7 +358,7 @@ if (submitted) {
 
           <div className="flex flex-wrap justify-center md:justify-end gap-x-12 gap-y-6">
             <div className="space-y-1">
-              <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Organizer</p>
+              <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">お問合せ先</p>
               <p className="font-bold text-lg">{event.contactName || tenant?.name}</p>
             </div>
             {event.contactEmail && (
@@ -367,7 +369,7 @@ if (submitted) {
             )}
             {event.contactPhone && (
               <div className="space-y-1">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Phone</p>
+                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Tel</p>
                 <a href={`tel:${event.contactPhone}`} className="block font-bold text-lg hover:text-purple-400 transition-colors">{event.contactPhone}</a>
               </div>
             )}
