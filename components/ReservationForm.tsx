@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
-import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard,ExternalLink } from "lucide-react"; 
+import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard,ExternalLink,CheckCircle2 } from "lucide-react"; 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
@@ -492,20 +492,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     <div className="pt-8 border-t border-slate-800 mt-8">
   <button 
     type="submit" 
-    // ▼ 修正点1: 「読み込み中」または「未同意」の場合にボタンを無効化
+    // ▼ ここは今まで通りの安全策だぞい
     disabled={status === "loading" || !agreed} 
-    // ▼ 修正点2: 同意していない時はグレー(#334155)、同意したらテーマカラーに
     style={{ background: agreed ? themeColor : '#334155' }} 
     className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
   >
     {status === "loading" ? (
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
     ) : (
-      isPaid ? (
-        <>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>
-      ) : (
-        <>上記の内容で申し込む <Send size={18} /></>
-      )
+      /* ★ここをシンプルに統合！有料でも無料でもこの表示にするっぺ */
+      <>お申し込みを確定する <CheckCircle2 size={18} /></>
     )}
   </button>
 </div>
