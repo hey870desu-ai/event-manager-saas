@@ -156,8 +156,8 @@ if (submitted) {
           )}
         </div>
 
-        {/* シェアボタン群 */}
-        <div className="absolute bottom-8 right-6 md:right-12 z-30 flex flex-col gap-3">
+        {/* シェアボタン群 (スマホ：中央横並び / PC：右側縦並び) */}
+        <div className="absolute bottom-24 md:bottom-8 left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0 right-auto md:right-12 z-30 flex md:flex-col gap-4">
           <button onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${shareUrl}`)} className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-black transition-all shadow-lg hover:scale-110">
             <Twitter size={20} fill="currentColor"/>
           </button>
