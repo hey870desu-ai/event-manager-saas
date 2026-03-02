@@ -147,7 +147,7 @@ export async function POST(request: Request) {
           <div style="${styles.label}">日時</div>
           <div style="${styles.value}">${formattedDate} ${eventTime}</div>
           
-          {/* ★ 追加：お支払い金額の表示！ */}
+          
           ${eventPrice ? `
             <div style="${styles.label}">お支払い</div>
             <div style="${styles.value}">${eventPrice}</div>
