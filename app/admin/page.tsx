@@ -1057,7 +1057,8 @@ useEffect(() => {
       alert("このイベントは現在「下書き」状態です。公開設定に変更するまで、参加者はこのURLにアクセスしても閲覧できません。");
       return;
     }
-    window.open(`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+    window.open(`${baseUrl}/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
   }}
   className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border shadow-sm font-bold text-xs ${
     ev.status === 'published' 
