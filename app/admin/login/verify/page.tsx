@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react"; // 🚨 Suspense を追加
 import { auth } from "@/lib/firebase"; // 自分の設定ファイルに合わせてくんちぇ
 import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
-export default function VerifyEmailLink() {
+function VerifyEmailLinkContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // 🚨 これがエラーの原因だったやつだばい
   const [status, setStatus] = useState<"verifying" | "success" | "error" | "need_email">("verifying");
   const [errorMessage, setErrorMessage] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -41,7 +41,7 @@ export default function VerifyEmailLink() {
       setStatus("success");
       
       setTimeout(() => {
-        router.push("/admin/dashboard"); // 自分の管理画面のURLに変えてくんちぇ
+        router.push("/admin"); // ログイン成功後の飛ばし先だっぺ
       }, 2000);
 
     } catch (error: any) {
@@ -105,5 +105,18 @@ export default function VerifyEmailLink() {
 
       </div>
     </div>
+  );
+}
+// --- 【2階部分】ここが本当の「ページ」の入り口だぞい！ ---
+export default function VerifyEmailLinkPage() {
+  return (
+    // 「Suspense」で中身を包んでやることで、Vercelも納得するんだばい！
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-white">
+        <Loader2 className="animate-spin" />
+      </div>
+    }>
+      <VerifyEmailLinkContent />
+    </Suspense>
   );
 }
