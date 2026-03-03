@@ -7,37 +7,35 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, tenantId, tenantName } = body;
 
-    // 🚨 ログを出して、ちゃんとメアドが届いてるか確認するぞい！
-    console.log("招待を開始するっぺ:", { email, tenantId, tenantName });
+    if (!email) throw new Error("メアドが入ってねぇぞい！");
 
-    if (!email || typeof email !== "string") {
-      throw new Error("メールアドレスが正しく届いてねぇぞい！");
-    }
-
+    // 1. 魔法のリンクの設定（認証後の戻り先）
     const actionCodeSettings = {
+      // 🚨 必ず環境変数のURLを使うのが「Vercel消し」のコツだっぺ
       url: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/login/verify?tenantId=${tenantId}`,
       handleCodeInApp: true,
     };
 
+    // 2. Firebaseでログイン用のリンクを生成
     const loginLink = await adminAuth.generateSignInWithEmailLink(email, actionCodeSettings);
 
-    // 🚨 ここが重要！塙さんの「api/send-email」が何を求めてるか合わせるっぺ
+    // 3. 【ここが重要！】メール送信APIに「招待状だぞ！」と伝える
     const emailRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        to: email, // ← こいつが確実に文字列（string）になってる必要があるぞい
-        subject: `【絆太郎】${tenantName} 管理画面への招待`,
-        category: "invitation",
-        inviteUrl: loginLink,
-        tenantName: tenantName,
+        email: email,            // 宛先
+        type: "invitation",      // 🚨 これで招待メールの型紙がスイッチオン！
+        inviteUrl: loginLink,    // 🚨 生成した魔法のリンクを渡す
+        tenantName: tenantName,  // 団体名（署名用）
+        subject: `【絆太郎】${tenantName} 管理画面への招待だっぺ` // 件名も指定
       }),
     });
 
     if (!emailRes.ok) {
-      const errorDetail = await emailRes.text();
-      console.error("メールAPIのエラーだばい:", errorDetail);
-      throw new Error("メール送信に失敗したっぺ");
+      const errorMsg = await emailRes.text();
+      console.error("Mail API Error:", errorMsg);
+      throw new Error("メール配送屋さんが失敗したっぺ");
     }
 
     return NextResponse.json({ success: true });
