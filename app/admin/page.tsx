@@ -393,6 +393,51 @@ useEffect(() => {
     } catch (err) { console.error(err); alert("通信エラーが発生しました"); }
   };
 
+  const [inviting, setInviting] = useState(false); // 送信中フラグ
+
+  const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, targetTenantId: string, targetBranch: string) => {
+    e.preventDefault();
+    if (!targetEmail || !targetTenantId) return alert("メールアドレスを入力してくんちぇ！");
+
+    if (!confirm(`${targetEmail} さんを「絆太郎」に招待してもいいべか？\n（パスワードなしでログインできるメールが飛びます）`)) return;
+
+    setInviting(true);
+    try {
+      // 1. まずはDB（admin_users）に権限を登録するっぺ
+      await setDoc(doc(db, "admin_users", targetEmail), {
+        email: targetEmail,
+        tenantId: targetTenantId,
+        branchId: targetBranch,
+        role: "staff",
+        addedAt: serverTimestamp(),
+      });
+
+      // 2. 魔法の招待リンクメールを飛ばすAPIを叩くぞい！
+      const res = await fetch('/api/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: targetEmail, 
+          tenantId: targetTenantId,
+          tenantName: orgName 
+        }),
+      });
+
+      if (res.ok) {
+        alert("招待メールを飛ばしたぞい！\n相手がメールのボタンを押せば、すぐに入室できるっぺ。");
+        setNewAdminEmail("");
+        setNewAdminBranch("");
+      } else {
+        throw new Error("メールの送信に失敗したっぺ...");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("エラーだばい: " + err.message);
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const handleRemoveAdmin = async (email: string) => { if(email!==SUPER_ADMIN_EMAIL && confirm("削除しますか？")) deleteDoc(doc(db, "admin_users", email)); };
   
   const toggleCheckIn = async (r: ReservationData) => {
@@ -1619,50 +1664,34 @@ useEffect(() => {
                       </div>
                     </form>
                  ) : (
-                    // 一般主催者の場合：自分のテナントの支部・部門のみ選べる
-                    <form onSubmit={async (e) => {
-                       e.preventDefault();
-                       if(!newAdminEmail || !newAdminBranch) return alert("入力してください");
-                       if(!confirm(`${newAdminEmail} を招待しますか？`)) return;
-                       try {
-                         const res = await fetch('/api/admin/add', {
-                           method: 'POST',
-                           headers: { 'Content-Type': 'application/json' },
-                           body: JSON.stringify({ email: newAdminEmail, branchId: newAdminBranch, tenantId: currentUserTenant }),
-                         });
-                         if(res.ok) { 
-                           alert("スタッフを招待しました！"); 
-                           setNewAdminEmail(""); 
-                         } else { 
-                           alert("招待に失敗しました。権限や入力内容を確認してください。"); 
-                         }
-                       } catch(err) { 
-                         alert("通信エラーが発生しました"); 
-                       }
-                    }} className="space-y-2">
-                      <input 
-                        value={newAdminEmail} 
-                        onChange={e=>setNewAdminEmail(e.target.value)} 
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
-                        placeholder="招待するスタッフのメール" 
-                        required 
-                      />
-                      <select 
-                         value={newAdminBranch} 
-                         onChange={e=>setNewAdminBranch(e.target.value)} 
-                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                       >
-                        <option value="">（所属部門・教室を選択）</option>
-                        {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
-                           typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
-                        ))}
-                      </select>
-                      <div className="flex justify-end">
-                        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-500/20">
-                          スタッフを招待する
-                        </button>
-                      </div>
-                    </form>
+
+<form onSubmit={(e) => handleInviteStaff(e, newAdminEmail, currentUserTenant, newAdminBranch)} className="space-y-2">
+  <input 
+    value={newAdminEmail} 
+    onChange={e=>setNewAdminEmail(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+    placeholder="招待するスタッフのメール" 
+    required 
+  />
+  <select 
+    value={newAdminBranch} 
+    onChange={e=>setNewAdminBranch(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+  >
+    <option value="">（所属部門・教室を選択）</option>
+    {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
+      typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
+    ))}
+  </select>
+  <div className="flex justify-end">
+    <button 
+      disabled={inviting}
+      className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+    >
+      {inviting ? "送信中だっぺ..." : "スタッフを招待する"}
+    </button>
+  </div>
+</form>
                  )}
                </div>
 

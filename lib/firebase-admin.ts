@@ -1,12 +1,13 @@
 // 📂 lib/firebase-admin.ts
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-
+import { getAuth } from "firebase-admin/auth";
 // 1. 環境変数から鍵を取得
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
 let adminDb: any;
 
+let adminAuth: any;
 // 2. 本物の鍵があるかチェック
 let isRealKeyAvailable = false;
 let serviceAccount;
@@ -46,6 +47,8 @@ if (isRealKeyAvailable) {
     }
   }
   adminDb = getFirestore();
+
+  adminAuth = getAuth();
   
 } else {
   // 🛡 パターンB: ビルド救済モード（鍵なし・モック）
@@ -65,10 +68,12 @@ if (isRealKeyAvailable) {
     set: async () => {},
     update: async () => {},
     delete: async () => {},
+    generateSignInWithEmailLink: async () => "https://mock-link.com",
   };
 
   adminDb = mockObj;
+  adminAuth = mockObj;
 }
 
 // 4. エクスポート
-export { adminDb };
+export { adminDb, adminAuth };
