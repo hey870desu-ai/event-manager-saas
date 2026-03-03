@@ -24,7 +24,9 @@ export async function POST(req: Request) {
       handleCodeInApp: true,
     };
 
-    const loginLink = await adminAuth.generateSignInWithEmailLink(email, actionCodeSettings);
+    const tenantAuth = adminAuth.tenantManager().authForTenant(realAuthId); 
+    const loginLink = await tenantAuth.generateSignInWithEmailLink(email, actionCodeSettings);
+
 
     // メール送信（ここは変更なし！）
     await resend.emails.send({
