@@ -1,6 +1,6 @@
 // 📂 app/api/invite/route.ts
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin"; // 👈 adminDb を追加
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -8,16 +8,25 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, name, tenantId, tenantName } = body; // ✨ name を受け取る
+    const { email, name, tenantId, tenantName } = body;
+
+    // 🚨 【ここがトドメの追加！】 🚨
+    // Firestore から、ハッピーチョイスの「本物の背番号 (-lz9yq)」を呼んでくるっぺ
+    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantData = tenantDoc.data();
+    
+    // authTenantId があればそれを使う。なければ元の tenantId を使う（バックアップ）
+    const realAuthId = tenantData?.authTenantId || tenantId;
 
     const actionCodeSettings = {
-      url: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/login/verify?tenantId=${tenantId}`,
+      // 👇 ここを tenantId ではなく realAuthId に変えるのが勝利の鍵だばい！
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/login/verify?tenantId=${realAuthId}`,
       handleCodeInApp: true,
     };
 
     const loginLink = await adminAuth.generateSignInWithEmailLink(email, actionCodeSettings);
 
-    // ✨ 塙さんが見つけた「スッキリしたデザイン」で直接送るぞい！
+    // メール送信（ここは変更なし！）
     await resend.emails.send({
       from: `${tenantName} <info@event-manager.app>`,
       to: [email],
@@ -43,6 +52,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("Invite API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
