@@ -151,6 +151,7 @@ export default function AdminDashboard() {
   
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminName, setNewAdminName] = useState(""); // ✨ お名前用を追加だばい！
   
   const [newAdminBranch, setNewAdminBranch] = useState(""); 
   const [newAdminTenantId, setNewAdminTenantId] = useState(""); 
@@ -395,48 +396,52 @@ useEffect(() => {
 
   const [inviting, setInviting] = useState(false); // 送信中フラグ
 
-  const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, targetTenantId: string, targetBranch: string) => {
-    e.preventDefault();
-    if (!targetEmail || !targetTenantId) return alert("メールアドレスを入力してくんちぇ！");
+  // ✨ targetName を追加したぞい！
+const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, targetName: string, targetTenantId: string, targetBranch: string) => {
+  e.preventDefault();
+  if (!targetEmail || !targetName || !targetTenantId) return alert("名前とメアドを入れてくんちぇ！");
 
-    if (!confirm(`${targetEmail} さんを「絆太郎」に招待してもいいべか？\n（パスワードなしでログインできるメールが飛びます）`)) return;
+  if (!confirm(`${targetName} さんを「絆太郎」に招待してもいいべか？`)) return;
 
-    setInviting(true);
-    try {
-      // 1. まずはDB（admin_users）に権限を登録するっぺ
-      await setDoc(doc(db, "admin_users", targetEmail), {
-        email: targetEmail,
+  setInviting(true);
+  try {
+    // 1. DB（admin_users）に名前も一緒に登録するっぺ
+    await setDoc(doc(db, "admin_users", targetEmail), {
+      name: targetName, // ✨ 名前を保存！
+      email: targetEmail,
+      tenantId: targetTenantId,
+      branchId: targetBranch,
+      role: "staff",
+      addedAt: serverTimestamp(),
+    });
+
+    // 2. メール送信APIにお名前もバトンタッチするぞい！
+    const res = await fetch('/api/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: targetEmail, 
+        name: targetName, // ✨ これでメールに名前がいくっぺ！
         tenantId: targetTenantId,
-        branchId: targetBranch,
-        role: "staff",
-        addedAt: serverTimestamp(),
-      });
+        tenantName: orgName 
+      }),
+    });
 
-      // 2. 魔法の招待リンクメールを飛ばすAPIを叩くぞい！
-      const res = await fetch('/api/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: targetEmail, 
-          tenantId: targetTenantId,
-          tenantName: orgName 
-        }),
-      });
-
-      if (res.ok) {
-        alert("招待メールを飛ばしたぞい！\n相手がメールのボタンを押せば、すぐに入室できるっぺ。");
-        setNewAdminEmail("");
-        setNewAdminBranch("");
-      } else {
-        throw new Error("メールの送信に失敗したっぺ...");
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert("エラーだばい: " + err.message);
-    } finally {
-      setInviting(false);
+    if (res.ok) {
+      alert("招待メールを飛ばしたぞい！");
+      setNewAdminEmail("");
+      setNewAdminName(""); // ✨ 入力欄を空にする
+      setNewAdminBranch("");
+    } else {
+      throw new Error("メールの送信に失敗したっぺ...");
     }
-  };
+  } catch (err: any) {
+    console.error(err);
+    alert("エラーだばい: " + err.message);
+  } finally {
+    setInviting(false);
+  }
+};
 
   const handleRemoveAdmin = async (email: string) => { if(email!==SUPER_ADMIN_EMAIL && confirm("削除しますか？")) deleteDoc(doc(db, "admin_users", email)); };
   
@@ -1666,7 +1671,15 @@ useEffect(() => {
                     </form>
                  ) : (
 
-<form onSubmit={(e) => handleInviteStaff(e, newAdminEmail, currentUserTenant, newAdminBranch)} className="space-y-2">
+<form onSubmit={(e) => handleInviteStaff(e, newAdminEmail, newAdminName, currentUserTenant, newAdminBranch)} className="space-y-2">
+  {/* ✨ 名前入力欄を追加！ */}
+  <input 
+    value={newAdminName} 
+    onChange={e=>setNewAdminName(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+    placeholder="スタッフのお名前（例：塙 太郎）" 
+    required 
+  />
   <input 
     value={newAdminEmail} 
     onChange={e=>setNewAdminEmail(e.target.value)} 
