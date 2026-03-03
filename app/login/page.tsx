@@ -1,12 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth"; // Google認証用
+import { signInWithPopup, GoogleAuthProvider, sendSignInLinkToEmail } from "firebase/auth"; // Google認証用
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { Loader2, Building2, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Loader2, Building2, ShieldCheck, CheckCircle2, Mail } from "lucide-react";
 
 export default function TenantLoginPage() {
+  // --- 道具を揃えるっぺ ---
+  const [email, setEmail] = useState("");
+  const [tenantId, setTenantId] = useState("");
+  const [mailSent, setMailSent] = useState(false);
+
+  // --- メアドログインの魔法をかける関数だばい ---
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !tenantId) return setError("IDとメアドを入れてくんちぇ！");
+    setLoading(true);
+    setError("");
+    try {
+      auth.tenantId = tenantId; // 門番にテナントIDを教える
+      const actionCodeSettings = {
+        url: `${window.location.origin}/admin/login/verify?tenantId=${tenantId}`,
+        handleCodeInApp: true,
+      };
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email); // メアドを一時保存
+      setMailSent(true);
+    } catch (err: any) {
+      console.error(err);
+      setError("メール送信に失敗したっぺ。IDを確認してくんちぇ。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -92,6 +120,45 @@ export default function TenantLoginPage() {
               </>
             )}
           </button>
+          {/* Googleログインボタンのすぐ下に差し込み！ */}
+          
+          {mailSent ? (
+            <div className="mt-6 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20 animate-in zoom-in">
+              <p className="text-emerald-400 font-bold text-sm">ログインメールを送ったぞい！</p>
+              <p className="text-[10px] text-slate-400 mt-1">届いたリンクから入室してくんちぇ。</p>
+            </div>
+          ) : (
+            <>
+              {/* 区切り線だっぺ */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-[#161b2b] px-2 text-slate-500 font-bold">またはメアドでログイン</span>
+                </div>
+              </div>
+
+              {/* メアドログインフォーム */}
+              <form onSubmit={handleEmailLogin} className="space-y-3">
+                <input 
+                  type="text" value={tenantId} onChange={e => setTenantId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-indigo-500 transition-all"
+                  placeholder="テナントID (happychoiceなど)" required
+                />
+                <input 
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-indigo-500 transition-all"
+                  placeholder="メールアドレス" required
+                />
+                <button
+                  type="submit" disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 text-sm"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
+                  <span>ログインリンクを送信</span>
+                </button>
+              </form>
+            </>
+          )}
 
           <p className="text-xs text-slate-500 mt-6 leading-relaxed">
             管理者に登録されたGoogleアカウントをお使いください。<br/>
