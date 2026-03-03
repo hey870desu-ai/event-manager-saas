@@ -76,29 +76,6 @@ export async function POST(request: Request) {
     let subject = "";
     let mainHtml = "";
 
-    // 🔄 ここから「if」が始まって「}」で終わるまでを、このカタマリに差し替え！
-    if (type === 'invitation' || body.category === 'invitation') {
-      // 💌 1. スタッフ招待メール
-      subject = customSubject || `【絆太郎】${senderName} 管理画面への招待`;
-      mainHtml = `
-        <p style="${styles.greeting}"><strong>${name || "担当者"} 様</strong><br><br>絆太郎のスタッフとして招待されたぞい。</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${inviteUrl}" style="${styles.button}">管理画面に入室する</a>
-        </div>
-        <p style="font-size: 11px; color: #64748b; text-align: center;">※リンクの有効期限は30分だっぺ。</p>
-      `;
-    } else if (type === 'upgrade_confirmation') {
-      // 💎 2. アップグレード完了メール
-      subject = customSubject || `【重要】${planName || "スタンダード"}へのアップグレードが完了しました`;
-      mainHtml = `
-        <p style="${styles.greeting}"><strong>${name || "お客様"} 様</strong><br><br>${planName || "スタンダードプラン"} への更新が完了したぞい！</p>
-      `;
-    } else {
-      // 🎟️ 3. イベント受講票メール（チケット）
-      subject = customSubject || `【受講票】${eventTitle} 受付完了のお知らせ`;
-      // ...（ここにお申し込みありがとう等の既存のチケット用HTMLを入れてくんちぇ）...
-    }
-
     // 🔄 メールの種類による条件分岐
     if (type === 'upgrade_confirmation') {
       // 💎 1. アップグレード完了メール

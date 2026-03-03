@@ -34,6 +34,14 @@ function VerifyEmailLinkContent() {
   const completeSignIn = async (email: string) => {
     try {
       setStatus("verifying");
+
+      // ✨ 【ここがトドメの1行！】 
+      // URLから tenantId (happychoiceなど) を抜き出してFirebaseにセットするんだばい
+      const tId = searchParams.get('tenantId'); 
+      if (tId) {
+        auth.tenantId = tId; // 👈 これで「ハッピーチョイスの鍵穴」に切り替わるぞい！
+      }
+      
       const result = await signInWithEmailLink(auth, email, window.location.href);
       
       // ログイン成功したらlocalStorageを掃除して、管理画面へGO！
