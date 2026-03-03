@@ -1,17 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, sendSignInLinkToEmail } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore"; 
 import { auth, db } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Lock } from "lucide-react";
+import { ShieldCheck, Lock, Mail, Send, Loader2 } from "lucide-react";
 
 // ★SaaS化の第一歩：スーパー管理者の定義
 // 今はハードコードですが、将来的にはDB管理にします
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [tenantId, setTenantId] = useState("");
+  const [mailSent, setMailSent] = useState(false);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !tenantId) return setError("IDとメアドを入れてくんちぇ！");
+    setLoading(true);
+    try {
+      auth.tenantId = tenantId; // 門番にテナントIDを教える
+      const actionCodeSettings = {
+        url: `${window.location.origin}/admin/login/verify?tenantId=${tenantId}`,
+        handleCodeInApp: true,
+      };
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email); // メアドを一時保存
+      setMailSent(true);
+    } catch (err: any) {
+      setError("メール送信に失敗したっぺ。IDを確認してくんちぇ。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,6 +135,41 @@ export default function LoginPage() {
               </>
             )}
           </button>
+          {mailSent ? (
+  <div className="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+    <p className="text-emerald-400 font-bold">メールを送ったぞい！</p>
+    <p className="text-xs text-slate-400 mt-1">リンクをクリックしてログインしてくんちぇ。</p>
+  </div>
+) : (
+  <>
+    {/* 区切り線 */}
+    <div className="relative my-6">
+      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
+      <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#0B1120] px-2 text-slate-500">またはメアドでログイン</span></div>
+    </div>
+
+    {/* メアド入力フォーム */}
+    <form onSubmit={handleEmailLogin} className="space-y-4">
+      <input 
+        type="text" value={tenantId} onChange={e => setTenantId(e.target.value)}
+        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
+        placeholder="テナントID (happychoiceなど)" required
+      />
+      <input 
+        type="email" value={email} onChange={e => setEmail(e.target.value)}
+        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-indigo-500"
+        placeholder="メールアドレス" required
+      />
+      <button
+        type="submit" disabled={loading}
+        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all disabled:opacity-50"
+      >
+        {loading ? <Loader2 className="animate-spin" size={20} /> : <Mail size={20} />}
+        <span>ログインメールを送信</span>
+      </button>
+    </form>
+  </>
+)}
         </div>
         
         <div className="text-center mt-8 text-slate-600 text-xs">
