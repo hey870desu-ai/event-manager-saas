@@ -22,32 +22,32 @@ export default function NewTenantPage() {
     setTenantId(val);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenantId || !name || !adminEmail) return alert("必須項目を入力してください");
     
     setLoading(true);
     try {
-      // 1. ID重複チェック
-      const docRef = doc(db, "tenants", tenantId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        alert("このIDは既に使用されています。別のIDにしてください。");
-        setLoading(false);
-        return;
-      }
-
-      // 2. テナント作成
-      await setDoc(docRef, {
-        name,
-        plan,
-        email: adminEmail,
-        createdAt: serverTimestamp(),
-        status: "active",
-        branches: ["本部"] 
+      // 🚨 1. 【全自動APIを呼び出す！】 🚨
+      // これだけで「Firestore保存」と「Googleテナント作成」を同時にやるっぺ！
+      const res = await fetch('/api/admin/setup-tenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId: tenantId, // "happychoice"
+          name: name,          // "ハッピーチョイス"
+          plan: plan,          // プラン情報
+        }),
       });
 
-      // 3. 最初の管理者を作成
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "APIでエラーが起きたっぺ");
+      }
+
+      // 🚨 2. 最初の管理者（オーナー）を作成 🚨
+      // ここは今まで通り Firestore の admin_users に書き込むぞい
       await setDoc(doc(db, "admin_users", adminEmail), {
         email: adminEmail,
         tenantId: tenantId,
@@ -57,12 +57,25 @@ export default function NewTenantPage() {
         addedBy: "SuperAdmin"
       });
 
-      alert("テナントを作成しました！");
+      // 🚨 3. 【トドメ】招待メールも自動で飛ばす！？ 🚨
+      // せっかく作ったんだから、そのまま招待メールAPIも叩いちゃうべ！
+      await fetch('/api/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: adminEmail, 
+          name: "管理者", 
+          tenantId: tenantId, 
+          tenantName: name 
+        }),
+      });
+
+      alert(`「${name}」の作成と招待メールの送信が完了したぞい！`);
       router.push(`/super-admin/tenants/${tenantId}`); 
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("作成に失敗しました");
+      alert("失敗したっぺ...: " + error.message);
     } finally {
       setLoading(false);
     }
