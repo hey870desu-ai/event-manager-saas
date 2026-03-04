@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import Link from "next/link";
 import { 
   Clock, MapPin, User, Sparkles, 
   CheckCircle2, Share2, Check, ExternalLink, 
@@ -330,12 +331,37 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-slate-900 text-white py-20 border-t-8 border-yellow-400">
-         <div className="text-center">
-            {tenant?.logoUrl && <img src={tenant.logoUrl} className="h-10 mx-auto mb-6 brightness-0 invert opacity-80" alt="logo"/>}
-            <h2 className="text-2xl font-black mb-2">{tenant?.name}</h2>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">© 絆太郎 EVENT MANAGER</p>
+      {/* FOOTER: おもてなしリフォーム完結版（Pop） */}
+      <footer className="bg-slate-900 text-white py-24 border-t-8 border-yellow-400">
+         <div className="max-w-4xl mx-auto px-6 text-center space-y-12">
+            
+            {/* A. ロゴと組織名 */}
+            <div>
+               {tenant?.logoUrl && <img src={tenant.logoUrl} className="h-10 mx-auto mb-6 brightness-0 invert opacity-80" alt="logo"/>}
+               <h2 className="text-3xl font-black mb-2 tracking-tighter">{tenant?.name}</h2>
+            </div>
+
+            {/* ★ 追加：特商法リンク（ピンクのステッカー風デザインだっぺ！） */}
+            <div className="flex justify-center">
+               <Link 
+                 href={`/${tenantId}/legal`} 
+                 className="bg-pink-500 text-white px-8 py-3 rounded-2xl border-4 border-white font-black text-xs uppercase tracking-widest hover:scale-110 transition-transform shadow-[6px_6px_0px_0px_#22D3EE]"
+               >
+                 特定商取引法に基づく表記
+               </Link>
+            </div>
+
+            <div className="space-y-8 pt-8 border-t border-slate-800">
+               {/* B. コピーライト */}
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
+                 © {new Date().getFullYear()} {tenant?.name || "絆太郎 EVENT MANAGER"}
+               </p>
+
+               {/* C. パワードバイ：黄色いスタンプがドーン！だばい */}
+               <div className="inline-block bg-yellow-300 text-slate-900 px-6 py-2 border-4 border-slate-900 rounded-xl font-black text-[10px] uppercase tracking-wider transform rotate-2 shadow-[4px_4px_0px_0px_#F472B6]">
+                 Powered by 絆太郎 Event Manager
+               </div>
+            </div>
          </div>
       </footer>
       
