@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import Link from "next/link";
 import { Calendar, Clock, MapPin, User, ShieldCheck, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, AlertTriangle, Copy, Twitter, Mail, Phone } from "lucide-react";
 
 // 親から受け取るデータの型定義
@@ -306,7 +307,31 @@ if (submitted) {
             </div>
           </div>
         </div>
-        <footer className="mt-20 mb-10 text-center relative z-10"><p className="text-slate-600 text-[10px] tracking-[0.2em] uppercase">© {new Date().getFullYear()} 絆太郎 Event Manager.</p></footer>
+        {/* FOOTER: おもてなしリフォーム版（Tech） */}
+        <footer className="mt-24 mb-16 text-center relative z-10 space-y-10">
+          
+          {/* ★ 追加：特商法リンク（サイバー感のあるシャープなデザインだっぺ！） */}
+          <div className="flex justify-center">
+            <Link 
+              href={`/${tenantId}/legal`} 
+              className="text-[10px] font-bold text-slate-500 hover:text-indigo-400 transition-all underline decoration-slate-800 underline-offset-8 tracking-[0.2em] uppercase hover:decoration-indigo-500/50"
+            >
+              特定商取引法に基づく表記
+            </Link>
+          </div>
+
+          <div className="space-y-6">
+            {/* コピーライト：テナント名がちゃんと入るようにしたぞい */}
+            <p className="text-slate-600 text-[10px] tracking-[0.3em] font-medium uppercase">
+              © {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"}
+            </p>
+
+            {/* パワードバイ：ダークモードに映える「半透明・発光感」のあるバッジだばい */}
+            <div className="inline-block px-5 py-1.5 rounded-full bg-indigo-500/5 border border-indigo-500/10 text-indigo-500/40 text-[8px] font-black tracking-[0.3em] uppercase shadow-[0_0_20px_rgba(99,102,241,0.05)]">
+              Powered by 絆太郎 Event Manager
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
