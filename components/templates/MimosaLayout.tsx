@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import Link from "next/link";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
   Link as LinkIcon, Facebook, CheckCircle2, Copy, 
@@ -318,8 +319,30 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
   </div>
 </div>
 
-        <footer className="mt-20 mb-10 text-center relative z-10">
-          <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">© {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"}</p>
+        {/* FOOTER: おもてなしリフォーム版（Mimosa） */}
+        <footer className="mt-20 mb-20 text-center relative z-10 space-y-8">
+          
+          {/* ★ 追加：特商法リンク（ミモザイエローの飾りが可愛いべ！） */}
+          <div className="flex justify-center">
+            <Link 
+              href={`/${tenantId}/legal`} 
+              className="text-[10px] font-bold text-slate-400 hover:text-yellow-600 transition-colors underline decoration-yellow-300/60 underline-offset-4 tracking-widest uppercase"
+            >
+              特定商取引法に基づく表記
+            </Link>
+          </div>
+
+          <div className="space-y-4">
+            {/* コピーライト */}
+            <p className="text-slate-400 text-[10px] tracking-[0.3em] font-bold uppercase">
+              © {new Date().getFullYear()} {tenant?.name || "絆太郎 Event Manager"}
+            </p>
+
+            {/* パワードバイ：ミモザの雰囲気に合わせた白ベースのデザインだっぺ */}
+            <div className="inline-block px-4 py-1 rounded-full bg-white border border-yellow-100 text-slate-300 text-[8px] font-bold tracking-[0.2em] uppercase shadow-sm">
+              Powered by 絆太郎 Event Manager
+            </div>
+          </div>
         </footer>
       </div>
     </div>
