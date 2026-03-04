@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { signInWithPopup, GoogleAuthProvider, sendSignInLinkToEmail } from "firebase/auth"; // Google認証用
-import { auth } from "@/lib/firebase";
+import { db,auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Loader2, Building2, ShieldCheck, CheckCircle2, Mail } from "lucide-react";
 
@@ -12,20 +13,30 @@ export default function TenantLoginPage() {
   const [tenantId, setTenantId] = useState("");
   const [mailSent, setMailSent] = useState(false);
 
-  // --- メアドログインの魔法をかける関数だばい ---
-  const handleEmailLogin = async (e: React.FormEvent) => {
+const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !tenantId) return setError("IDとメアドを入れてくんちぇ！");
     setLoading(true);
     setError("");
     try {
-      auth.tenantId = tenantId; // 門番にテナントIDを教える
+      // 🚨 【改造ポイント】Firestoreに「本名（背番号付きID）」を聞きに行くっぺ
+      const tenantSnap = await getDoc(doc(db, "tenants", tenantId));
+      if (!tenantSnap.exists()) {
+        throw new Error("そのIDは見つからねぇぞい。");
+      }
+      
+      const realAuthId = tenantSnap.data()?.authTenantId; // 背番号付きIDを取得
+      auth.tenantId = realAuthId; 
+
+      // 🚨 【追加】メールを日本語にする魔法
+      auth.languageCode = 'ja'; 
+
       const actionCodeSettings = {
-        url: `${window.location.origin}/admin/login/verify?tenantId=${tenantId}`,
+        url: `${window.location.origin}/admin/login/verify?tenantId=${realAuthId}`,
         handleCodeInApp: true,
       };
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      window.localStorage.setItem('emailForSignIn', email); // メアドを一時保存
+      window.localStorage.setItem('emailForSignIn', email);
       setMailSent(true);
     } catch (err: any) {
       console.error(err);

@@ -145,6 +145,12 @@ export default function AdminDashboard() {
   const [orgName, setOrgName] = useState("絆太郎 Event Manager"); 
   const [editingOrgName, setEditingOrgName] = useState(""); 
 
+  const [legalCompanyName, setLegalCompanyName] = useState(""); // 正式な会社名
+  const [representative, setRepresentative] = useState("");     // 代表者名
+  const [legalAddress, setLegalAddress] = useState("");        // 所在地
+  const [legalPhone, setLegalPhone] = useState("");          // 連絡先電話番号
+  const [legalHomepage, setLegalHomepage] = useState("");      // 公式HP
+
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
@@ -316,6 +322,12 @@ useEffect(() => {
         const name = data.orgName || data.name || "絆太郎"; // orgName(署名用)優先、なければテナント名
         setOrgName(name);
         setEditingOrgName(name);
+        // ✨ 法人情報をセット
+        setLegalCompanyName(data.legalCompanyName || "");
+        setRepresentative(data.representative || "");
+        setLegalAddress(data.address || "");
+        setLegalPhone(data.phone || "");
+        setLegalHomepage(data.homepage || "");
       }
     });
 
@@ -456,18 +468,23 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     });
   };
   
-  const handleSaveOrgName = async () => {
-    try {
-      // 共通設定ではなく、自分のテナント情報に「署名用名称(orgName)」として保存
-      await updateDoc(doc(db, "tenants", currentUserTenant), { 
-        orgName: editingOrgName 
-      });
-      alert("団体名・署名を保存しました！\nメールテンプレートに反映されます。");
-    } catch (e) { 
-      alert("保存に失敗しました"); 
-      console.error(e); 
-    }
-  };
+  const handleSaveTenantSettings = async () => {
+  try {
+    await updateDoc(doc(db, "tenants", currentUserTenant), { 
+      orgName: editingOrgName, // 表の顔（CARE DESIGN WORKS）
+      legalCompanyName,        // 裏の顔（株式会社はなひろ）
+      representative,
+      address: legalAddress,
+      phone: legalPhone,
+      homepage: legalHomepage,
+      updatedAt: serverTimestamp()
+    });
+    alert("基本情報と特商法用データを保存したよ！\nこれでStripeの審査も怖くない！");
+  } catch (e) { 
+    alert("保存に失敗した..."); 
+    console.error(e); 
+  }
+};
 
   const openMailModal = (target?: ReservationData) => {
     if (!currentEventForList) return;
@@ -1590,46 +1607,65 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
              <div className="flex justify-between mb-4 border-b border-slate-800 pb-3"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={22}/> 設定</h2><button onClick={()=>setIsSettingsOpen(false)}><X/></button></div>
              <div className="space-y-6 overflow-y-auto pr-1">
                
-               {/* 1. 署名設定（全員共通） */}
-               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                 <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2"><Building2 size={16}/> 署名・表示名設定</h3>
-                 <p className="text-xs text-slate-500 mb-2">メールの署名などに使われます。</p>
-                 <div className="flex gap-2">
-                   <input type="text" value={editingOrgName} onChange={(e)=>setEditingOrgName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="組織名" />
-                   <button onClick={handleSaveOrgName} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">保存</button>
-                 </div>
-               </div>
-               <div className="space-y-4 mt-4">
-                  {/* ✨ 追加：システム利用料（アップグレード）への導線 */}
-                  <div className="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30">
-                    <h3 className="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
-                      <Sparkles size={16} className="text-yellow-400"/> プランのお支払い・管理
-                    </h3>
-                    <p className="text-[10px] text-slate-500 mb-3">
-                      スタンダードプランへのアップグレードや領収書の確認はこちら
-                    </p>
-                    <button 
-                      onClick={() => router.push("/dashboard")}
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-indigo-500/20"
-                    >
-                      支払い管理画面を開く
-                    </button>
-                  </div>
+               {/* 1. テナント・法人基本設定（特商法対応） */}
+<div className="space-y-6">
+  {/* A. 表の顔：ブランド設定 */}
+  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+    <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
+      <Sparkles size={16} className="text-yellow-400"/> ブランド・表示名（表の顔）
+    </h3>
+    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名に「主催者」として表示される名前だっぺ。</p>
+    <div className="flex gap-2">
+      <input 
+        type="text" 
+        value={editingOrgName} 
+        onChange={(e)=>setEditingOrgName(e.target.value)} 
+        className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" 
+        placeholder="例：CARE DESIGN WORKS" 
+      />
+    </div>
+  </div>
 
-                  {/* 修正：名前を変えて、口座連携ボタンはそのまま残す */}
-                  <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                    <h3 className="text-sm font-bold text-slate-400 mb-2 flex items-center gap-2">
-                      <Building2 size={16}/> 【主催者用】売上受取の設定
-                    </h3>
-                    <p className="text-[10px] text-slate-500 mb-3">
-                      有料イベントの売上を受け取るための口座連携設定です
-                    </p>
-                    <StripeConnectButton 
-                      tenantId={currentUserTenant}
-                      isConnected={(tenantList.find(t => t.id === currentUserTenant) as any)?.stripeConnectEnabled || false}
-                    />
-                  </div>
-                </div>
+  {/* B. 裏の顔：法人・特商法情報 */}
+  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+    <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
+      <Shield size={16}/> 法人・特商法情報（決済審査用）
+    </h3>
+    <p className="text-[10px] text-slate-500 mb-4">Stripeの審査や、自動生成される「特商法ページ」に使われる正式な情報だぞい。</p>
+    
+    <div className="space-y-3">
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">正式な会社名・事業者名</label>
+        <input type="text" value={legalCompanyName} onChange={(e)=>setLegalCompanyName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="例：株式会社はなひろ" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">代表者名</label>
+          <input type="text" value={representative} onChange={(e)=>setRepresentative(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="塙 浩之" />
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">電話番号</label>
+          <input type="text" value={legalPhone} onChange={(e)=>setLegalPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="0248-xx-xxxx" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">所在地</label>
+        <input type="text" value={legalAddress} onChange={(e)=>setLegalAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="福島県須賀川市..." />
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">ホームページURL</label>
+        <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="https://hana-hiro.com" />
+      </div>
+    </div>
+
+    <button 
+      onClick={handleSaveTenantSettings} 
+      className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+    >
+      <Check size={18}/> 設定をすべて保存する
+    </button>
+  </div>
+</div>
 
 {/* 2. スタッフ招待（全ユーザーに開放：価値ある機能として提供） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
