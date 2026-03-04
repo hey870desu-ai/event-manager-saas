@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import ReservationForm from "@/components/ReservationForm";
 import { 
   Calendar, MapPin, User, CheckCircle2, ArrowRight, 
@@ -334,11 +335,11 @@ if (submitted) {
         </div>
       </main>
 
-      {/* FOOTER: テナント名が自動で入る汎用プロ仕様だばい！ */}
+      {/* FOOTER: おもてなしリフォーム版（Corporate） */}
       <footer className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 py-20 text-white">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
           
-          {/* A. ロゴと組織名（自動切り替え） */}
+          {/* A. ロゴと組織名 */}
           <div className="flex flex-col items-center gap-4 mb-12">
             {tenant?.logoUrl && (
                 <img src={tenant.logoUrl} alt={tenant.name} className="h-12 object-contain brightness-0 invert opacity-90" />
@@ -354,30 +355,42 @@ if (submitted) {
               <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Organizer</p>
               <p className="font-bold text-lg">{event.contactName || tenant?.name}</p>
             </div>
-            {event.contactEmail && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Email</p>
-                <a href={`mailto:${event.contactEmail}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
-                  {event.contactEmail}
-                </a>
-              </div>
-            )}
-            {event.contactPhone && (
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Tel</p>
-                <a href={`tel:${event.contactPhone}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
-                  {event.contactPhone}
-                </a>
-              </div>
-            )}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Email</p>
+              <a href={`mailto:${event.contactEmail}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
+                {event.contactEmail || "---"}
+              </a>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Tel</p>
+              <a href={`tel:${event.contactPhone}`} className="block font-bold text-lg hover:text-white/70 transition-colors">
+                {event.contactPhone || "---"}
+              </a>
+            </div>
           </div>
 
-          <div className="h-[1px] w-32 bg-white/20 mb-8" />
+          <div className="h-[1px] w-32 bg-white/20 mb-10" />
 
-          {/* C. コピーライト（年も自動取得だっぺ！） */}
-          <p className="text-[10px] font-bold tracking-[0.4em] text-white/40 uppercase text-center">
-            © {new Date().getFullYear()} {tenant?.name || "絆太郎Event Manager"}
-          </p>
+          {/* ★ 追加：特商法リンク（自然に馴染むデザイン！） */}
+          <div className="mb-8">
+            <Link 
+              href={`/${tenantId}/legal`} 
+              className="text-[10px] font-bold text-white/60 hover:text-white transition-colors underline decoration-white/20 underline-offset-4 tracking-widest uppercase"
+            >
+              特定商取引法に基づく表記
+            </Link>
+          </div>
+
+          {/* C. コピーライト & パワードバイ（塙さんのこだわり！） */}
+          <div className="space-y-4 text-center">
+            <p className="text-[10px] font-bold tracking-[0.4em] text-white/40 uppercase">
+              © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
+            </p>
+            {/* 絆太郎のクレジット：控えめながらも存在感のあるデザインだっぺ */}
+            <div className="inline-block px-4 py-1 rounded-full bg-black/10 border border-white/10 text-white/30 text-[8px] font-bold tracking-[0.2em] uppercase">
+              Powered by 絆太郎 Event Manager
+            </div>
+          </div>
         </div>
       </footer>
       <style jsx global>{`
