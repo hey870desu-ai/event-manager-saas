@@ -1666,6 +1666,23 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     </button>
   </div>
 </div>
+{/* 設定モーダルの「保存ボタン」のすぐ下 */}
+<div className="mt-4 pt-4 border-t border-slate-800">
+  <p className="text-[10px] text-slate-500 mb-2 font-bold uppercase">Stripe提出用URL</p>
+  <div className="flex gap-2">
+    <input 
+      readOnly 
+      value={`${window.location.origin}/${currentUserTenant}/legal`} 
+      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400 font-mono"
+    />
+    <button 
+      onClick={() => window.open(`/${currentUserTenant}/legal`, '_blank')}
+      className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] px-3 py-1 rounded font-bold transition-all"
+    >
+      ページを確認
+    </button>
+  </div>
+</div>
 
 {/* 2. スタッフ招待（全ユーザーに開放：価値ある機能として提供） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">

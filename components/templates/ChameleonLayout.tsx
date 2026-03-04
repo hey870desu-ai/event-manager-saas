@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import Link from "next/link";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
   Link as LinkIcon, Facebook, CheckCircle2, Copy, 
@@ -395,12 +396,26 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
             </div>
           </div>
 
-          {/* コピーライトエリア */}
+          {/* コピーライトエリア（おもてなしリフォーム版だっぺ！） */}
           <div className="text-center pt-12 border-t border-slate-200/50">
             <div className="flex flex-col items-center gap-6">
               {tenant?.logoUrl && (
                 <img src={tenant.logoUrl} className="h-8 opacity-60 grayscale hover:grayscale-0 transition-all" alt="logo"/>
               )}
+
+              {/* ★ここが追加：特商法リンク（自然に馴染むデザイン！） */}
+              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2">
+                <Link 
+                  href={`/${tenantId}/legal`} 
+                  className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors underline decoration-slate-200 underline-offset-4"
+                >
+                  特定商取引法に基づく表記
+                </Link>
+                {/* 将来的にプライバシーポリシーもここに追加できるべ！ 
+                  <span className="text-[10px] font-bold text-slate-300">プライバシーポリシー</span>
+                */}
+              </div>
+
               <div className="text-[10px] font-black text-slate-400 tracking-[0.5em] uppercase">
                 © {new Date().getFullYear()} {tenant?.name || "Event Manager"}
               </div>
