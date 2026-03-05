@@ -339,23 +339,38 @@ const handleSaveMemo = async (email: string, memo: string) => {
     console.error("Memo Save Error:", e);
   }
 };
-  // ✅ これが絆リスト専用のCSV出力関数だっぺ！
+// ✅ 絆リスト専用：CSVダウンロード関数（電話番号の0守護神版！）
   const handleDownloadCSV = () => {
     if (recipients.length === 0) return alert("まずはリストを抽出してくんちぇ！");
     
-    // ヘッダー作成
+    // ヘッダー（ここは今のまま維持！）
     const headers = ["名前", "メールアドレス", "会社名・組織", "電話番号", "絆メモ"];
     
     // 中身の作成
-    const csvRows = recipients.map(r => [
-      `"${(r.name || "").replace(/"/g, '""')}"`,
-      `"${(r.email || "").replace(/"/g, '""')}"`,
-      `"${(r.company || "").replace(/"/g, '""')}"`,
-      `"${(r.phone || "").replace(/"/g, '""')}"`,
-      `"${(r.memo || "").replace(/"/g, '""')}"`
-    ].join(","));
+    const csvRows = recipients.map(r => {
+      // --- 📞 電話番号の「0落ち」を補完＆保護するロジック ---
+      let p = (r.phone || "").toString().trim();
+      
+      // 1. もし0が消えて届いていたら（90...とかになっていたら）0を足す
+      if (p && !p.startsWith('0') && (p.length === 10 || p.length === 9)) {
+        p = '0' + p;
+      }
+      
+      // 2. エクセルのお節介を止めるために「文字ですよ」という印を付ける
+      // データの先頭に \t (タブ) を入れることで、エクセルが数字変換するのを防ぐっぺ！
+      const safePhone = `"\t${p}"`;
+      // ----------------------------------------------------
+
+      return [
+        `"${(r.name || "").replace(/"/g, '""')}"`,
+        `"${(r.email || "").replace(/"/g, '""')}"`,
+        `"${(r.company || "").replace(/"/g, '""')}"`,
+        safePhone, // ✅ ここで守られた電話番号を流し込む！
+        `"${(r.memo || "").replace(/"/g, '""')}"`
+      ].join(",");
+    });
     
-    // BOM（文字化け防止）を付けてダウンロード
+    // BOM（文字化け防止）を付けてダウンロード（ここも維持！）
     const csvContent = [headers.join(","), ...csvRows].join("\n");
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
