@@ -4,13 +4,19 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
-import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart } from "lucide-react";
+import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
-type Recipient = { email: string; name: string; memo?: string };
+type Recipient = { 
+  email: string; 
+  name: string; 
+  company?: string; 
+  phone?: string; 
+  memo?: string 
+};
 
 // ★追加: メールテンプレートの定義（配信停止リンク付き）
 const EMAIL_TEMPLATES = [
@@ -336,6 +342,30 @@ const handleSaveMemo = async (email: string, memo: string) => {
     console.error("Memo Save Error:", e);
   }
 };
+  // ✅ これが絆リスト専用のCSV出力関数だっぺ！
+  const handleDownloadCSV = () => {
+    if (recipients.length === 0) return alert("まずはリストを抽出してくんちぇ！");
+    
+    // ヘッダー作成
+    const headers = ["名前", "メールアドレス", "会社名・組織", "電話番号", "絆メモ"];
+    
+    // 中身の作成
+    const csvRows = recipients.map(r => [
+      `"${(r.name || "").replace(/"/g, '""')}"`,
+      `"${(r.email || "").replace(/"/g, '""')}"`,
+      `"${(r.company || "").replace(/"/g, '""')}"`,
+      `"${(r.phone || "").replace(/"/g, '""')}"`,
+      `"${(r.memo || "").replace(/"/g, '""')}"`
+    ].join(","));
+    
+    // BOM（文字化け防止）を付けてダウンロード
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `絆リスト_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
@@ -495,6 +525,15 @@ const handleSaveMemo = async (email: string, memo: string) => {
               <div className="text-4xl font-mono font-bold text-white mb-2">
                  {recipients.length.toLocaleString()}
               </div>
+              {/* ✅ ここにボタンを移動だっぺ！ (extracted の判定もここ！) */}
+              {extracted && (
+                <button 
+                  onClick={handleDownloadCSV}
+                  className="mt-4 w-full py-2.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <FileDown size={14}/> 絆リストをCSV出力
+                </button>
+              )}
               <div className="text-xs text-emerald-400 flex justify-center items-center gap-1 font-bold">
                  <CheckCircle size={12}/> 重複アドレス除去済み
               </div>
