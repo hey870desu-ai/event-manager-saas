@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'この主催者は決済設定が完了していません' }, { status: 400 });
     }
 
-    const stripeOptions = isEmergencyMode ? {} : { stripeAccount: connectedAccountId };
+    const stripeOptions = isEmergencyMode ? undefined : { stripeAccount: connectedAccountId };
 
     // 2. プラットフォーム手数料を計算（例: 10%）
     const priceAmount = parseInt(price);

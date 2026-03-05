@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         reservationId,
         type: 'event_payment'
       },
-    }, isEmergencyMode ? {} : { stripeAccount: stripeAccountId }); // 👈 バイパス設定は残しておくっぺ！
+    }, isEmergencyMode ? undefined : { stripeAccount: stripeAccountId });
 
     console.log("✅ セッション作成成功！URL:", session.url); // ★これも！
     return NextResponse.json({ url: session.url });
