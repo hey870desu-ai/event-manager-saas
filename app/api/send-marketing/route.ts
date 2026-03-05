@@ -1,3 +1,4 @@
+// 📂 app/api/send-marketing/route.ts
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
@@ -28,50 +29,62 @@ export async function POST(request: Request) {
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; border-top: 1px solid #e2e8f0;"
     };
 
-    // 📩 送信処理（一斉送信）
-    const sendPromises = recipients.map(async (recipient: any) => {
-      // 本文中の「参加者各位」を個別の「名前 様」に変換するっぺ！
+    // 📩 送信処理（一人ずつ順番に、一呼吸おいて届けるぞい）
+    // Promise.all(map...) をやめて、for...of ループに変更したっぺ！
+    for (const recipient of recipients) {
+      // 1. 本文中の「参加者各位」などを個別の「名前 様」に変換
       const personalizedBody = emailBody.replace(
-  /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g, 
-  `${recipient.name} 様`
-);
+        /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g, 
+        `${recipient.name} 様`
+      );
       
-      return resend.emails.send({
-        from: `${senderName} <info@event-manager.app>`,
-        to: [recipient.email],
-        replyTo: replyTo || "info@event-manager.app",
-        subject: subject,
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <body style="${styles.body}">
-              <div style="${styles.container}">
-                <div style="${styles.header}">
-                  <span style="${styles.logoText}">${senderName}</span>
+      try {
+        // 2. メール送信実行
+        await resend.emails.send({
+          // 名前に日本語が入るから、ダブルクォーテーションで囲むのが安全だばい
+          from: `"${senderName}" <info@event-manager.app>`,
+          to: [recipient.email],
+          replyTo: replyTo || "info@event-manager.app",
+          subject: subject,
+          html: `
+            <!DOCTYPE html>
+            <html>
+              <body style="${styles.body}">
+                <div style="${styles.container}">
+                  <div style="${styles.header}">
+                    <span style="${styles.logoText}">${senderName}</span>
+                  </div>
+                  <div style="${styles.content}">
+                    <div style="${styles.messageBody}">${personalizedBody}</div>
+                  </div>
+                  <div style="${styles.footer}">
+                    <p style="margin: 0; font-weight: bold;">${senderName}</p>
+                    <p style="margin-top: 10px; opacity: 0.6;">
+                      ※このメールは ${senderName} より大切なお知らせとしてお届けしています。
+                    </p>
+                    <p style="margin-top: 20px;">
+                      © ${new Date().getFullYear()} ${senderName} All rights reserved.
+                    </p>
+                  </div>
                 </div>
-                <div style="${styles.content}">
-              
-                  <div style="${styles.messageBody}">${personalizedBody}</div>
-                </div>
-                <div style="${styles.footer}">
-                  <p style="margin: 0; font-weight: bold;">${senderName}</p>
-                  <p style="margin-top: 10px; opacity: 0.6;">
-                    ※このメールは ${senderName} より大切なお知らせとしてお届けしています。
-                  </p>
-                  <p style="margin-top: 20px;">
-    © ${new Date().getFullYear()} ${senderName} All rights reserved.
-  </p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `
-      });
-    });
+              </body>
+            </html>
+          `
+        });
 
-    await Promise.all(sendPromises);
+        // 🚀 3. 【超重要】Resendの制限（1秒に2通）を守るために 700ms 待機！
+        // これで 429 Too Many Requests エラーを完璧に回避するぞい！
+        await new Promise(resolve => setTimeout(resolve, 700));
 
+      } catch (err) {
+        // 一人失敗しても止まらずに、ログを出して次に行くっぺ！
+        console.error(`${recipient.email} への送信エラーだばい:`, err);
+      }
+    }
+
+    // 全員のループが終わったら成功を返すっぺ
     return NextResponse.json({ success: true });
+
   } catch (error: any) {
     console.error('Marketing Send Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
