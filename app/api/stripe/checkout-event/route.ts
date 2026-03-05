@@ -21,12 +21,28 @@ export async function POST(request: Request) {
       stripeAccountId // テナント側のStripeアカウントID
     } = body;
 
-    // 手数料 2.0% の計算（あなたの利益）
-    // Math.floor で端数を切り捨てて整数にします
+
+    // --- 🛠️ ここから差し替え開始だっぺ！ ---
+
+    // 1. 緊急フラグ：自分のテナントIDの時だけ「親（塙さん）の口座」に直接入れるぞい！
+    const isEmergencyMode = (tenantId === "caredesignworks"); // ★ここを自分のテナントIDに合わせてくんちぇ！
+
+    // 通常時（子アカウント送金用）の手数料計算
     const applicationFeeAmount = Math.floor(Number(amount) * 0.02);
 
+    // 2. 送金先設定の分岐（ここが「くるくる」を回避するキモだばい！）
+    const paymentIntentData = isEmergencyMode 
+      ? {} // 親口座に直接入れる場合は、送金先を指定しない！
+      : {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: {
+            destination: stripeAccountId,
+          },
+        };
+
+    // 3. 決済セッション作成
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'], // ここに 'konbini' を足せばコンビニ決済も可能です
+      payment_method_types: ['card', 'konbini'], // ついでにコンビニ決済も選べるようにしたぞい！
       line_items: [
         {
           price_data: {
@@ -39,18 +55,12 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
-      mode: 'payment', // 単発決済
+      mode: 'payment',
       customer_email: email,
       
-      // ★ 手数料徴収の設定
-      payment_intent_data: {
-        application_fee_amount: applicationFeeAmount, // あなたの取り分 (2%)
-        transfer_data: {
-          destination: stripeAccountId, // 残りをテナントへ送金
-        },
-      },
+      // ★ 分岐させた設定を流し込むっぺ！
+      payment_intent_data: paymentIntentData,
 
-      // 決済成功時とキャンセル時の戻り先URL
       success_url: `${domain}/t/${tenantId}/e/${eventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domain}/t/${tenantId}/e/${eventId}`,
       
@@ -61,6 +71,7 @@ export async function POST(request: Request) {
         type: 'event_payment'
       },
     });
+
 
     return NextResponse.json({ url: session.url });
 
