@@ -521,22 +521,27 @@ const handleSaveMemo = async (email: string, memo: string) => {
            </div>
 
            <div className={`bg-slate-900/50 border border-slate-800 p-6 rounded-xl text-center transition-all duration-500 ${extracted ? "opacity-100 translate-y-0" : "opacity-50 translate-y-2"}`}>
-              <div className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Total Recipients</div>
-              <div className="text-4xl font-mono font-bold text-white mb-2">
-                 {recipients.length.toLocaleString()}
-              </div>
-              {/* ✅ ここにボタンを移動だっぺ！ (extracted の判定もここ！) */}
-              {extracted && (
-                <button 
-                  onClick={handleDownloadCSV}
-                  className="mt-4 w-full py-2.5 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
-                >
-                  <FileDown size={14}/> 絆リストをCSV出力
-                </button>
-              )}
-              <div className="text-xs text-emerald-400 flex justify-center items-center gap-1 font-bold">
-                 <CheckCircle size={12}/> 重複アドレス除去済み
-              </div>
+  <div className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Total Recipients</div>
+  
+  {/* 1. 数字の下に少し余裕を持たせるっぺ */}
+  <div className="text-4xl font-mono font-bold text-white mb-6">
+     {recipients.length.toLocaleString()}
+  </div>
+  
+  {/* 2. ボタンを配置。mb-6 を足して下のチェックマークとの距離を離すぞい！ */}
+  {extracted && (
+    <button 
+      onClick={handleDownloadCSV}
+      className="mb-6 w-full py-3 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+    >
+      <FileDown size={14}/> 絆リストをCSV出力
+    </button>
+  )}
+
+  {/* 3. チェックマーク（重複除去済み）の周りもスッキリさせるっぺ */}
+  <div className="text-[10px] text-emerald-400 flex justify-center items-center gap-1 font-bold pb-2">
+     <CheckCircle size={12}/> 重複アドレス除去済み
+  </div>
               
               {/* 📂 抽出プレビューのエリア（recipients.length > 0 の中）を以下に差し替え */}
 {recipients.length > 0 && (
