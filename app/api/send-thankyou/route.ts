@@ -28,7 +28,7 @@ export async function POST(request: Request) {
        recipients, subject, body: baseBody, 
        eventTitle, eventDate, venueName,
        tenantName, senderName,
-       scheduledAt 
+       scheduledAt,contactEmail,replyTo 
     } = body;
 
     // 🅰️ 予約配信 (変更なし)
@@ -126,13 +126,18 @@ export async function POST(request: Request) {
       `;
 
       await resend.emails.send({
-    from: `${displaySender} <info@event-manager.app>`,
-    to: recipient.email, 
-    subject: subject,
-    replyTo: body.replyTo || 'hey870desu@gmail.com', // 送信元の混乱を防ぐために reply_to (アンダーバー) を使うぞい
-    html: htmlContent,
-  });
-}
+        // ✅ 送信元名もダブルクォートで囲って安全に！
+        from: `"${displaySender}" <info@event-manager.app>`,
+        to: recipient.email, 
+        subject: subject,
+        // ✅ ここがポイント！塙さんのメアドから「事務局」または「設定された連絡先」に変更だっぺ！
+        replyTo: replyTo || contactEmail || 'info@event-manager.app',
+        html: htmlContent,
+      });
+
+      // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
+      await new Promise(resolve => setTimeout(resolve, 700));
+    }
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Email Send Error:', error);
