@@ -20,11 +20,14 @@ export async function POST(request: Request) {
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
     const connectedAccountId = tenantData?.stripeConnectId;
+    const isEmergencyMode = (tenantId === "caredesignworks");
 
-    if (!connectedAccountId) {
+    if (!connectedAccountId && !isEmergencyMode) {
       console.error("❌ No Stripe Connect ID found for tenant:", tenantId);
       return NextResponse.json({ error: 'この主催者は決済設定が完了していません' }, { status: 400 });
     }
+
+    const stripeOptions = isEmergencyMode ? {} : { stripeAccount: connectedAccountId };
 
     // 2. プラットフォーム手数料を計算（例: 10%）
     const priceAmount = parseInt(price);
@@ -58,46 +61,34 @@ export async function POST(request: Request) {
     }
     // ▲▲▲ 追加ここまで ▲▲▲
 
-    // 3. Stripeの決済セッションを作成
+    // 3. Stripeの決済セッションを作成（最後の方に注目だっぺ！）
     const session = await stripe.checkout.sessions.create({
-      // ★これが必要！銀行振込を使うには customer ID が必須
       customer: customerId, 
-
       payment_method_types: ['card', 'konbini', 'customer_balance'],
-      
       payment_method_options: {
-        konbini: {
-          expires_after_days: 3, 
-        },
+        konbini: { expires_after_days: 3 },
         customer_balance: {
           funding_type: 'bank_transfer',
-          bank_transfer: {
-            type: 'jp_bank_transfer',
-          },
+          bank_transfer: { type: 'jp_bank_transfer' },
         },
       },
-
       line_items: [{
         price_data: {
           currency: 'jpy',
-          product_data: {
-            name: title,
-          },
+          product_data: { name: title },
           unit_amount: priceAmount,
         },
         quantity: 1,
       }],
       mode: 'payment',
-      
       success_url: `${origin}/t/${safeTenantId}/e/${safeEventId}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/t/${safeTenantId}/e/${safeEventId}`,
-      
       metadata: {
         eventId,
         tenantId,
         reservationId 
       }
-    });
+    }, stripeOptions); // 👈 ここ！この「, stripeOptions」を忘れずに足してくんちぇ！
 
     return NextResponse.json({ url: session.url });
 
