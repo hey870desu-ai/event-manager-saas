@@ -43,8 +43,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Reservation saved' });
     }
 
-    // 🅱️ 即時配信
-    const displaySender = senderName || tenantName || "イベント事務局";
+   // 🅱️ 即時配信
+   // 1. まず「ベースの名前」をここでバシッと定義するっぺ（これで波線が消えるぞい！）
+      const tenantBaseName = tenantName || senderName || "イベント"; 
+
+   // 2. あとは、そのベース名を使って各名前を使い分けるんだばい
+    const topSenderName = tenantBaseName;            // メール一覧の差出人（例：ケアデザインワークス）
+    const bodyHeaderName = `${tenantBaseName} 事務局`; // 本文の青い帯（例：ケアデザインワークス 事務局）
+    const displaySender = bodyHeaderName;            // カレンダー登録などの表示用
     const calendarUrl = createGoogleCalendarUrl(`【${displaySender}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
     const brandColor = "#0ea5e9";
 
@@ -126,14 +132,15 @@ export async function POST(request: Request) {
       `;
 
       await resend.emails.send({
-        // ✅ 送信元名もダブルクォートで囲って安全に！
-        from: `"${displaySender}" <info@event-manager.app>`,
-        to: recipient.email, 
-        subject: subject,
-        // ✅ ここがポイント！塙さんのメアドから「事務局」または「設定された連絡先」に変更だっぺ！
-        replyTo: replyTo || contactEmail || 'info@event-manager.app',
-        html: htmlContent,
-      });
+  // ✅ ここを「displaySender」から「topSenderName」に変えるっぺ！
+  // これで、 inbox（メール一覧）では「ケアデザインワークス」というスッキリした名前になるぞい。
+  from: `"${topSenderName}" <info@event-manager.app>`, 
+  
+  to: recipient.email, 
+  subject: subject,
+  replyTo: replyTo || contactEmail || 'info@event-manager.app',
+  html: htmlContent,
+});
 
       // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
       await new Promise(resolve => setTimeout(resolve, 700));
