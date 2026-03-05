@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     // 3. 決済セッション作成
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'konbini'], // ついでにコンビニ決済も選べるようにしたぞい！
+      payment_method_types: ['card'], // ついでにコンビニ決済も選べるようにしたぞい！
       line_items: [
         {
           price_data: {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         reservationId,
         type: 'event_payment'
       },
-    });
+    }, isEmergencyMode ? {} : { stripeAccount: stripeAccountId }); // 👈 バイパス設定は残しておくっぺ！
 
     console.log("✅ セッション作成成功！URL:", session.url); // ★これも！
     return NextResponse.json({ url: session.url });
