@@ -158,8 +158,13 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
             }
 
             // C. メール送信APIを叩く
-            // （Webhookはサーバー側で動くので、自分のAPIをfetchで叩きます）
             const baseUrl = "https://www.event-manager.app";
+
+            // ★ 金額を見栄え良く整える（¥1,100 クレジットカード決済済）
+            const displayPrice = eData?.price 
+              ? `¥${Number(eData?.price).toLocaleString()} (クレジットカード決済済)` 
+              : "無料";
+
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -183,7 +188,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
                 contactName: eData?.contactName || tenantName,
                 contactEmail: eData?.contactEmail || "",
                 contactPhone: eData?.contactPhone || "",
-                eventPrice: eData?.price || "無料"
+                eventPrice: displayPrice // 👈 整えた金額を渡すようにしたぞい！
               }),
             });
             console.log("📧 Async payment email sent via Webhook");
