@@ -246,59 +246,56 @@ const fetchTargets = async () => {
     setExtracted(false);
 
     try {
-      // ★追加: まずブラックリスト（配信停止者）を取得する
       const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
-      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id)); // ID(メアド)をSetに入れて検索しやすくする
+      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
 
       let targetEvents = filteredEvents;
       if (targetEventId !== "all") {
         targetEvents = targetEvents.filter(e => e.id === targetEventId);
       }
 
-      if (targetEvents.length === 0) {
-        alert("条件に一致するイベントがありません。");
-        setLoadingTargets(false);
-        return;
-      }
-
-      const emailMap = new Map<string, string>(); 
-      let blockedCount = 0; // 何人除外したか数える用
+      // ★ここが進化ポイント！名前だけでなく、会社名・電話番号も覚える箱にするぞい
+      const customerMap = new Map<string, any>(); 
+      let blockedCount = 0;
 
       await Promise.all(targetEvents.map(async (event) => {
         const resSnap = await getDocs(collection(db, "events", event.id, "reservations"));
         resSnap.forEach(doc => {
           const data = doc.data();
           if (data.email && data.name) {
-            // ★追加: ブラックリストに入っているかチェック！
             if (blockedEmails.has(data.email)) {
-              blockedCount++; // 入っていたら除外してカウントアップ
+              blockedCount++;
             } else {
-              emailMap.set(data.email, data.name); // 問題なければリストに追加
+              // 💡 すでにあるデータより、新しい情報を優先して上書き保存するっぺ
+              customerMap.set(data.email, {
+                name: data.name,
+                company: data.company || data.department || "",
+                phone: data.phone || "",
+              });
             }
           }
         });
       }));
 
+      // メモを合体させて、最終的なリストを作るぞい
       const uniqueList = await Promise.all(
-  Array.from(emailMap.entries()).map(async ([email, name]) => {
-    // 💡 保存済みのメモを取得しに行くぞい
-    const memoRef = doc(db, "tenants", tenantData.id, "kizuna_memos", email);
-    const memoSnap = await getDoc(memoRef);
-    
-    return { 
-      email, 
-      name, 
-      memo: memoSnap.exists() ? memoSnap.data().text : "" 
-    };
-  })
-);
+        Array.from(customerMap.entries()).map(async ([email, info]) => {
+          const memoRef = doc(db, "tenants", tenantData.id, "kizuna_memos", email);
+          const memoSnap = await getDoc(memoRef);
+          
+          return { 
+            email, 
+            name: info.name, 
+            company: info.company, // ✅ 会社名が入る！
+            phone: info.phone,     // ✅ 電話番号が入る！
+            memo: memoSnap.exists() ? memoSnap.data().text : "" 
+          };
+        })
+      );
+
       setRecipients(uniqueList);
       setExtracted(true);
-
-      // 除外された人がいればログに出す（確認用）
-      if (blockedCount > 0) {
-        console.log(`🚫 配信停止リストに基づき、${blockedCount} 名を除外しました。`);
-      }
+      if (blockedCount > 0) console.log(`🚫 ${blockedCount} 名を除外しました。`);
 
     } catch (e) {
       console.error(e);
