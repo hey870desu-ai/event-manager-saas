@@ -44,14 +44,17 @@ export async function POST(request: Request) {
     }
 
    // 🅱️ 即時配信
-   // 1. まず「ベースの名前」をここでバシッと定義するっぺ（これで波線が消えるぞい！）
-      const tenantBaseName = tenantName || senderName || "イベント"; 
+   // 1. まず「ベースの名前」を決めっぺ。
+   // "イベント" が出てしまうのはここが原因だから、デフォルトを "事務局" に変えるぞい！
+    const tenantBaseName = tenantName || senderName || "事務局";
 
-   // 2. あとは、そのベース名を使って各名前を使い分けるんだばい
-    const topSenderName = tenantBaseName;            // メール一覧の差出人（例：ケアデザインワークス）
-    const bodyHeaderName = `${tenantBaseName} 事務局`; // 本文の青い帯（例：ケアデザインワークス 事務局）
-    const displaySender = bodyHeaderName;            // カレンダー登録などの表示用
-    const calendarUrl = createGoogleCalendarUrl(`【${displaySender}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
+    // 2. 塙さんの理想「使い分け」をここで定義だっぺ！
+    const topSenderName = tenantBaseName;            // メール一覧用（例：ケアデザインワークス）
+    const bodyHeaderName = `${tenantBaseName} 事務局`; // 本文ヘッダー用（例：ケアデザインワークス 事務局）
+    const displaySender = bodyHeaderName;            // カレンダー等、その他の表示用
+    
+    // 3. カレンダーURL（ここもbodyHeaderNameを使うっぺ）
+    const calendarUrl = createGoogleCalendarUrl(`【${bodyHeaderName}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
     const brandColor = "#0ea5e9";
 
     const styles = {
@@ -132,15 +135,15 @@ export async function POST(request: Request) {
       `;
 
       await resend.emails.send({
-  // ✅ ここを「displaySender」から「topSenderName」に変えるっぺ！
-  // これで、 inbox（メール一覧）では「ケアデザインワークス」というスッキリした名前になるぞい。
-  from: `"${topSenderName}" <info@event-manager.app>`, 
-  
-  to: recipient.email, 
-  subject: subject,
-  replyTo: replyTo || contactEmail || 'info@event-manager.app',
-  html: htmlContent,
-});
+        // ✅ ここを topSenderName に変える！
+        // これで、受信箱（inbox）には「事務局」がつかないスッキリした名前が出るぞい！
+        from: `"${topSenderName}" <info@event-manager.app>`, 
+        
+        to: recipient.email, 
+        subject: subject,
+        replyTo: replyTo || contactEmail || 'info@event-manager.app',
+        html: htmlContent, // 本文の中はすでにbodyHeaderName（事務局付き）が反映される設定だっぺ！
+      });
 
       // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
       await new Promise(resolve => setTimeout(resolve, 700));
