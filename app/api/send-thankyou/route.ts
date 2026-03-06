@@ -44,18 +44,13 @@ export async function POST(request: Request) {
     }
 
    // 🅱️ 即時配信
-   // 1. まず「ベースの名前」を決めっぺ。
-   // "イベント" が出てしまうのはここが原因だから、デフォルトを "事務局" に変えるぞい！
-    const tenantBaseName = tenantName || senderName || "事務局";
+   // 🏆 1. 名前をシンプルに確定！「事務局」の二重表示を防ぐロジックだっぺ
+   const baseName = (tenantName || senderName || "事務局").replace(/\s*事務局$/, "") || "事務局";
+   const inboxName = baseName;               // 差出人：ケアデザインワークス
+   const headerName = inboxName === "事務局" ? "事務局" : `${inboxName} 事務局`; // ヘッダー：ケアデザインワークス 事務局
 
-    // 2. 塙さんの理想「使い分け」をここで定義だっぺ！
-    const topSenderName = tenantBaseName;            // メール一覧用（例：ケアデザインワークス）
-    const bodyHeaderName = `${tenantBaseName} 事務局`; // 本文ヘッダー用（例：ケアデザインワークス 事務局）
-    const displaySender = bodyHeaderName;            // カレンダー等、その他の表示用
-    
-    // 3. カレンダーURL（ここもbodyHeaderNameを使うっぺ）
-    const calendarUrl = createGoogleCalendarUrl(`【${bodyHeaderName}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
-    const brandColor = "#0ea5e9";
+   const calendarUrl = createGoogleCalendarUrl(`【${headerName}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
+   const brandColor = "#0ea5e9";
 
     const styles = {
       body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
@@ -105,46 +100,40 @@ export async function POST(request: Request) {
       const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
       const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <body style="${styles.body}">
-          <div style="${styles.container}">
-            <div style="${styles.header}"><span style="${styles.logoText}">${displaySender}</span></div>
-            <div style="${styles.content}">
-              <div style="${styles.messageBox}">${personalBody}</div>
-              
-              
-              ${showEventCard ? `
-                <div style="${styles.card}">
-                  <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
-                    <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
-                    <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
-                    <div style="${styles.label}">会場</div><div style="${styles.value}">${venueName}</div>
-                    <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 Googleカレンダーに追加</a>
-                  </div>
-                </div>
-              ` : ''}
+       <!DOCTYPE html>
+       <html>
+       <body style="${styles.body}">
+         <div style="${styles.container}">
+           <div style="${styles.header}"><span style="${styles.logoText}">${headerName}</span></div>
+           <div style="${styles.content}">
+             <div style="${styles.messageBox}">${personalBody}</div>
+             
+             ${showEventCard ? `
+               <div style="${styles.card}">
+                 <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
+                   <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
+                   <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
+                   <div style="${styles.label}">会場</div><div style="${styles.value}">${venueName}</div>
+                   <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 Googleカレンダーに追加</a>
+                 </div>
+               </div>
+             ` : ''}
 
             </div>
-            <div style="${styles.footer}">
-  © ${new Date().getFullYear()} ${displaySender} All rights reserved.
-</div>
-          </div>
-        </body>
-        </html>
-      `;
+           <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerName} All rights reserved.</div>
+         </div>
+       </body>
+       </html>
+     `;
 
       await resend.emails.send({
-        // ✅ ここを topSenderName に変える！
-        // これで、受信箱（inbox）には「事務局」がつかないスッキリした名前が出るぞい！
-        from: `"${topSenderName}" <info@event-manager.app>`, 
-        
+        // 🏆 差出人：ケアデザインワークス（inboxName）
+        from: `"${inboxName}" <info@event-manager.app>`, 
         to: recipient.email, 
         subject: subject,
         replyTo: replyTo || contactEmail || 'info@event-manager.app',
-        html: htmlContent, // 本文の中はすでにbodyHeaderName（事務局付き）が反映される設定だっぺ！
-      });
-
+        html: htmlContent,
+     });
       // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
       await new Promise(resolve => setTimeout(resolve, 700));
     }
