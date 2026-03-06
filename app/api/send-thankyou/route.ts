@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// カレンダーURL生成 (既存のロジックを100%維持)
+// 📅 カレンダーURL生成（既存機能を完全維持）
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
   try {
     const cleanDate = dateStr.replace(/-/g, ''); 
@@ -30,48 +30,43 @@ export async function POST(request: Request) {
        scheduledAt, contactEmail, replyTo 
     } = body;
 
-    // 🅰️ 予約配信ロジック (現状のまま完全に維持だっぺ)
+    // 🏆 【名前の修正ロジック】Firestoreのデータ（CARE DESIGN WORKS）を最優先にするぞい
+    const rawName = tenantName || senderName || "CARE DESIGN WORKS";
+    const cleanName = rawName.replace(/[\s　]*事務局$/, "").trim(); // 「事務局」のダブりを掃除
+    
+    const senderForInbox = cleanName;                // 差出人：CARE DESIGN WORKS
+    const headerForEmail = `${cleanName} 事務局`;      // ヘッダー：CARE DESIGN WORKS 事務局
+
+    // 🅰️ 予約配信ロジック（そのまま維持）
     if (scheduledAt) {
-      const safeTenantName = tenantName || senderName || null;
-      const safeSenderName = senderName || "イベント事務局";
       await adminDb.collection('mail_queue').add({
-        recipients, subject, body: baseBody, senderName: safeSenderName, tenantName: safeTenantName,
+        recipients, subject, body: baseBody, senderName: headerForEmail, tenantName: senderForInbox,
         eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
         scheduledAt: new Date(scheduledAt), status: 'pending', createdAt: new Date(),
       });
       return NextResponse.json({ success: true, message: 'Reservation saved' });
     }
 
-    // 🅱️ 即時配信ロジック (ここから修正・機能は全部入りだぞい)
-    
-    // 🏆 【名前の解決】「事務局」がダブらないように掃除してから組み立てるっぺ
-    const rawName = tenantName || senderName || "事務局";
-    const cleanName = rawName.replace(/[\s　]*事務局$/, ""); // 語尾の「事務局」を一旦カット
-    
-    // 塙さんの理想： inbox（差出人）はスッキリ、本文（ヘッダー）は事務局付き
-    const inboxSender = cleanName || "事務局";
-    const headerDisplay = cleanName === "" || cleanName === "事務局" ? "事務局" : `${cleanName} 事務局`;
-
-    const calendarUrl = createGoogleCalendarUrl(`【${headerDisplay}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
+    // 🅱️ 即時配信ロジック
+    const calendarUrl = createGoogleCalendarUrl(`【${headerForEmail}】${eventTitle}`, eventDate || "", "13:00", venueName || "");
 
     const styles = {
-      body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
-      container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);",
-      header: "background: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid #3b82f6;",
+      body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px;",
+      container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);",
+      header: "background-color: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid #3b82f6;",
       logoText: "color: #ffffff; font-size: 20px; font-weight: bold; letter-spacing: 1px;",
       content: "padding: 40px 30px;",
-      messageBox: "font-size: 16px; line-height: 1.8; color: #334155; white-space: pre-wrap;", 
-      card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 30px; margin-bottom: 20px;",
+      message: "font-size: 16px; line-height: 1.8; color: #334155; white-space: pre-wrap;", 
+      card: "background-color: #f1f5f9; border-radius: 8px; padding: 20px; margin-top: 30px;",
       label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;",
       value: "font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px;",
-      calendarLink: "display: inline-block; font-size: 12px; color: #0284c7; text-decoration: none; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 6px; background-color: #f0f9ff; font-weight: bold;",
-      footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
+      footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; border-top: 1px solid #e2e8f0;",
     };
 
     for (const recipient of recipients) {
       let personalBody = baseBody;
 
-      // 1. 基本的な置換 (維持)
+      // 1. 本文置換
       personalBody = personalBody.replace(/{email}/g, recipient.email);
       if (personalBody.includes("参加者各位")) {
         personalBody = personalBody.replace(/参加者各位/g, `${recipient.name} 様`);
@@ -79,64 +74,61 @@ export async function POST(request: Request) {
         personalBody = `${recipient.name} 様\n\n${personalBody}`;
       }
 
-      // 2. ★QRコード生成ロジック (塙さんお気に入りのスッキリ版だっぺ！)
+      // 2. 🏆 【QRデザイン修正】メールソフトで崩れない「Table固定デザイン」だっぺ！
       if (recipient.id && personalBody.includes("{qr}")) {
-         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${recipient.id}&bgcolor=ffffff`;
-         const qrHtml = `
-           <div style="text-align: center; margin: 35px 0;">
-             <div style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-               <div style="font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Check-in Pass</div>
-               <div style="padding: 10px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; display: inline-block;">
-                 <img src="${qrUrl}" alt="Check-in QR" width="160" height="160" style="display: block; margin: 0 auto;" />
-               </div>
-               <p style="margin: 15px 0 0; font-size: 10px; color: #94a3b8; font-family: ui-monospace, monospace; letter-spacing: 1px;">ID: ${recipient.id}</p>
-             </div>
-           </div>
-         `;
-         personalBody = personalBody.replace(/{qr}/g, qrHtml);
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${recipient.id}&bgcolor=ffffff`;
+        const qrHtml = `
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 35px 0;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="280" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);">
+                  <tr>
+                    <td align="center" style="padding: 30px;">
+                      <div style="font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Check-in Pass</div>
+                      <img src="${qrUrl}" width="160" height="160" style="display: block; border: 1px solid #f1f5f9; border-radius: 12px;" />
+                      <p style="margin: 15px 0 0; font-size: 10px; color: #94a3b8; font-family: monospace;">ID: ${recipient.id}</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        `;
+        personalBody = personalBody.replace(/{qr}/g, qrHtml);
       } else {
-         personalBody = personalBody.replace(/{qr}/g, "");
+        personalBody = personalBody.replace(/{qr}/g, "");
       }
 
       const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
       const htmlContent = `
-       <!DOCTYPE html>
-       <html>
-       <body style="${styles.body}">
-         <div style="${styles.container}">
-           <div style="${styles.header}"><span style="${styles.logoText}">${headerDisplay}</span></div>
-           <div style="${styles.content}">
-             <div style="${styles.messageBox}">${personalBody}</div>
-             
-             ${showEventCard ? `
-               <div style="${styles.card}">
-                 <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
-                   <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
-                   <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
-                   <div style="${styles.label}">会場</div><div style="${styles.value}">${venueName}</div>
-                   <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">📅 Googleカレンダーに追加</a>
-                 </div>
-               </div>
-             ` : ''}
-            </div>
-           <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerDisplay} All rights reserved.</div>
-         </div>
-       </body>
-       </html>
-     `;
+        <!DOCTYPE html><html><body style="${styles.body}"><div style="${styles.container}">
+          <div style="${styles.header}"><span style="${styles.logoText}">${headerForEmail}</span></div>
+          <div style="${styles.content}">
+            <div style="${styles.message}">${personalBody}</div>
+            ${showEventCard ? `
+              <div style="${styles.card}">
+                <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
+                  <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
+                  <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
+                  <a href="${calendarUrl}" target="_blank" style="color: #0284c7; font-size: 12px; font-weight: bold; text-decoration: none;">📅 Googleカレンダーに追加</a>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerForEmail} All rights reserved.</div>
+        </div></body></html>
+      `;
 
-      // 🏆 送信処理：マーケティング同様のクォート付き送信
+      // 🏆 送信：差出人を inboxSender にしてスッキリ！
       await resend.emails.send({
-        // 🏆 差出人はスッキリした名前（inboxSender）
-        from: `"${inboxSender}" <info@event-manager.app>`,
-        to: recipient.email, 
+        from: `"${senderForInbox}" <info@event-manager.app>`,
+        to: recipient.email,
         subject: subject,
         replyTo: replyTo || contactEmail || "info@event-manager.app",
         html: htmlContent,
       });
 
-      // 🚀 1通送るごとに 0.7秒 休む (Resendの1秒2通制限を回避)
       await new Promise(resolve => setTimeout(resolve, 700));
     }
     return NextResponse.json({ success: true });
