@@ -1,11 +1,10 @@
-// 📂 app/api/send-thankyou/route.ts
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// カレンダーURL生成 (変更なし)
+// カレンダーURL生成 (既存のロジックを100%維持)
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
   try {
     const cleanDate = dateStr.replace(/-/g, ''); 
@@ -28,10 +27,10 @@ export async function POST(request: Request) {
        recipients, subject, body: baseBody, 
        eventTitle, eventDate, venueName,
        tenantName, senderName,
-       scheduledAt,contactEmail,replyTo 
+       scheduledAt, contactEmail, replyTo 
     } = body;
 
-    // 🅰️ 予約配信 (変更なし)
+    // 🅰️ 予約配信ロジック (現状のまま完全に維持だっぺ)
     if (scheduledAt) {
       const safeTenantName = tenantName || senderName || null;
       const safeSenderName = senderName || "イベント事務局";
@@ -43,11 +42,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Reservation saved' });
     }
 
-  // 🅱️ 即時配信
-    // 🏆 マーケティングと同じ！シンプルにこれだけでOKだっぺ！
-    const displaySender = senderName || tenantName || "事務局";
+    // 🅱️ 即時配信ロジック (ここから修正・機能は全部入りだぞい)
     
-    const calendarUrl = createGoogleCalendarUrl(`【${displaySender}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
+    // 🏆 【名前の解決】「事務局」がダブらないように掃除してから組み立てるっぺ
+    const rawName = tenantName || senderName || "事務局";
+    const cleanName = rawName.replace(/[\s　]*事務局$/, ""); // 語尾の「事務局」を一旦カット
+    
+    // 塙さんの理想： inbox（差出人）はスッキリ、本文（ヘッダー）は事務局付き
+    const inboxSender = cleanName || "事務局";
+    const headerDisplay = cleanName === "" || cleanName === "事務局" ? "事務局" : `${cleanName} 事務局`;
+
+    const calendarUrl = createGoogleCalendarUrl(`【${headerDisplay}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
 
     const styles = {
       body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
@@ -63,11 +68,10 @@ export async function POST(request: Request) {
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;",
     };
 
-
     for (const recipient of recipients) {
       let personalBody = baseBody;
 
-      // 1. 基本的な置換
+      // 1. 基本的な置換 (維持)
       personalBody = personalBody.replace(/{email}/g, recipient.email);
       if (personalBody.includes("参加者各位")) {
         personalBody = personalBody.replace(/参加者各位/g, `${recipient.name} 様`);
@@ -75,27 +79,25 @@ export async function POST(request: Request) {
         personalBody = `${recipient.name} 様\n\n${personalBody}`;
       }
 
-      // 2. ★QRコード生成ロジック（スッキリ・キレイ版だっぺ！）
+      // 2. ★QRコード生成ロジック (塙さんお気に入りのスッキリ版だっぺ！)
       if (recipient.id && personalBody.includes("{qr}")) {
-         // 少し大きめの160pxにして見やすくするぞい
          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${recipient.id}&bgcolor=ffffff`;
          const qrHtml = `
            <div style="text-align: center; margin: 35px 0;">
              <div style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
                <div style="font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Check-in Pass</div>
-               
                <div style="padding: 10px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; display: inline-block;">
                  <img src="${qrUrl}" alt="Check-in QR" width="160" height="160" style="display: block; margin: 0 auto;" />
                </div>
-               
-               <p style="margin: 15px 0 0; font-size: 10px; color: #94a3b8; font-family: ui-monospace, monospace; letter-spacing: 1px;">TICKET ID: ${recipient.id}</p>
+               <p style="margin: 15px 0 0; font-size: 10px; color: #94a3b8; font-family: ui-monospace, monospace; letter-spacing: 1px;">ID: ${recipient.id}</p>
              </div>
            </div>
          `;
          personalBody = personalBody.replace(/{qr}/g, qrHtml);
+      } else {
+         personalBody = personalBody.replace(/{qr}/g, "");
       }
 
-      // ★1. まず、カードを出すかどうかの判定を直前に入れる
       const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
       const htmlContent = `
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
        <html>
        <body style="${styles.body}">
          <div style="${styles.container}">
-           <div style="${styles.header}"><span style="${styles.logoText}">${displaySender}</span></div>
+           <div style="${styles.header}"><span style="${styles.logoText}">${headerDisplay}</span></div>
            <div style="${styles.content}">
              <div style="${styles.messageBox}">${personalBody}</div>
              
@@ -117,24 +119,24 @@ export async function POST(request: Request) {
                  </div>
                </div>
              ` : ''}
-
             </div>
-           <div style="${styles.footer}">© ${new Date().getFullYear()} ${displaySender} All rights reserved.</div>
+           <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerDisplay} All rights reserved.</div>
          </div>
        </body>
        </html>
      `;
 
-      // 🏆 送信処理：マーケティングと同じ書き方だっぺ！
+      // 🏆 送信処理：マーケティング同様のクォート付き送信
       await resend.emails.send({
-        from: `"${displaySender}" <info@event-manager.app>`,
+        // 🏆 差出人はスッキリした名前（inboxSender）
+        from: `"${inboxSender}" <info@event-manager.app>`,
         to: recipient.email, 
         subject: subject,
         replyTo: replyTo || contactEmail || "info@event-manager.app",
         html: htmlContent,
       });
 
-      // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
+      // 🚀 1通送るごとに 0.7秒 休む (Resendの1秒2通制限を回避)
       await new Promise(resolve => setTimeout(resolve, 700));
     }
     return NextResponse.json({ success: true });
