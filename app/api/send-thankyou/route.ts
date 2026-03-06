@@ -43,14 +43,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: 'Reservation saved' });
     }
 
-   // 🅱️ 即時配信
-   // 🏆 1. 名前をシンプルに確定！「事務局」の二重表示を防ぐロジックだっぺ
-   const baseName = (tenantName || senderName || "事務局").replace(/\s*事務局$/, "") || "事務局";
-   const inboxName = baseName;               // 差出人：ケアデザインワークス
-   const headerName = inboxName === "事務局" ? "事務局" : `${inboxName} 事務局`; // ヘッダー：ケアデザインワークス 事務局
-
-   const calendarUrl = createGoogleCalendarUrl(`【${headerName}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
-   const brandColor = "#0ea5e9";
+  // 🅱️ 即時配信
+    // 🏆 マーケティングと同じ！シンプルにこれだけでOKだっぺ！
+    const displaySender = senderName || tenantName || "事務局";
+    
+    const calendarUrl = createGoogleCalendarUrl(`【${displaySender}】${eventTitle}`, eventDate || "", "13:00", `会場: ${venueName}\n\n※詳細はメール本文をご確認ください。`);
 
     const styles = {
       body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
@@ -78,22 +75,24 @@ export async function POST(request: Request) {
         personalBody = `${recipient.name} 様\n\n${personalBody}`;
       }
 
-      // 2. ★QRコード生成ロジック★
-      // 受信者データに id が含まれていて、かつ本文に {qr} がある場合
+      // 2. ★QRコード生成ロジック（スッキリ・キレイ版だっぺ！）
       if (recipient.id && personalBody.includes("{qr}")) {
-         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${recipient.id}&bgcolor=ffffff`;
+         // 少し大きめの160pxにして見やすくするぞい
+         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${recipient.id}&bgcolor=ffffff`;
          const qrHtml = `
-           <div style="text-align: center; margin: 20px 0; padding: 15px; background: #fff; border: 2px dashed #cbd5e1; border-radius: 8px; display: inline-block;">
-             <p style="margin: 0 0 10px; font-size: 12px; font-weight: bold; color: #64748b;">▼ 受付用QRコード ▼</p>
-             <img src="${qrUrl}" alt="Check-in QR" width="150" height="150" style="display: block; margin: 0 auto;" />
-             <p style="margin: 5px 0 0; font-size: 10px; color: #94a3b8; font-family: monospace;">ID: ${recipient.id}</p>
+           <div style="text-align: center; margin: 35px 0;">
+             <div style="display: inline-block; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+               <div style="font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px;">Check-in Pass</div>
+               
+               <div style="padding: 10px; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; display: inline-block;">
+                 <img src="${qrUrl}" alt="Check-in QR" width="160" height="160" style="display: block; margin: 0 auto;" />
+               </div>
+               
+               <p style="margin: 15px 0 0; font-size: 10px; color: #94a3b8; font-family: ui-monospace, monospace; letter-spacing: 1px;">TICKET ID: ${recipient.id}</p>
+             </div>
            </div>
          `;
-         // {qr} を画像HTMLに書き換え
          personalBody = personalBody.replace(/{qr}/g, qrHtml);
-      } else {
-         // IDがない、またはタグがない場合は {qr} を消す
-         personalBody = personalBody.replace(/{qr}/g, "");
       }
 
       // ★1. まず、カードを出すかどうかの判定を直前に入れる
@@ -104,7 +103,7 @@ export async function POST(request: Request) {
        <html>
        <body style="${styles.body}">
          <div style="${styles.container}">
-           <div style="${styles.header}"><span style="${styles.logoText}">${headerName}</span></div>
+           <div style="${styles.header}"><span style="${styles.logoText}">${displaySender}</span></div>
            <div style="${styles.content}">
              <div style="${styles.messageBox}">${personalBody}</div>
              
@@ -120,20 +119,21 @@ export async function POST(request: Request) {
              ` : ''}
 
             </div>
-           <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerName} All rights reserved.</div>
+           <div style="${styles.footer}">© ${new Date().getFullYear()} ${displaySender} All rights reserved.</div>
          </div>
        </body>
        </html>
      `;
 
+      // 🏆 送信処理：マーケティングと同じ書き方だっぺ！
       await resend.emails.send({
-        // 🏆 差出人：ケアデザインワークス（inboxName）
-        from: `"${inboxName}" <info@event-manager.app>`, 
+        from: `"${displaySender}" <info@event-manager.app>`,
         to: recipient.email, 
         subject: subject,
-        replyTo: replyTo || contactEmail || 'info@event-manager.app',
+        replyTo: replyTo || contactEmail || "info@event-manager.app",
         html: htmlContent,
-     });
+      });
+
       // 🚀 1通送るごとに 0.7秒 休む。これで大量送信でもエラーにならないぞい！
       await new Promise(resolve => setTimeout(resolve, 700));
     }
