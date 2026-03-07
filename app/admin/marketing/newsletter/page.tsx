@@ -75,17 +75,18 @@ export default function NewsletterStudio() {
     return await getDownloadURL(storageRef);
   };
 
-  // --- 🚀 配信実行（アップロード ＋ API呼び出しの準備） ---
+// --- 🚀 配信開始ボタン（完結編！） ---
   const handleSend = async () => {
     if (!auth.currentUser) return alert("ログインしてくんちぇ！");
+    if (!confirm("絆リストの全員に一斉配信を開始します。よろしいですか？")) return;
+    
     setIsUploading(true);
 
     try {
-      // 1. メイン写真アップロード
+      // 1. 画像アップロード（さっき作った部分）
       let mainImageUrl = "";
       if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
-      // 2. スナップ10枚を一斉アップロード
       const uploadedSnaps = await Promise.all(
         snaps.map(async (snap) => {
           if (snap.file) {
@@ -97,12 +98,34 @@ export default function NewsletterStudio() {
       );
       const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
-      console.log("全URL確定！", { mainImageUrl, finalSnaps });
-      alert("全写真のアップロード完了！次はResendでメール発射だばい！");
+      // 2. 絆リスト（送信先）を取得するっぺ
+      // ※ここでは例として tenantData 内のリストやダミーを入れるぞい
+      const recipients = ["test@example.com"]; // 本番はFirestoreから取得したメアド配列だっぺ！
+
+      // 3. APIを叩いてメール発射！！
+      const response = await fetch("/api/send-newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          mainTitle,
+          mainMessage,
+          mainImageUrl,
+          snaps: finalSnaps,
+          tenantData,
+          recipients
+        }),
+      });
+
+      if (response.ok) {
+        alert("魂のメールを全員に届けたぞい！！お疲れ様だっぺ！");
+      } else {
+        throw new Error("配信エラーだばい");
+      }
 
     } catch (e) {
       console.error(e);
-      alert("エラーだっぺ。通信を確認してくんちぇ。");
+      alert("送信中に問題が発生したっぺ...");
     } finally {
       setIsUploading(false);
     }
