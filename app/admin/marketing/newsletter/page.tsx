@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Camera, Send, Facebook, Instagram, MessageCircle, Link, Info } from 'lucide-react';
 
