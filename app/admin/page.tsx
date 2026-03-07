@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -169,6 +169,10 @@ export default function AdminDashboard() {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   // ▼▼▼ 追加：複製機能のロジック ▼▼▼
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  // ✨ SNSリンク用のStateを追加だばい！
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [lineUrl, setLineUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
   // テナント情報をここで確定させる
   const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
   
@@ -477,6 +481,9 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       address: legalAddress,
       phone: legalPhone,
       homepage: legalHomepage,
+      instagramUrl,
+      lineUrl,
+      facebookUrl,
       updatedAt: serverTimestamp()
     });
     alert("基本情報と特商法用データを保存したよ！\nこれでStripeの審査も怖くない！");
@@ -784,6 +791,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       <button onClick={() => router.push("/dashboard")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-slate-100">
         <CreditCard size={16}/> <span>契約</span>
       </button>
+      {/* 2.8 営業ツール（リッチメール） ✨新登場だばい！ */}
+      <button 
+        onClick={() => router.push("/marketing/newsletter")} 
+        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex gap-1.5 items-center hover:shadow-md transition-all shadow-blue-200/50 border-none"
+      >
+        <Sparkles size={16}/> <span>営業ツール</span>
+      </button>
       
       <div className="w-px h-4 bg-slate-200 mx-1" /> {/* 仕切り線 */}
       
@@ -811,6 +825,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 >
   <ScanLine size={24} /> <span className="text-base">名刺スキャン（近日公開）</span>
 </button>
+{/* 営業ツール（スマホでは目立つように一番上に！） */}
+        <button 
+          onClick={() => { router.push("/marketing/newsletter"); setIsMobileMenuOpen(false); }} 
+          className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-2xl font-black border border-blue-100 shadow-sm"
+        >
+          <Sparkles size={22} className="text-blue-600" /> <span className="text-base">営業ツール（リッチメール）</span>
+        </button>
 
         <div className="grid grid-cols-1 gap-2 mt-1">
           {/* 2. 絆リスト */}
@@ -1609,20 +1630,66 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                
                {/* 1. テナント・法人基本設定（特商法対応） */}
 <div className="space-y-6">
-  {/* A. 表の顔：ブランド設定 */}
+{/* A. 表の顔：ブランド設定 */}
   <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
     <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
-      <Sparkles size={16} className="text-yellow-400"/> ブランド・表示名（表の顔）
+      <Sparkles size={16} className="text-yellow-400"/> ブランド・SNS設定
     </h3>
-    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名に「主催者」として表示される名前だっぺ。</p>
-    <div className="flex gap-2">
-      <input 
-        type="text" 
-        value={editingOrgName} 
-        onChange={(e)=>setEditingOrgName(e.target.value)} 
-        className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" 
-        placeholder="例：CARE DESIGN WORKS" 
-      />
+    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名、SNSアイコンのリンク先に反映されるぞい。</p>
+    
+    <div className="space-y-4">
+      {/* 組織名・ブランド名 */}
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">主催者・表示名</label>
+        <input 
+          type="text" 
+          value={editingOrgName} 
+          onChange={(e)=>setEditingOrgName(e.target.value)} 
+          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-indigo-500 outline-none transition-all" 
+          placeholder="例：CARE DESIGN WORKS" 
+        />
+      </div>
+
+      {/* ✨ ここからSNSのURL入力欄だっぺ！ */}
+      <div className="space-y-2">
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">SNS連携（広報誌メールに表示）</label>
+        
+        {/* Instagram */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-pink-500/50 transition-all">
+          <Instagram size={14} className="text-pink-500" />
+          <input 
+            type="text" 
+            value={instagramUrl} 
+            onChange={(e)=>setInstagramUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="Instagram URL" 
+          />
+        </div>
+
+        {/* LINE (MessageCircleアイコンを使用) */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-green-500/50 transition-all">
+          <MessageCircle size={14} className="text-green-500" />
+          <input 
+            type="text" 
+            value={lineUrl} 
+            onChange={(e)=>setLineUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="LINE公式アカウント URL" 
+          />
+        </div>
+
+        {/* Facebook */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-blue-500/50 transition-all">
+          <Facebook size={14} className="text-blue-500" />
+          <input 
+            type="text" 
+            value={facebookUrl} 
+            onChange={(e)=>setFacebookUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="Facebook URL" 
+          />
+        </div>
+      </div>
     </div>
   </div>
 
