@@ -793,7 +793,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       </button>
       {/* 2.8 営業ツール（リッチメール） ✨新登場だばい！ */}
       <button 
-        onClick={() => router.push("/marketing/newsletter")} 
+        onClick={() => router.push("/admin/marketing/newsletter")} 
         className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex gap-1.5 items-center hover:shadow-md transition-all shadow-blue-200/50 border-none"
       >
         <Sparkles size={16}/> <span>営業ツール</span>
@@ -827,7 +827,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 </button>
 {/* 営業ツール（スマホでは目立つように一番上に！） */}
         <button 
-          onClick={() => { router.push("/marketing/newsletter"); setIsMobileMenuOpen(false); }} 
+          onClick={() => { router.push("/admin/marketing/newsletter"); setIsMobileMenuOpen(false); }} 
           className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-2xl font-black border border-blue-100 shadow-sm"
         >
           <Sparkles size={22} className="text-blue-600" /> <span className="text-base">営業ツール（リッチメール）</span>
