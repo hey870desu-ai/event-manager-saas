@@ -10,21 +10,21 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 HTMLメールの鉄則：tableタグを使って強制的に横に並べるぞい！
+// 🏆 HTMLメールの鉄則：遊び（計算）を完璧に合わせたテーブルレイアウトだばい！
     const snapsHtml = snaps.map((snap: any) => {
-      // 🎯 レイアウトごとの「器（テーブル）」の幅を決める
-      let tableWidth = "100%";
+      // 🎯 有効幅540pxに対して、絶対に溢れないサイズを指定するぞい
+      let tableWidth = "540"; 
       let align = "center";
 
       if (snap.layout === 'triple') {
-        tableWidth = "180"; // 3枚並びの時は固定幅で攻めるのが鉄則だばい
+        tableWidth = "170"; // 170 * 3 = 510px (残り30pxが隙間になるから絶対並ぶ！)
         align = "left";
       } else if (snap.layout === 'grid') {
-        tableWidth = "270"; // 2枚並び（6枚セット）の時
+        tableWidth = "260"; // 260 * 2 = 520px (残り20pxが隙間になるっぺ！)
         align = "left";
       }
 
-      // 🎯 文章だけの時：写真枠を消して長方形のカードにする
+      // 🎯 文章だけの時
       if (snap.layout === 'text') {
         return `
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
@@ -38,12 +38,12 @@ export async function POST(req: Request) {
         `;
       }
 
-      // 🎯 写真がある時： align="left" のテーブルを並べてコラージュを作るっぺ！
+      // 🎯 写真がある時： align="left" で隙間（padding）を使って並べるのが正解だっぺ！
       return `
-        <table width="${tableWidth}" align="${align}" border="0" cellspacing="0" cellpadding="0" style="margin: 5px; display: inline-table;">
+        <table width="${tableWidth}" align="${align}" border="0" cellspacing="0" cellpadding="0" style="display: inline-table; margin: 0 4px 20px 4px;">
           <tr>
             <td style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-              <img src="${snap.imageUrl}" width="${tableWidth}" style="width: 100%; display: block;" />
+              <img src="${snap.imageUrl}" width="${tableWidth}" style="width: 100%; display: block; border-bottom: 1px solid #f1f5f9;" />
               <div style="padding: 10px; text-align: left;">
                 <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold;">${snap.title || ''}</p>
                 ${snap.comment ? `<p style="color: #6b7280; margin: 5px 0 0 0; font-size: 10px; line-height: 1.4;">${snap.comment}</p>` : ''}
@@ -52,8 +52,8 @@ export async function POST(req: Request) {
           </tr>
         </table>
       `;
-    }).join("") + `<div style="clear: both;"></div>`; // 最後に回り込みを解除するのがミソだっぺ！
-
+    }).join("") + `<div style="clear: both; height: 1px; line-height: 1px;">&nbsp;</div>`;
+    
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];
     if (tenantData.instagramUrl) snsIcons.push(`<a href="${tenantData.instagramUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="32" height="32" style="border-radius:8px;"></a>`);
