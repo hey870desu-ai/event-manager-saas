@@ -10,43 +10,49 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 スナップ写真をレイアウト（1枚/3枚/6枚/文章）に合わせて組み立てるぞい！
+// 🏆 HTMLメールの鉄則：tableタグを使って強制的に横に並べるぞい！
     const snapsHtml = snaps.map((snap: any) => {
-      // 🎯 基本設定
-      let width = "98%";
-      let display = "block";
-      let margin = "0 1% 20px 1%";
+      // 🎯 レイアウトごとの「器（テーブル）」の幅を決める
+      let tableWidth = "100%";
+      let align = "center";
 
-      // 🎯 レイアウトに応じて幅を細かく調整（メールソフト用のおもてなし）
       if (snap.layout === 'triple') {
-        width = "31%"; // 3枚横並び
-        display = "inline-block";
+        tableWidth = "180"; // 3枚並びの時は固定幅で攻めるのが鉄則だばい
+        align = "left";
       } else if (snap.layout === 'grid') {
-        width = "47%"; // 2枚ずつ（6枚セット）
-        display = "inline-block";
+        tableWidth = "270"; // 2枚並び（6枚セット）の時
+        align = "left";
       }
 
-      // 🎯 【重要】「文章だけ」ブロックの特別デザインだばい！
+      // 🎯 文章だけの時：写真枠を消して長方形のカードにする
       if (snap.layout === 'text') {
         return `
-          <div style="width: 98%; margin: 0 1% 20px 1%; background-color: #f0f7ff; border-left: 6px solid #3b82f6; border-radius: 16px; padding: 25px; box-sizing: border-box;">
-            <p style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: bold;">${snap.title || ''}</p>
-            <p style="color: #4b5563; margin: 0; font-size: 14px; line-height: 1.6;">${snap.comment || ''}</p>
-          </div>
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+            <tr>
+              <td style="background-color: #f0f7ff; border-left: 6px solid #3b82f6; border-radius: 16px; padding: 25px;">
+                <p style="color: #111827; margin: 0 0 10px 0; font-size: 18px; font-weight: bold;">${snap.title || ''}</p>
+                <p style="color: #4b5563; margin: 0; font-size: 14px; line-height: 1.6;">${snap.comment || ''}</p>
+              </td>
+            </tr>
+          </table>
         `;
       }
 
-      // 🎯 写真があるブロック（1枚/3枚/6枚）の共通デザイン
+      // 🎯 写真がある時： align="left" のテーブルを並べてコラージュを作るっぺ！
       return `
-        <div style="width: ${width}; display: ${display}; vertical-align: top; margin: ${margin}; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-sizing: border-box;">
-          <img src="${snap.imageUrl}" style="width: 100%; display: block;" />
-          <div style="padding: 12px; text-align: left;">
-            <p style="color: #111827; margin: 0; font-size: 13px; font-weight: bold;">${snap.title || ''}</p>
-            ${snap.comment ? `<p style="color: #6b7280; margin: 5px 0 0 0; font-size: 11px; line-height: 1.4;">${snap.comment}</p>` : ''}
-          </div>
-        </div>
+        <table width="${tableWidth}" align="${align}" border="0" cellspacing="0" cellpadding="0" style="margin: 5px; display: inline-table;">
+          <tr>
+            <td style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+              <img src="${snap.imageUrl}" width="${tableWidth}" style="width: 100%; display: block;" />
+              <div style="padding: 10px; text-align: left;">
+                <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold;">${snap.title || ''}</p>
+                ${snap.comment ? `<p style="color: #6b7280; margin: 5px 0 0 0; font-size: 10px; line-height: 1.4;">${snap.comment}</p>` : ''}
+              </div>
+            </td>
+          </tr>
+        </table>
       `;
-    }).join("");
+    }).join("") + `<div style="clear: both;"></div>`; // 最後に回り込みを解除するのがミソだっぺ！
 
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];
