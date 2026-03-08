@@ -36,6 +36,9 @@ export default function NewsletterStudio() {
   // 🏆 過去の履歴を保存しておくための箱だばい！
   const [archives, setArchives] = useState<any[]>([]);
 
+  const [lastVisible, setLastVisible] = useState<any>(null); // 🎯 どこまで読み込んだか覚える
+  const [firstVisible, setFirstVisible] = useState<any>(null); // 🎯 戻る用
+
 // 🏆 1. ログインメアドから tenantId を自動取得して連動させるぞい！
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
@@ -157,17 +160,35 @@ export default function NewsletterStudio() {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
   };
 
-  // 🏆 必殺技①：履歴を読み込む（最新10件）
-  const fetchArchives = async (tid: string) => {
-    const { collection, query, where, getDocs, orderBy, limit } = await import("firebase/firestore");
-    const q = query(
+  // 🏆 ページめくり対応の履歴取得
+  const fetchArchives = async (tid: string, direction: "next" | "prev" | "first" = "first") => {
+    const { collection, query, where, getDocs, orderBy, limit, startAfter, endBefore, limitToLast } = await import("firebase/firestore");
+    
+    let q = query(
       collection(db, "newsletter_archives"), 
       where("tenantId", "==", tid),
       orderBy("createdAt", "desc"),
       limit(10)
     );
+
+    if (direction === "next" && lastVisible) {
+      q = query(q, startAfter(lastVisible));
+    } else if (direction === "prev" && firstVisible) {
+      q = query(
+        collection(db, "newsletter_archives"), 
+        where("tenantId", "==", tid),
+        orderBy("createdAt", "desc"),
+        endBefore(firstVisible),
+        limitToLast(10)
+      );
+    }
+
     const snap = await getDocs(q);
-    setArchives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    if (!snap.empty) {
+      setArchives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setFirstVisible(snap.docs[0]);
+      setLastVisible(snap.docs[snap.docs.length - 1]);
+    }
   };
 
   // 🏆 必殺技②：一時保存（下書き）する
@@ -486,6 +507,26 @@ export default function NewsletterStudio() {
               )}
             </div>
           </section>
+          {/* --- 矢印ボタンエリア --- */}
+            <div className="flex justify-center items-center gap-6 mt-6">
+              <button 
+                onClick={() => fetchArchives(tenantData.id, "prev")}
+                className="p-2 hover:bg-blue-100 rounded-full text-blue-600 disabled:opacity-20"
+                disabled={!firstVisible}
+              >
+                <X className="rotate-90" size={20}/> {/* 簡易的な左矢印だっぺ */}
+              </button>
+              
+              <span className="text-[10px] font-black text-slate-400">PAGE CONTROL</span>
+
+              <button 
+                onClick={() => fetchArchives(tenantData.id, "next")}
+                className="p-2 hover:bg-blue-100 rounded-full text-blue-600 disabled:opacity-20"
+                disabled={!lastVisible}
+              >
+                <X className="-rotate-90" size={20}/> {/* 簡易的な右矢印だっぺ */}
+              </button>
+            </div>
         </div>
       </div>
 
