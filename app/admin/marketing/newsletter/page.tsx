@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,FileText
 } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -28,9 +28,9 @@ export default function NewsletterStudio() {
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const [mainFile, setMainFile] = useState<File | null>(null);
   
-  // 🏆 スナップ写真配列（最大10枚まで増えるぞい！）
+  // 🎯 layout: 'full' を書き足して、パソコンを安心させるぞい
   const [snaps, setSnaps] = useState([
-    { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null },
+    { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null, layout: 'full' },
   ]);
 
   // 🏆 過去の履歴を保存しておくための箱だばい！
@@ -391,67 +391,69 @@ export default function NewsletterStudio() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {snaps.map((snap, idx) => (
-                <div key={idx} className="bg-slate-50 p-5 rounded-3xl border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm">
+                <div 
+                  key={idx} 
+                  className={`bg-slate-50 p-5 rounded-3xl border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm ${
+                    snap.layout === 'text' ? 'md:col-span-2' : '' // 文章の時は横いっぱいに広げるぞい！
+                  }`}
+                >
                   <button onClick={() => removeSnap(idx)} className="absolute -top-2 -right-2 bg-white text-red-500 p-2 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors z-10">
                     <Trash2 size={16} />
                   </button>
 
-                  <label className="w-full aspect-square bg-white rounded-2xl border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all">
-                    {snap.preview ? (
-                      <img src={snap.preview} className="w-full h-full object-cover" alt="Snap" />
-                    ) : (
-                      <div className="text-center">
-                        <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">SNAP {idx + 1}</span>
-                      </div>
-                    )}
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
-                  </label>
+                  {/* 🎯 layout が 'text' じゃない時だけ、写真枠を表示！ */}
+                  {snap.layout !== 'text' && (
+                    <label className="w-full aspect-square bg-white rounded-2xl border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all">
+                      {snap.preview ? (
+                        <img src={snap.preview} className="w-full h-full object-cover" alt="Snap" />
+                      ) : (
+                        <div className="text-center">
+                          <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">写真を選択</span>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
+                    </label>
+                  )}
+
                   <input type="text" placeholder="タイトル" value={snap.title} onChange={(e) => {
                     const newSnaps = [...snaps];
                     newSnaps[idx].title = e.target.value;
                     setSnaps(newSnaps);
                   }} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-black mb-2 outline-none shadow-sm" />
-                  <textarea placeholder="説明文..." value={snap.comment} onChange={(e) => {
+                  <textarea placeholder="本文メッセージ..." value={snap.comment} onChange={(e) => {
                     const newSnaps = [...snaps];
                     newSnaps[idx].comment = e.target.value;
                     setSnaps(newSnaps);
-                  }} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-[10px] leading-relaxed outline-none resize-none shadow-sm" rows={2} />
+                  }} className="w-full p-3 bg-white border border-slate-200 rounded-xl text-[10px] leading-relaxed outline-none resize-none shadow-sm" rows={snap.layout === 'text' ? 4 : 2} />
                 </div>
               ))}
 
-              {/* 🏆 パート②：3枚・6枚一括読み込みボタンだっぺ！ */}
-              {snaps.length < 12 && (
-                <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <label className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-blue-50 cursor-pointer transition-all gap-2 bg-white/50">
-                    <PlusCircle size={24} />
-                    <span className="text-[10px] font-black uppercase">1枚追加</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleBatchUpload(e, 1)} />
-                  </label>
-                  <label className="h-40 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer transition-all gap-2 bg-blue-50/30">
-                    <div className="flex gap-1"><Camera size={16}/><Camera size={16}/><Camera size={16}/></div>
-                    <span className="text-[10px] font-black uppercase">3枚一気に読み込む</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 3)} />
-                  </label>
-                  <label className="h-40 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all gap-2 bg-indigo-50/30">
-                    <Sparkles size={24} />
-                    <span className="text-[10px] font-black uppercase">6枚一気に読み込む</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 6)} />
-                  </label>
-                </div>
-              )}
-
-              {/* 🏆 パート②：1枚 / 3枚 / 6枚 / 文章 のボタンセットだばい！ */}
+              {/* 🏆 4つのスタイルを自由に選べる「おもてなしボタン」だばい！ */}
               {snaps.length < 12 && (
                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <label className="..."> {/* 1枚追加はそのまま */} </label>
-                  <label className="..."> {/* 3枚読み込みはそのまま */} </label>
-                  <label className="..."> {/* 6枚読み込みはそのまま */} </label>
-                  
-                  {/* 🎯 これが新しく足す「文章だけ」のボタンだっぺ！ */}
-                  <button onClick={addTextBlock} className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 cursor-pointer transition-all gap-2 bg-white/50">
-                    <PlusCircle size={24} />
-                    <span className="text-[10px] font-black uppercase">文章だけ追加</span>
+                  {/* 1枚 */}
+                  <label className="h-32 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 cursor-pointer transition-all gap-1 bg-white/50 shadow-sm">
+                    <PlusCircle size={20} />
+                    <span className="text-[8px] font-black uppercase">1枚追加</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleBatchUpload(e, 1)} />
+                  </label>
+                  {/* 3枚 */}
+                  <label className="h-32 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer transition-all gap-1 bg-blue-50/30 shadow-sm">
+                    <div className="flex gap-1"><Camera size={14}/><Camera size={14}/></div>
+                    <span className="text-[8px] font-black uppercase">3枚セット</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 3)} />
+                  </label>
+                  {/* 6枚 */}
+                  <label className="h-32 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all gap-1 bg-indigo-50/30 shadow-sm">
+                    <Sparkles size={20} />
+                    <span className="text-[8px] font-black uppercase">6枚セット</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 6)} />
+                  </label>
+                  {/* 文章 */}
+                  <button onClick={addTextBlock} className="h-32 border-2 border-dashed border-emerald-200 rounded-3xl flex flex-col items-center justify-center text-emerald-500 hover:bg-emerald-50 transition-all gap-1 bg-emerald-50/30 shadow-sm">
+                    <FileText size={20} />
+                    <span className="text-[8px] font-black uppercase">文章のみ</span>
                   </button>
                 </div>
               )}
@@ -617,31 +619,37 @@ export default function NewsletterStudio() {
             </div>
           </div>
 
-          {/* 🏆 パート③：プレビューのスナップ表示部分（テキストのみ対応！） */}
+          {/* 🏆 右側：コラージュ＆横長文章対応のプレビューだっぺ！ */}
           <div className="px-12 pb-12 flex flex-wrap gap-4">
             {snaps.map((snap: any, idx) => (
               <div 
                 key={idx} 
                 className={`space-y-4 ${
                   snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : 
-                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 'w-full mb-12'
+                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 'w-full mb-8'
                 }`}
               >
-                {/* 🎯 layout が 'text' じゃない時だけ写真を表示するっぺ！ */}
+                {/* 🎯 文章じゃない時だけ写真を表示 */}
                 {snap.layout !== 'text' && (
                   <div className="w-full aspect-square bg-slate-50 rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
-                    {snap.preview ? (
-                      <img src={snap.preview} className="w-full h-full object-cover" alt="Snap" />
-                    ) : (
-                      <span className="text-slate-200 font-black text-xl italic uppercase">SNAP {idx + 1}</span>
-                    )}
+                    {snap.preview ? <img src={snap.preview} className="w-full h-full object-cover" /> : <span className="text-slate-200 font-black italic uppercase">SNAP {idx + 1}</span>}
                   </div>
                 )}
                 
-                {/* 文章部分は共通だっぺ */}
-                <div className={`${snap.layout === 'text' ? 'p-8 bg-slate-50 rounded-3xl border-l-4 border-blue-500' : 'px-2'} text-left`}>
-                  <h4 className="font-black text-slate-900 text-[14px] mb-2">{snap.title}</h4>
-                  <p className="text-[12px] text-slate-500 leading-relaxed whitespace-pre-wrap">{snap.comment}</p>
+                {/* 🎯 文章部分：'text' レイアウトの時は横長のデザインカードにするっぺ！ */}
+                <div className={`${
+                  snap.layout === 'text' 
+                    ? 'p-10 bg-blue-50/50 rounded-[2rem] border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]' 
+                    : 'px-2'
+                } text-left`}>
+                  <h4 className={`font-black text-slate-900 ${snap.layout === 'text' ? 'text-2xl mb-3' : 'text-[14px] mb-2'}`}>
+                    {snap.title || (snap.layout === 'text' ? 'おしらせ' : `SCENE ${idx + 1}`)}
+                  </h4>
+                  {snap.comment && (
+                    <p className={`text-slate-500 leading-relaxed whitespace-pre-wrap ${snap.layout === 'text' ? 'text-lg' : 'text-[12px]'}`}>
+                      {snap.comment}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
