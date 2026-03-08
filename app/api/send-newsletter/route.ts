@@ -10,16 +10,29 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-    // 🏆 スナップ写真の共通HTML
-    const snapsHtml = snaps.map((snap: any) => `
-      <div style="margin-bottom: 50px; background-color: #f9fafb; border-radius: 24px; overflow: hidden; border: 1px solid #f1f5f9;">
-        <img src="${snap.imageUrl}" style="width: 100%; display: block;" />
-        <div style="padding: 25px;">
-          <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 18px; font-weight: bold;">● ${snap.title || 'SCENE'}</h3>
-          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0; font-style: italic;">${snap.comment || ''}</p>
+    // 🏆 スナップ写真をレイアウトに合わせて組み立てるぞい！
+    const snapsHtml = snaps.map((snap: any, index: number) => {
+      // レイアウトに応じた幅を設定（3枚なら33%、6枚なら50%）
+      let width = "100%";
+      let display = "block";
+      
+      if (snap.layout === 'triple') {
+        width = "30%"; // 隙間を考えて少し小さめだばい
+        display = "inline-block";
+      } else if (snap.layout === 'grid') {
+        width = "48%";
+        display = "inline-block";
+      }
+
+      return `
+        <div style="width: ${width}; display: ${display}; vertical-align: top; margin: 1%; background-color: #f9fafb; border-radius: 12px; overflow: hidden; border: 1px solid #f1f5f9;">
+          <img src="${snap.imageUrl}" style="width: 100%; display: block;" />
+          <div style="padding: 10px;">
+            <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold;">${snap.title || ''}</p>
+          </div>
         </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];

@@ -128,9 +128,22 @@ export default function NewsletterStudio() {
     }
   };
 
-  const addSnap = () => {
-    if (snaps.length >= 10) return alert("写真は最大10枚までだっぺ！");
-    setSnaps([...snaps, { id: Date.now(), title: '', comment: '', preview: null, file: null }]);
+  // 🏆 1枚、3枚、6枚のセットを追加する魔法だばい！
+  const addSnapSet = (count: number) => {
+    if (snaps.length + count > 12) return alert("写真は全部で12枚までだっぺ！");
+    
+    // 現在の配列に、指定された枚数分の新しい枠をガッチャンコするぞい
+    const newItems = Array.from({ length: count }).map((_, i) => ({
+      id: Date.now() + i,
+      title: '',
+      comment: '',
+      preview: null,
+      file: null,
+      // 🎯 ここで「何枚並びか」の情報を覚えさせておくっぺ
+      layout: count === 1 ? 'full' : count === 3 ? 'triple' : 'grid'
+    }));
+    
+    setSnaps([...snaps, ...newItems]);
   };
 
   const removeSnap = (idx: number) => {
@@ -388,11 +401,22 @@ export default function NewsletterStudio() {
                 </div>
               ))}
 
-              {snaps.length < 10 && (
-                <button onClick={addSnap} className="h-full min-h-[200px] border-4 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50 transition-all gap-3 bg-white/50">
-                  <PlusCircle size={40} strokeWidth={1} />
-                  <span className="text-xs font-black uppercase tracking-tighter">写真を追加する</span>
-                </button>
+              {/* 🎯 赤い波線が出ていた場所を、3つのコラージュボタンに進化させたっぺ！ */}
+              {snaps.length < 12 && (
+                <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <button onClick={() => addSnapSet(1)} className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-blue-50 transition-all gap-2 bg-white/50">
+                    <PlusCircle size={24} />
+                    <span className="text-[10px] font-black uppercase">1枚追加</span>
+                  </button>
+                  <button onClick={() => addSnapSet(3)} className="h-40 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 transition-all gap-2 bg-blue-50/30">
+                    <div className="flex gap-1"><PlusCircle size={16}/><PlusCircle size={16}/><PlusCircle size={16}/></div>
+                    <span className="text-[10px] font-black uppercase">3枚横並び</span>
+                  </button>
+                  <button onClick={() => addSnapSet(6)} className="h-40 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 transition-all gap-2 bg-indigo-50/30">
+                    <Sparkles size={24} />
+                    <span className="text-[10px] font-black uppercase">6枚コラージュ</span>
+                  </button>
+                </div>
               )}
             </div>
           </section>
@@ -537,7 +561,7 @@ export default function NewsletterStudio() {
           {/* Header */}
           <div className="bg-[#1e293b] p-12 text-center border-b-[10px] border-blue-500">
              <div className="text-white font-black text-2xl tracking-[0.4em] uppercase">{displayTenantName}</div>
-             <div className="text-blue-400 text-[10px] font-black mt-4 tracking-[0.5em] opacity-80 uppercase">Official Digital Newsletter</div>
+             <div className="text-blue-400 text-[10px] font-black mt-4 tracking-[0.5em] opacity-80 uppercase">公式ニュースレター</div>
           </div>
 
           {/* Main Visual */}
