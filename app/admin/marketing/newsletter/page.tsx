@@ -507,24 +507,24 @@ export default function NewsletterStudio() {
               )}
             </div>
           </section>
-          {/* --- 矢印ボタンエリア --- */}
-            <div className="flex justify-center items-center gap-6 mt-6">
+          {/* 🎯 ページネーションコントロール（矢印版だばい！） */}
+            <div className="flex justify-center items-center gap-8 mt-8 pb-10">
               <button 
-                onClick={() => fetchArchives(tenantData.id, "prev")}
-                className="p-2 hover:bg-blue-100 rounded-full text-blue-600 disabled:opacity-20"
+                onClick={() => fetchArchives(tenantData.id, "prev")} 
                 disabled={!firstVisible}
+                className="p-3 bg-white rounded-full text-slate-400 hover:text-blue-600 disabled:opacity-20 shadow-sm border border-slate-100 transition-all"
               >
-                <X className="rotate-90" size={20}/> {/* 簡易的な左矢印だっぺ */}
+                <ChevronLeft size={20}/>
               </button>
-              
-              <span className="text-[10px] font-black text-slate-400">PAGE CONTROL</span>
+
+              <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Page Control</span>
 
               <button 
-                onClick={() => fetchArchives(tenantData.id, "next")}
-                className="p-2 hover:bg-blue-100 rounded-full text-blue-600 disabled:opacity-20"
-                disabled={!lastVisible}
+                onClick={() => fetchArchives(tenantData.id, "next")} 
+                disabled={!lastVisible || archives.length < 10}
+                className="p-3 bg-white rounded-full text-slate-400 hover:text-blue-600 disabled:opacity-20 shadow-sm border border-slate-100 transition-all"
               >
-                <X className="-rotate-90" size={20}/> {/* 簡易的な右矢印だっぺ */}
+                <ChevronRight size={20}/>
               </button>
             </div>
         </div>
