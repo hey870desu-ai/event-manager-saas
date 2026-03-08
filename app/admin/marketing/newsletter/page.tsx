@@ -128,22 +128,41 @@ export default function NewsletterStudio() {
     }
   };
 
-  // 🏆 1枚、3枚、6枚のセットを追加する魔法だばい！
-  const addSnapSet = (count: number) => {
-    if (snaps.length + count > 12) return alert("写真は全部で12枚までだっぺ！");
+  // 🏆 パート①：1枚、3枚、6枚を一気に読み込む魔法だばい！
+  const handleBatchUpload = (e: React.ChangeEvent<HTMLInputElement>, count: number) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // 枚数制限（最大12枚）
+    const actualFiles = files.slice(0, count);
     
-    // 現在の配列に、指定された枚数分の新しい枠をガッチャンコするぞい
-    const newItems = Array.from({ length: count }).map((_, i) => ({
+    const newItems = actualFiles.map((file, i) => ({
       id: Date.now() + i,
       title: '',
       comment: '',
-      preview: null,
-      file: null,
-      // 🎯 ここで「何枚並びか」の情報を覚えさせておくっぺ
+      preview: URL.createObjectURL(file),
+      file: file,
+      // 🎯 ここで「何枚並びか」を覚えさせるのがコラージュのコツ！
       layout: count === 1 ? 'full' : count === 3 ? 'triple' : 'grid'
     }));
-    
+
     setSnaps([...snaps, ...newItems]);
+  };
+
+  // 🏆 パート①：文章だけのブロックを追加する魔法だばい！
+  const addTextBlock = () => {
+    if (snaps.length >= 12) return alert("枠がいっぱいだっぺ！");
+    
+    const newTextItem = {
+      id: Date.now(),
+      title: 'おしらせ', // 初期値
+      comment: '',
+      preview: null,
+      file: null,
+      layout: 'text' // 🎯 「text」というレイアウト名を付けるのがコツだばい！
+    };
+    
+    setSnaps([...snaps, newTextItem]);
   };
 
   const removeSnap = (idx: number) => {
@@ -401,20 +420,38 @@ export default function NewsletterStudio() {
                 </div>
               ))}
 
-              {/* 🎯 赤い波線が出ていた場所を、3つのコラージュボタンに進化させたっぺ！ */}
+              {/* 🏆 パート②：3枚・6枚一括読み込みボタンだっぺ！ */}
               {snaps.length < 12 && (
                 <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <button onClick={() => addSnapSet(1)} className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-blue-50 transition-all gap-2 bg-white/50">
+                  <label className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-blue-50 cursor-pointer transition-all gap-2 bg-white/50">
                     <PlusCircle size={24} />
                     <span className="text-[10px] font-black uppercase">1枚追加</span>
-                  </button>
-                  <button onClick={() => addSnapSet(3)} className="h-40 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 transition-all gap-2 bg-blue-50/30">
-                    <div className="flex gap-1"><PlusCircle size={16}/><PlusCircle size={16}/><PlusCircle size={16}/></div>
-                    <span className="text-[10px] font-black uppercase">3枚横並び</span>
-                  </button>
-                  <button onClick={() => addSnapSet(6)} className="h-40 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 transition-all gap-2 bg-indigo-50/30">
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleBatchUpload(e, 1)} />
+                  </label>
+                  <label className="h-40 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer transition-all gap-2 bg-blue-50/30">
+                    <div className="flex gap-1"><Camera size={16}/><Camera size={16}/><Camera size={16}/></div>
+                    <span className="text-[10px] font-black uppercase">3枚一気に読み込む</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 3)} />
+                  </label>
+                  <label className="h-40 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all gap-2 bg-indigo-50/30">
                     <Sparkles size={24} />
-                    <span className="text-[10px] font-black uppercase">6枚コラージュ</span>
+                    <span className="text-[10px] font-black uppercase">6枚一気に読み込む</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 6)} />
+                  </label>
+                </div>
+              )}
+
+              {/* 🏆 パート②：1枚 / 3枚 / 6枚 / 文章 のボタンセットだばい！ */}
+              {snaps.length < 12 && (
+                <div className="col-span-1 md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <label className="..."> {/* 1枚追加はそのまま */} </label>
+                  <label className="..."> {/* 3枚読み込みはそのまま */} </label>
+                  <label className="..."> {/* 6枚読み込みはそのまま */} </label>
+                  
+                  {/* 🎯 これが新しく足す「文章だけ」のボタンだっぺ！ */}
+                  <button onClick={addTextBlock} className="h-40 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 cursor-pointer transition-all gap-2 bg-white/50">
+                    <PlusCircle size={24} />
+                    <span className="text-[10px] font-black uppercase">文章だけ追加</span>
                   </button>
                 </div>
               )}
@@ -580,23 +617,31 @@ export default function NewsletterStudio() {
             </div>
           </div>
 
-          {/* Snaps (10枚まで縦に並ぶっぺ！) */}
-          <div className="px-12 pb-12 space-y-16">
-            {snaps.map((snap, idx) => (
-              <div key={idx} className="space-y-6">
-                <div className="w-full aspect-square bg-slate-50 rounded-[3rem] overflow-hidden border border-slate-100 flex items-center justify-center shadow-inner">
-                  {snap.preview ? (
-                    <img src={snap.preview} className="w-full h-full object-cover" alt="Snap" />
-                  ) : (
-                    <span className="text-slate-200 font-black text-4xl italic uppercase">SNAP {idx + 1}</span>
-                  )}
-                </div>
-                <div className="px-6 border-b border-slate-100 pb-8">
-                  <h4 className="font-black text-slate-900 text-2xl mb-3 flex items-center gap-3">
-                    <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
-                    {snap.title || `SCENE ${idx + 1}`}
-                  </h4>
-                  <p className="text-lg text-slate-500 leading-relaxed font-medium italic">{snap.comment || '活動の様子をここに記載します。'}</p>
+          {/* 🏆 パート③：プレビューのスナップ表示部分（テキストのみ対応！） */}
+          <div className="px-12 pb-12 flex flex-wrap gap-4">
+            {snaps.map((snap: any, idx) => (
+              <div 
+                key={idx} 
+                className={`space-y-4 ${
+                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : 
+                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 'w-full mb-12'
+                }`}
+              >
+                {/* 🎯 layout が 'text' じゃない時だけ写真を表示するっぺ！ */}
+                {snap.layout !== 'text' && (
+                  <div className="w-full aspect-square bg-slate-50 rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
+                    {snap.preview ? (
+                      <img src={snap.preview} className="w-full h-full object-cover" alt="Snap" />
+                    ) : (
+                      <span className="text-slate-200 font-black text-xl italic uppercase">SNAP {idx + 1}</span>
+                    )}
+                  </div>
+                )}
+                
+                {/* 文章部分は共通だっぺ */}
+                <div className={`${snap.layout === 'text' ? 'p-8 bg-slate-50 rounded-3xl border-l-4 border-blue-500' : 'px-2'} text-left`}>
+                  <h4 className="font-black text-slate-900 text-[14px] mb-2">{snap.title}</h4>
+                  <p className="text-[12px] text-slate-500 leading-relaxed whitespace-pre-wrap">{snap.comment}</p>
                 </div>
               </div>
             ))}
