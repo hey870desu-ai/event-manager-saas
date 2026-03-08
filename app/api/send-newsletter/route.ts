@@ -35,7 +35,6 @@ export async function POST(req: Request) {
       return {
         from: `"${senderName} ｜ 絆太郎" <info@event-manager.app>`,
         to: [email], // 👈 ここを1人だけにすることでプライバシーを守るっぺ！
-        replyTo: tenantData.contactEmail || "info@event-manager.app",
         subject: subject,
         html: `
           <!DOCTYPE html>
