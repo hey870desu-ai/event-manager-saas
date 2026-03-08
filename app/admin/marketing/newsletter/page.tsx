@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock
 } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -33,6 +33,9 @@ export default function NewsletterStudio() {
     { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null },
   ]);
 
+  // 🏆 過去の履歴を保存しておくための箱だばい！
+  const [archives, setArchives] = useState<any[]>([]);
+
 // 🏆 1. ログインメアドから tenantId を自動取得して連動させるぞい！
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
@@ -59,6 +62,8 @@ export default function NewsletterStudio() {
 
             // 絆リスト（全イベント参加者）を収集
             fetchKizunaList(tid);
+
+            fetchArchives(tid);
           }
         } else {
           console.error("❌ admin_usersの中にこのメアドのデータがねぇぞい:", user.email);
@@ -152,15 +157,65 @@ export default function NewsletterStudio() {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
   };
 
-// --- 🚀 配信開始ボタン（エラー修正・最終形態！） ---
-const handleSend = async () => {
+  // 🏆 必殺技①：履歴を読み込む（最新10件）
+  const fetchArchives = async (tid: string) => {
+    const { collection, query, where, getDocs, orderBy, limit } = await import("firebase/firestore");
+    const q = query(
+      collection(db, "newsletter_archives"), 
+      where("tenantId", "==", tid),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+    const snap = await getDocs(q);
+    setArchives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
+
+  // 🏆 必殺技②：一時保存（下書き）する
+  const handleSaveDraft = async () => {
+    if (!tenantData) return;
+    setIsUploading(true);
+    try {
+      const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+      await addDoc(collection(db, "newsletter_archives"), {
+        tenantId: tenantData.id,
+        subject, mainTitle, mainMessage, 
+        mainImageUrl: mainImagePreview,
+        snaps: snaps.map(s => ({ title: s.title, comment: s.comment, imageUrl: s.preview })),
+        status: "draft",
+        createdAt: serverTimestamp()
+      });
+      alert("下書きとして保存したぞい！");
+      fetchArchives(tenantData.id);
+    } catch (e) {
+      alert("保存失敗だっぺ...");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 🏆 必殺技③：過去の内容を画面に呼び戻す（復元）
+  const loadArchive = (data: any) => {
+    if (!confirm("今の入力内容を消して、過去のデータを読み込むべか？")) return;
+    setSubject(data.subject || "");
+    setMainTitle(data.mainTitle || "");
+    setMainMessage(data.mainMessage || "");
+    setMainImagePreview(data.mainImageUrl || null);
+    setSnaps(data.snaps.map((s: any, i: number) => ({
+      id: i, title: s.title, comment: s.comment, preview: s.imageUrl, file: null
+    })));
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
+
+
+// --- 🚀 配信開始ボタン（履歴保存もバッチリ統合版！） ---
+  const handleSend = async () => {
     if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
     if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
     
     setIsUploading(true);
 
     try {
-      // 📸 写真アップロード
+      // 1. 写真アップロード
       let mainImageUrl = "";
       if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
@@ -168,24 +223,43 @@ const handleSend = async () => {
         if (snap.file) {
           const url = await uploadPhoto(snap.file, "snaps");
           return { title: snap.title, comment: snap.comment, imageUrl: url };
+        } else if (snap.preview) {
+          // 下書きから復元した画像（URLのみ）の場合
+          return { title: snap.title, comment: snap.comment, imageUrl: snap.preview };
         }
         return null;
       }));
 
-      // 🔥 ここで response を1回だけ宣言！（二重定義の赤い波線を消す秘訣だっぺ）
+      const finalSnaps = uploadedSnaps.filter(s => s !== null);
+
+      // 2. APIを叩いてメール発射！！
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject, mainTitle, mainMessage, mainImageUrl,
-          snaps: uploadedSnaps.filter(s => s !== null),
+          snaps: finalSnaps,
           tenantData,
           recipients: selectedEmails 
         }),
       });
 
       if (response.ok) {
-        alert(`${selectedEmails.length}名のお客様に、魂のメールを届けたぞい！！`);
+        // 🏆 3. 【ここが大事！】成功したら try の中で履歴を保存するぞい！
+        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+        await addDoc(collection(db, "newsletter_archives"), {
+          tenantId: tenantData.id,
+          subject,
+          mainTitle,
+          mainMessage,
+          mainImageUrl,
+          snaps: finalSnaps,
+          status: "sent",
+          createdAt: serverTimestamp()
+        });
+
+        alert(`${selectedEmails.length}名のお客様に届け、履歴に保存したぞい！！`);
+        fetchArchives(tenantData.id); // 履歴リストを更新
       } else {
         throw new Error("配信エラーだばい");
       }
@@ -351,13 +425,67 @@ const handleSend = async () => {
             </div>
           </section>
 
-          <button onClick={handleSend} disabled={isUploading} className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xl flex items-center justify-center gap-4 hover:bg-blue-600 shadow-2xl transition-all disabled:bg-slate-400">
-            {isUploading ? (
-              <><Loader2 className="animate-spin" /> 写真を倉庫に預けてるっぺ...</>
-            ) : (
-              <><Send size={24} /> 一斉配信を開始するだばい！</>
-            )}
-          </button>
+          {/* --- 🚀 アクションエリア --- */}
+          <div className="space-y-4 pt-10">
+            {/* 一時保存（下書き）ボタン */}
+            <button 
+              onClick={handleSaveDraft} 
+              disabled={isUploading}
+              className="w-full py-4 text-blue-600 text-xs font-black uppercase tracking-widest bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all border border-blue-100 flex items-center justify-center gap-2"
+            >
+              <PlusCircle size={14}/> 今の内容を下書きとして保存する
+            </button>
+
+            {/* 本番配信ボタン */}
+            <button 
+              onClick={handleSend} 
+              disabled={isUploading || selectedEmails.length === 0} 
+              className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xl flex items-center justify-center gap-4 hover:bg-blue-600 shadow-2xl transition-all disabled:bg-slate-300"
+            >
+              {isUploading ? (
+                <><Loader2 className="animate-spin" /> 送信・保存中だっぺ...</>
+              ) : (
+                <><Send size={24} /> {selectedEmails.length > 0 ? `${selectedEmails.length}名に一斉配信を開始！` : "一斉配信を開始する"}</>
+              )}
+            </button>
+          </div>
+
+          {/* --- 📜 過去のバックナンバー（履歴） --- */}
+          <section className="mt-16 pt-10 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Clock size={16}/> 配信履歴・バックナンバー
+              </h3>
+              <span className="text-[10px] font-black text-slate-400">最新10件を表示中</span>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {archives.map(arch => (
+                <button 
+                  key={arch.id} 
+                  onClick={() => loadArchive(arch)}
+                  className="flex justify-between items-center p-5 bg-white hover:bg-blue-50 rounded-[1.5rem] transition-all group border border-slate-100 hover:border-blue-300 shadow-sm"
+                >
+                  <div className="flex flex-col items-start gap-1 min-w-0">
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${arch.status === 'draft' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {arch.status === 'draft' ? 'Draft' : 'Sent'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
+                      {arch.subject || "(無題)"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-slate-400 whitespace-nowrap ml-4">
+                    {arch.createdAt?.toDate().toLocaleDateString() || "Date Unknown"}
+                  </span>
+                </button>
+              ))}
+              {archives.length === 0 && (
+                <div className="p-10 text-center border-2 border-dashed border-slate-200 rounded-[2rem]">
+                  <p className="text-[10px] text-slate-300 font-bold italic">まだ履歴はないぞい。最初の一歩を刻もう！</p>
+                </div>
+              )}
+            </div>
+          </section>
         </div>
       </div>
 

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       const unsubscribeUrl = `https://event-manager.app/unsubscribe?email=${email}`;
 
       return {
-        from: `"${senderName} ｜ 絆太郎" <info@event-manager.app>`,
+        from: `"${senderName} ｜ 絆太郎リッチメールシステム" <info@event-manager.app>`,
         to: [email], // 👈 ここを1人だけにすることでプライバシーを守るっぺ！
         subject: subject,
         html: `
