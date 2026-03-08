@@ -10,55 +10,52 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 HTMLメールの鉄則：枠を極限まで小さくして「カタログ」のように並べるぞい！
+// 🏆 HTMLメールの最終奥義：サイズを完全に固定して、メールソフトに「並べ！」と強制するぞい
     const snapsHtml = snaps.map((snap: any) => {
-      // 🎯 塙さんの言う「5分の1」くらいのサイズ感にするための計算だっぺ
-      // 全体の540pxに対して、3枚並びなら165px、6枚なら125pxで攻めるぞい！
-      let tableWidth = "540"; 
+      // 🎯 塙さんの理想「1/5サイズ」に合わせて、幅を極限まで絞り込む（540pxの中に入れる）
+      let boxWidth = 540; 
       let align = "center";
-      let fontSize = "14px";
 
       if (snap.layout === 'triple') {
-        tableWidth = "165"; // 🎯 3枚並び（約3分の1サイズ）
+        boxWidth = 160; // 🎯 160px × 3 = 480px (余裕があるから絶対に横に並ぶ！)
         align = "left";
-        fontSize = "11px";
       } else if (snap.layout === 'grid') {
-        tableWidth = "125"; // 🎯 4〜5枚並ぶ「マイクロ・コラージュ」サイズだばい！
+        boxWidth = 250; // 🎯 250px × 2 = 500px (余裕たっぷりだばい)
         align = "left";
-        fontSize = "9px";
       }
 
-      // 🎯 文章だけの時：写真枠を消して、おもてなしの長方形カード
+      // 🎯 文章だけの時
       if (snap.layout === 'text') {
         return `
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
             <tr>
-              <td style="background-color: #f8fafc; border-left: 4px solid #3b82f6; border-radius: 12px; padding: 20px; font-family: sans-serif;">
-                <p style="color: #1e293b; margin: 0 0 5px 0; font-size: 16px; font-weight: 900;">${snap.title || 'INFORMATION'}</p>
-                <p style="color: #64748b; margin: 0; font-size: 13px; line-height: 1.6;">${snap.comment || ''}</p>
+              <td style="background-color: #f0f7ff; border-left: 6px solid #3b82f6; border-radius: 16px; padding: 25px; font-family: sans-serif;">
+                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: bold;">${snap.title || 'INFORMATION'}</p>
+                <p style="color: #4b5563; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${snap.comment || ''}</p>
               </td>
             </tr>
           </table>
         `;
       }
 
-      // 🎯 写真ブロック：サイズを小さくし、余計な「枠」を削ぎ落として横並びを死守！
+      // 🎯 写真ブロック：幅(width)も高さ(height)も数字で指定して「アップ」を防ぐ！
       return `
-        <table align="${align}" border="0" cellpadding="0" cellspacing="0" width="${tableWidth}" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin: 5px; display: inline-table;">
+        <table align="${align}" border="0" cellpadding="0" cellspacing="0" width="${boxWidth}" style="display: inline-table; margin: 5px; border-collapse: collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
           <tr>
-            <td style="background-color: #ffffff; border-radius: 8px; overflow: hidden; font-family: sans-serif;">
-              <div style="width: ${tableWidth}px; height: ${tableWidth}px; overflow: hidden;">
-                <img src="${snap.imageUrl}" width="${tableWidth}" height="${tableWidth}" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+            <td style="background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden; font-family: sans-serif;">
+              <div style="width: ${boxWidth}px; height: ${boxWidth}px; overflow: hidden;">
+                <img src="${snap.imageUrl}" width="${boxWidth}" height="${boxWidth}" style="width: ${boxWidth}px; height: ${boxWidth}px; display: block; object-fit: cover;" border="0" />
               </div>
-              <div style="padding: 8px 4px; text-align: left;">
-                <p style="color: #111827; margin: 0; font-size: ${fontSize}; font-weight: 900; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${snap.title || ''}</p>
+              <div style="padding: 10px; text-align: left;">
+                <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold; line-height: 1.2;">${snap.title || ''}</p>
+                ${snap.comment ? `<p style="color: #6b7280; margin: 4px 0 0 0; font-size: 10px; line-height: 1.4;">${snap.comment}</p>` : ''}
               </div>
             </td>
           </tr>
         </table>
-        `;
+      `;
     }).join("") + `<div style="clear: both; height: 1px; font-size: 1px; line-height: 1px;">&nbsp;</div>`;
-    
+
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];
     if (tenantData.instagramUrl) snsIcons.push(`<a href="${tenantData.instagramUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="32" height="32" style="border-radius:8px;"></a>`);
