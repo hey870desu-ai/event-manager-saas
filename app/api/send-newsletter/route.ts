@@ -10,25 +10,39 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-    // 🏆 スナップ写真をレイアウトに合わせて組み立てるぞい！
-    const snapsHtml = snaps.map((snap: any, index: number) => {
-      // レイアウトに応じた幅を設定（3枚なら33%、6枚なら50%）
-      let width = "100%";
+// 🏆 スナップ写真をレイアウト（1枚/3枚/6枚/文章）に合わせて組み立てるぞい！
+    const snapsHtml = snaps.map((snap: any) => {
+      // 🎯 基本設定
+      let width = "98%";
       let display = "block";
-      
+      let margin = "0 1% 20px 1%";
+
+      // 🎯 レイアウトに応じて幅を細かく調整（メールソフト用のおもてなし）
       if (snap.layout === 'triple') {
-        width = "30%"; // 隙間を考えて少し小さめだばい
+        width = "31%"; // 3枚横並び
         display = "inline-block";
       } else if (snap.layout === 'grid') {
-        width = "48%";
+        width = "47%"; // 2枚ずつ（6枚セット）
         display = "inline-block";
       }
 
+      // 🎯 【重要】「文章だけ」ブロックの特別デザインだばい！
+      if (snap.layout === 'text') {
+        return `
+          <div style="width: 98%; margin: 0 1% 20px 1%; background-color: #f0f7ff; border-left: 6px solid #3b82f6; border-radius: 16px; padding: 25px; box-sizing: border-box;">
+            <p style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: bold;">${snap.title || ''}</p>
+            <p style="color: #4b5563; margin: 0; font-size: 14px; line-height: 1.6;">${snap.comment || ''}</p>
+          </div>
+        `;
+      }
+
+      // 🎯 写真があるブロック（1枚/3枚/6枚）の共通デザイン
       return `
-        <div style="width: ${width}; display: ${display}; vertical-align: top; margin: 1%; background-color: #f9fafb; border-radius: 12px; overflow: hidden; border: 1px solid #f1f5f9;">
+        <div style="width: ${width}; display: ${display}; vertical-align: top; margin: ${margin}; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-sizing: border-box;">
           <img src="${snap.imageUrl}" style="width: 100%; display: block;" />
-          <div style="padding: 10px;">
-            <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold;">${snap.title || ''}</p>
+          <div style="padding: 12px; text-align: left;">
+            <p style="color: #111827; margin: 0; font-size: 13px; font-weight: bold;">${snap.title || ''}</p>
+            ${snap.comment ? `<p style="color: #6b7280; margin: 5px 0 0 0; font-size: 11px; line-height: 1.4;">${snap.comment}</p>` : ''}
           </div>
         </div>
       `;
