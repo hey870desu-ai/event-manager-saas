@@ -33,31 +33,59 @@ export default function NewsletterStudio() {
     { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null },
   ]);
 
-useEffect(() => {
-    const tid = "demo_id"; // ※ここ、本番はログインユーザーのIDに変えるっぺ！
+// 🏆 ログインユーザーの所属（テナントID）を自動判別してデータを取るぞい！
+  useEffect(() => {
+    // 1. ログイン状態を監視するっぺ
+    const unsubAuth = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // 2. ログインしたユーザーの「プロフィール」をFirestoreから読み込む
+        const { getDoc, doc } = await import("firebase/firestore");
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
 
-    // テナント情報の取得
-    const unsubTenant = onSnapshot(doc(db, "tenants", tid), (docSnap) => {
-      if (docSnap.exists()) setTenantData(docSnap.data());
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          const tid = userData.tenantId; // 🎯 ここで「所属先ID」をゲットだばい！
+
+          if (tid) {
+            // 3. 所属先IDを使って、テナント基本情報を取得
+            onSnapshot(doc(db, "tenants", tid), (docSnap) => {
+              if (docSnap.exists()) setTenantData({ ...docSnap.data(), id: tid });
+            });
+
+            // 4. その所属先の「絆リスト（全イベント参加者）」を収集！
+            fetchKizunaList(tid);
+          }
+        }
+      } else {
+        // ログアウトしてたら追い出すか、アラートだっぺ
+        console.log("ログインしてねぇぞい！");
+      }
     });
 
-    // 🏆 全イベントの参加者を一気読みして「絆リスト」を作るっぺ！
-    const fetchKizunaList = async () => {
+    // 🏆 絆リストをガバッと集める関数（引数に tid をもらうようにしたぞい）
+    const fetchKizunaList = async (tid: string) => {
       const { collection, getDocs, query, where } = await import("firebase/firestore");
+      
+      // そのテナントの全イベントを取得
       const q = query(collection(db, "events"), where("tenantId", "==", tid));
       const evSnap = await getDocs(q);
       const evList: any[] = [];
-      const userMap = new Map(); // 重複排除用の魔法の箱だばい
+      const userMap = new Map();
 
       for (const edoc of evSnap.docs) {
         evList.push({ id: edoc.id, title: edoc.data().title });
+        
+        // 各イベントの予約者（reservations）を回収
         const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
         resSnap.forEach(rdoc => {
           const data = rdoc.data();
           if (data.email) {
             userMap.set(data.email, { 
-              email: data.email, name: data.name, 
-              eventId: edoc.id, eventTitle: edoc.data().title 
+              email: data.email, 
+              name: data.name, 
+              eventId: edoc.id, 
+              eventTitle: edoc.data().title 
             });
           }
         });
@@ -66,8 +94,7 @@ useEffect(() => {
       setAllRecipients(Array.from(userMap.values()));
     };
 
-    fetchKizunaList();
-    return () => unsubTenant();
+    return () => unsubAuth();
   }, []);
 
   const displayTenantName = tenantData?.orgName || tenantData?.name || "BANTARO Partner";
