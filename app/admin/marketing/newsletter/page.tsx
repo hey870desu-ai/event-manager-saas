@@ -489,7 +489,7 @@ export default function NewsletterStudio() {
                 >
                   <div className="flex flex-col items-start gap-1 min-w-0">
                     <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${arch.status === 'draft' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                      {arch.status === 'draft' ? 'Draft' : 'Sent'}
+                      {arch.status === 'draft' ? '下書き' : '送信済み'}
                     </span>
                     <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
                       {arch.subject || "(無題)"}
@@ -502,7 +502,7 @@ export default function NewsletterStudio() {
               ))}
               {archives.length === 0 && (
                 <div className="p-10 text-center border-2 border-dashed border-slate-200 rounded-[2rem]">
-                  <p className="text-[10px] text-slate-300 font-bold italic">まだ履歴はないぞい。最初の一歩を刻もう！</p>
+                  <p className="text-[10px] text-slate-300 font-bold italic">まだ履歴はありません。最初の一歩を刻もう！</p>
                 </div>
               )}
             </div>
@@ -517,7 +517,7 @@ export default function NewsletterStudio() {
                 <ChevronLeft size={20}/>
               </button>
 
-              <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Page Control</span>
+              <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">ページ切り替え</span>
 
               <button 
                 onClick={() => fetchArchives(tenantData.id, "next")} 
