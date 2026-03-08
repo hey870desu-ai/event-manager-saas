@@ -75,15 +75,18 @@ export default function NewsletterStudio() {
     return await getDownloadURL(storageRef);
   };
 
-// --- 🚀 配信開始ボタン（完結編！） ---
+// --- 🚀 配信開始ボタン（本物の顧客リスト取得版！） ---
   const handleSend = async () => {
+    // ※ 実際は currentTenantId をログイン情報から取るべ
+    const targetTenantId = tenantData?.id || "demo_id"; 
+
     if (!auth.currentUser) return alert("ログインしてくんちぇ！");
-    if (!confirm("絆リストの全員に一斉配信を開始します。よろしいですか？")) return;
+    if (!confirm("絆リスト（全イベントの参加者）に一斉配信を開始します。よろしいですか？")) return;
     
     setIsUploading(true);
 
     try {
-      // 1. 画像アップロード（さっき作った部分）
+      // 1. 写真のアップロード（ここはさっきと同じ）
       let mainImageUrl = "";
       if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
@@ -98,11 +101,34 @@ export default function NewsletterStudio() {
       );
       const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
-      // 2. 絆リスト（送信先）を取得するっぺ
-      // ※ここでは例として tenantData 内のリストやダミーを入れるぞい
-      const recipients = ["test@example.com"]; // 本番はFirestoreから取得したメアド配列だっぺ！
+      // 2. 🔥 【重要】Firestoreから「絆リスト」を生成するぞい！
+      // まず、そのテナントの全イベントを取得
+      const { collection, getDocs, query, where } = await import("firebase/firestore");
+      const eventsRef = collection(db, "events");
+      const q = query(eventsRef, where("tenantId", "==", targetTenantId));
+      const eventSnaps = await getDocs(q);
+      
+      const allEmails = new Set<string>(); // 重複を自動で消すための「Set」だばい！
 
-      // 3. APIを叩いてメール発射！！
+      // 全イベントをループして、参加者のメアドを回収！
+      for (const eventDoc of eventSnaps.docs) {
+        const resRef = collection(db, "events", eventDoc.id, "reservations");
+        const resSnaps = await getDocs(resRef);
+        resSnaps.forEach(doc => {
+          const data = doc.data();
+          if (data.email) allEmails.add(data.email); // Setに入れるから重複しないっぺ！
+        });
+      }
+
+      const recipients = Array.from(allEmails); // 配列に戻すぞい
+
+      if (recipients.length === 0) {
+        alert("送信対象（絆リスト）がまだ誰もいないっぺ！まずはイベントに参加してもらわねぇとな。");
+        setIsUploading(false);
+        return;
+      }
+
+      // 3. APIを叩いてメール発射！！（宛先リストを渡すっぺ）
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,12 +139,12 @@ export default function NewsletterStudio() {
           mainImageUrl,
           snaps: finalSnaps,
           tenantData,
-          recipients
+          recipients // 取得した全メアドを投入だばい！
         }),
       });
 
       if (response.ok) {
-        alert("魂のメールを全員に届けたぞい！！お疲れ様だっぺ！");
+        alert(`${recipients.length}名のお客様に、魂のメールを届けたぞい！！`);
       } else {
         throw new Error("配信エラーだばい");
       }
