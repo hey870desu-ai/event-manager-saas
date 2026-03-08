@@ -33,41 +33,32 @@ export default function NewsletterStudio() {
     { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null },
   ]);
 
-// 🏆 ログインユーザーの所属（テナントID）を自動判別してデータを取るぞい！
+// 🏆 1. ログインユーザーから tenantId を自動取得して連動させるぞい！
   useEffect(() => {
-    // 1. ログイン状態を監視するっぺ
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // 2. ログインしたユーザーの「プロフィール」をFirestoreから読み込む
         const { getDoc, doc } = await import("firebase/firestore");
-        const userDocRef = doc(db, "users", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          const tid = userData.tenantId; // 🎯 ここで「所属先ID」をゲットだばい！
+        // usersフォルダから自分のtenantIdを教えてもらう
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        
+        if (userSnap.exists()) {
+          const tid = userSnap.data().tenantId; // 🎯 ここで "caredesignworks" 等が取れる！
 
           if (tid) {
-            // 3. 所属先IDを使って、テナント基本情報を取得
+            // テナント情報をリアルタイム監視（プレビューの社名に反映！）
             onSnapshot(doc(db, "tenants", tid), (docSnap) => {
               if (docSnap.exists()) setTenantData({ ...docSnap.data(), id: tid });
             });
 
-            // 4. その所属先の「絆リスト（全イベント参加者）」を収集！
+            // 絆リストを収集
             fetchKizunaList(tid);
           }
         }
-      } else {
-        // ログアウトしてたら追い出すか、アラートだっぺ
-        console.log("ログインしてねぇぞい！");
       }
     });
 
-    // 🏆 絆リストをガバッと集める関数（引数に tid をもらうようにしたぞい）
     const fetchKizunaList = async (tid: string) => {
       const { collection, getDocs, query, where } = await import("firebase/firestore");
-      
-      // そのテナントの全イベントを取得
       const q = query(collection(db, "events"), where("tenantId", "==", tid));
       const evSnap = await getDocs(q);
       const evList: any[] = [];
@@ -75,17 +66,13 @@ export default function NewsletterStudio() {
 
       for (const edoc of evSnap.docs) {
         evList.push({ id: edoc.id, title: edoc.data().title });
-        
-        // 各イベントの予約者（reservations）を回収
-        const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
+        const resSnap = await getDocs(collection(db, edoc.ref.path, "reservations"));
         resSnap.forEach(rdoc => {
           const data = rdoc.data();
           if (data.email) {
             userMap.set(data.email, { 
-              email: data.email, 
-              name: data.name, 
-              eventId: edoc.id, 
-              eventTitle: edoc.data().title 
+              email: data.email, name: data.name, 
+              eventId: edoc.id, eventTitle: edoc.data().title 
             });
           }
         });
@@ -151,55 +138,41 @@ export default function NewsletterStudio() {
   };
 
 // --- 🚀 配信開始ボタン（エラー修正・最終形態！） ---
-  const handleSend = async () => {
-    // 1. まずは「送る相手がいるか」を確認するおもてなし設計だっぺ
-    if (selectedEmails.length === 0) {
-      alert("送る相手（絆リスト）を一人以上選んでくんちぇ！");
-      return;
-    }
-
+const handleSend = async () => {
+    if (selectedEmails.length === 0) return alert("送る相手を選んでくんちぇ！");
     if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
     
     setIsUploading(true);
 
     try {
-      // 2. 写真のアップロード（Storageへ）
+      // 写真アップロード
       let mainImageUrl = "";
-      if (mainFile) {
-        mainImageUrl = await uploadPhoto(mainFile, "main");
-      }
+      if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
-      const uploadedSnaps = await Promise.all(
-        snaps.map(async (snap) => {
-          if (snap.file) {
-            const url = await uploadPhoto(snap.file, "snaps");
-            return { title: snap.title, comment: snap.comment, imageUrl: url };
-          }
-          return null;
-        })
-      );
-      const finalSnaps = uploadedSnaps.filter(s => s !== null);
+      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+        if (snap.file) {
+          const url = await uploadPhoto(snap.file, "snaps");
+          return { title: snap.title, comment: snap.comment, imageUrl: url };
+        }
+        return null;
+      }));
 
-      // 3. APIを叩いてメール発射！！（responseは1回だけ宣言だばい！）
+      // 🔥 ここで response を1回だけ宣言！（赤い波線を消す秘訣だっぺ）
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject,
-          mainTitle,
-          mainMessage,
-          mainImageUrl,
-          snaps: finalSnaps,
+          subject, mainTitle, mainMessage, mainImageUrl,
+          snaps: uploadedSnaps.filter(s => s !== null),
           tenantData,
-          recipients: selectedEmails // 🚀 画面で選んだ精鋭部隊を送るぞい！
+          recipients: selectedEmails 
         }),
       });
 
       if (response.ok) {
-        alert(`${selectedEmails.length}名のお客様に、魂のメールを届けたぞい！！お疲れ様だっぺ！`);
+        alert(`${selectedEmails.length}名のお客様に、魂のメールを届けたぞい！！`);
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "配信エラーだばい");
+        throw new Error("配信エラーだばい");
       }
 
     } catch (e) {
