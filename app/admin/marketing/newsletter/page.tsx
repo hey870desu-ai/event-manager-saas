@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X 
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users
 } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -13,6 +13,11 @@ export default function NewsletterStudio() {
   // 🏆 テナント情報（SNSや住所などの設定）を保持
   const [tenantData, setTenantData] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  // 🏆 顧客リスト（絆リスト）用のStateを追加だばい！
+  const [allRecipients, setAllRecipients] = useState<any[]>([]); 
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]); 
+  const [eventFilter, setEventFilter] = useState<string>("all"); 
+  const [events, setEvents] = useState<any[]>([]);
   
   // 📝 メール本文の入力用
   const [subject, setSubject] = useState('【絆レター】活動報告をお届けします');
@@ -28,13 +33,41 @@ export default function NewsletterStudio() {
     { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null },
   ]);
 
-  // Firestoreからテナント設定（SNSや住所）をリアルタイム取得
-  useEffect(() => {
-    // 本来はログインユーザーの tenantId を使うげっちょ、一旦デモ用に監視
-    const unsub = onSnapshot(doc(db, "tenants", "ケアデザインワークス等のID"), (docSnap) => {
+useEffect(() => {
+    const tid = "demo_id"; // ※ここ、本番はログインユーザーのIDに変えるっぺ！
+
+    // テナント情報の取得
+    const unsubTenant = onSnapshot(doc(db, "tenants", tid), (docSnap) => {
       if (docSnap.exists()) setTenantData(docSnap.data());
     });
-    return () => unsub();
+
+    // 🏆 全イベントの参加者を一気読みして「絆リスト」を作るっぺ！
+    const fetchKizunaList = async () => {
+      const { collection, getDocs, query, where } = await import("firebase/firestore");
+      const q = query(collection(db, "events"), where("tenantId", "==", tid));
+      const evSnap = await getDocs(q);
+      const evList: any[] = [];
+      const userMap = new Map(); // 重複排除用の魔法の箱だばい
+
+      for (const edoc of evSnap.docs) {
+        evList.push({ id: edoc.id, title: edoc.data().title });
+        const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
+        resSnap.forEach(rdoc => {
+          const data = rdoc.data();
+          if (data.email) {
+            userMap.set(data.email, { 
+              email: data.email, name: data.name, 
+              eventId: edoc.id, eventTitle: edoc.data().title 
+            });
+          }
+        });
+      }
+      setEvents(evList);
+      setAllRecipients(Array.from(userMap.values()));
+    };
+
+    fetchKizunaList();
+    return () => unsubTenant();
   }, []);
 
   const displayTenantName = tenantData?.orgName || tenantData?.name || "BANTARO Partner";
@@ -75,20 +108,39 @@ export default function NewsletterStudio() {
     return await getDownloadURL(storageRef);
   };
 
-// --- 🚀 配信開始ボタン（本物の顧客リスト取得版！） ---
-  const handleSend = async () => {
-    // ※ 実際は currentTenantId をログイン情報から取るべ
-    const targetTenantId = tenantData?.id || "demo_id"; 
+  // 絞り込み後のリスト
+  const filteredList = eventFilter === "all" 
+    ? allRecipients 
+    : allRecipients.filter(r => r.eventId === eventFilter);
 
-    if (!auth.currentUser) return alert("ログインしてくんちぇ！");
-    if (!confirm("絆リスト（全イベントの参加者）に一斉配信を開始します。よろしいですか？")) return;
+  // 全選択・解除
+  const toggleAll = () => {
+    if (selectedEmails.length === filteredList.length) setSelectedEmails([]);
+    else setSelectedEmails(filteredList.map(r => r.email));
+  };
+
+  const toggleOne = (email: string) => {
+    setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
+  };
+
+// --- 🚀 配信開始ボタン（エラー修正・最終形態！） ---
+  const handleSend = async () => {
+    // 1. まずは「送る相手がいるか」を確認するおもてなし設計だっぺ
+    if (selectedEmails.length === 0) {
+      alert("送る相手（絆リスト）を一人以上選んでくんちぇ！");
+      return;
+    }
+
+    if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
     
     setIsUploading(true);
 
     try {
-      // 1. 写真のアップロード（ここはさっきと同じ）
+      // 2. 写真のアップロード（Storageへ）
       let mainImageUrl = "";
-      if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
+      if (mainFile) {
+        mainImageUrl = await uploadPhoto(mainFile, "main");
+      }
 
       const uploadedSnaps = await Promise.all(
         snaps.map(async (snap) => {
@@ -101,34 +153,7 @@ export default function NewsletterStudio() {
       );
       const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
-      // 2. 🔥 【重要】Firestoreから「絆リスト」を生成するぞい！
-      // まず、そのテナントの全イベントを取得
-      const { collection, getDocs, query, where } = await import("firebase/firestore");
-      const eventsRef = collection(db, "events");
-      const q = query(eventsRef, where("tenantId", "==", targetTenantId));
-      const eventSnaps = await getDocs(q);
-      
-      const allEmails = new Set<string>(); // 重複を自動で消すための「Set」だばい！
-
-      // 全イベントをループして、参加者のメアドを回収！
-      for (const eventDoc of eventSnaps.docs) {
-        const resRef = collection(db, "events", eventDoc.id, "reservations");
-        const resSnaps = await getDocs(resRef);
-        resSnaps.forEach(doc => {
-          const data = doc.data();
-          if (data.email) allEmails.add(data.email); // Setに入れるから重複しないっぺ！
-        });
-      }
-
-      const recipients = Array.from(allEmails); // 配列に戻すぞい
-
-      if (recipients.length === 0) {
-        alert("送信対象（絆リスト）がまだ誰もいないっぺ！まずはイベントに参加してもらわねぇとな。");
-        setIsUploading(false);
-        return;
-      }
-
-      // 3. APIを叩いてメール発射！！（宛先リストを渡すっぺ）
+      // 3. APIを叩いてメール発射！！（responseは1回だけ宣言だばい！）
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,14 +164,15 @@ export default function NewsletterStudio() {
           mainImageUrl,
           snaps: finalSnaps,
           tenantData,
-          recipients // 取得した全メアドを投入だばい！
+          recipients: selectedEmails // 🚀 画面で選んだ精鋭部隊を送るぞい！
         }),
       });
 
       if (response.ok) {
-        alert(`${recipients.length}名のお客様に、魂のメールを届けたぞい！！`);
+        alert(`${selectedEmails.length}名のお客様に、魂のメールを届けたぞい！！お疲れ様だっぺ！`);
       } else {
-        throw new Error("配信エラーだばい");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "配信エラーだばい");
       }
 
     } catch (e) {
@@ -258,6 +284,55 @@ export default function NewsletterStudio() {
                   <span className="text-xs font-black uppercase tracking-tighter">写真を追加する</span>
                 </button>
               )}
+            </div>
+          </section>
+
+          {/* 🏆 04. 送信先の選択 */}
+          <section className="space-y-4">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">4</div>
+              送信先の選択
+            </label>
+            
+            <div className="bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+              {/* フィルタと全選択 */}
+              <div className="p-5 border-b border-slate-200 bg-white flex justify-between items-center gap-4">
+                <select 
+                  value={eventFilter} 
+                  onChange={(e)=>setEventFilter(e.target.value)}
+                  className="bg-slate-100 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+                >
+                  <option value="all">すべての参加者（重複なし）</option>
+                  {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                </select>
+                <button onClick={toggleAll} className="text-[10px] font-black text-blue-600 uppercase hover:underline whitespace-nowrap">
+                  {selectedEmails.length === filteredList.length ? "解除" : "全選択"}
+                </button>
+              </div>
+
+              {/* スクロールする名簿リスト */}
+              <div className="max-h-60 overflow-y-auto p-2 bg-white/50">
+                {filteredList.map(r => (
+                  <div 
+                    key={r.email} onClick={()=>toggleOne(r.email)}
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedEmails.includes(r.email) ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-100'}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-black truncate">{r.name || '名前なし'}</p>
+                      <p className="text-[9px] font-bold opacity-60 truncate">{r.email}</p>
+                    </div>
+                    {selectedEmails.includes(r.email) && <CheckCircle2 size={16}/>}
+                  </div>
+                ))}
+              </div>
+
+              {/* 統計バー */}
+              <div className="p-4 bg-slate-900 text-white flex justify-between items-center font-black rounded-b-3xl">
+                <div className="flex items-center gap-2 text-xs">
+                  <Users size={16} className="text-blue-400"/>
+                  <span>送信対象 : {selectedEmails.length} 名</span>
+                </div>
+              </div>
             </div>
           </section>
 
