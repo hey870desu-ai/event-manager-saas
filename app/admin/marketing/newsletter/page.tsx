@@ -619,24 +619,29 @@ export default function NewsletterStudio() {
             </div>
           </div>
 
-          {/* 🏆 右側：コラージュ＆横長文章対応のプレビューだっぺ！ */}
-          <div className="px-12 pb-12 flex flex-wrap gap-4">
+          {/* 🏆 右側：ここを flex flex-wrap に変えることで、やっと横に並ぶぞい！！ */}
+          <div className="px-12 pb-12 flex flex-wrap gap-y-12 gap-x-4 items-start">
             {snaps.map((snap: any, idx) => (
               <div 
                 key={idx} 
                 className={`space-y-4 ${
-                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : 
-                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 'w-full mb-8'
+                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : // 🎯 3枚並びの幅
+                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' :        // 🎯 2枚並びの幅
+                  'w-full'                                             // 🎯 1枚（フル）
                 }`}
               >
                 {/* 🎯 文章じゃない時だけ写真を表示 */}
                 {snap.layout !== 'text' && (
                   <div className="w-full aspect-square bg-slate-50 rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
-                    {snap.preview ? <img src={snap.preview} className="w-full h-full object-cover" /> : <span className="text-slate-200 font-black italic uppercase">SNAP {idx + 1}</span>}
+                    {snap.preview ? (
+                      <img src={snap.preview} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
+                    )}
                   </div>
                 )}
                 
-                {/* 🎯 文章部分：'text' レイアウトの時は横長のデザインカードにするっぺ！ */}
+                {/* 🎯 文章部分：'text' の時は横長の長方形デザイン */}
                 <div className={`${
                   snap.layout === 'text' 
                     ? 'p-10 bg-blue-50/50 rounded-[2rem] border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]' 
