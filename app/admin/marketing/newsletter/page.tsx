@@ -68,19 +68,23 @@ export default function NewsletterStudio() {
 
     const fetchKizunaList = async (tid: string) => {
       const { collection, getDocs, query, where } = await import("firebase/firestore");
-      // そのテナントに紐づくイベントを検索
+      
+      // 🎯 1. まずは「配信停止」を希望した人のリストを読み込むぞい
+      const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
+      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
+      // 🎯 ここ！ループの前に箱を作るのを忘れちゃいけねぇだばい！
+      const evList: any[] = [];
+
       const q = query(collection(db, "events"), where("tenantId", "==", tid));
       const evSnap = await getDocs(q);
-      const evList: any[] = [];
       const userMap = new Map();
 
       for (const edoc of evSnap.docs) {
-        evList.push({ id: edoc.id, title: edoc.data().title });
-        // サブコレクション reservations を読みに行く
         const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
         resSnap.forEach(rdoc => {
           const data = rdoc.data();
-          if (data.email) {
+          // 🎯 2. メアドがあって、かつ「配信停止リスト」に入っていない人だけを抽出！
+          if (data.email && !blockedEmails.has(data.email)) {
             userMap.set(data.email, { 
               email: data.email, name: data.name, 
               eventId: edoc.id, eventTitle: edoc.data().title 
