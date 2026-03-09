@@ -233,7 +233,7 @@ export default function NewsletterStudio() {
         tenantId: tenantData.id,
         subject, mainTitle, mainMessage, 
         mainImageUrl: mainImagePreview,
-        snaps: snaps.map(s => ({ title: s.title, comment: s.comment, imageUrl: s.preview })),
+        snaps: snaps.map(s => ({ title: s.title, comment: s.comment, imageUrl: s.preview,layout: s.layout || 'full' })),
         status: "draft",
         createdAt: serverTimestamp()
       });
@@ -254,7 +254,7 @@ export default function NewsletterStudio() {
     setMainMessage(data.mainMessage || "");
     setMainImagePreview(data.mainImageUrl || null);
     setSnaps(data.snaps.map((s: any, i: number) => ({
-      id: i, title: s.title, comment: s.comment, preview: s.imageUrl, file: null
+      id: i, title: s.title, comment: s.comment, preview: s.imageUrl, file: null,layout: s.layout || 'full' 
     })));
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
@@ -275,7 +275,7 @@ export default function NewsletterStudio() {
       const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
         if (snap.file) {
           const url = await uploadPhoto(snap.file, "snaps");
-          return { title: snap.title, comment: snap.comment, imageUrl: url };
+          return { title: snap.title, comment: snap.comment, imageUrl: url,layout: snap.layout || 'full' };
         } else if (snap.preview) {
           // 下書きから復元した画像（URLのみ）の場合
           return { title: snap.title, comment: snap.comment, imageUrl: snap.preview };

@@ -10,30 +10,38 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 新戦略：スナップを「行」ごとにグループ化して、1行のテーブルに閉じ込めるぞい！
+// 🏆 新戦略：どんなデータが来ても「絶対に消えない＆横に並ぶ」安全な一行まとめ魔法だばい！
     const rows: any[] = [];
     let currentRow: any[] = [];
 
     snaps.forEach((snap: any) => {
-      if (snap.layout === 'full' || snap.layout === 'text') {
+      // 🎯 layout が空っぽなら 'full'（1枚）として扱うことで消滅を防ぐぞい！
+      const layout = snap.layout || 'full'; 
+
+      if (layout === 'full' || layout === 'text') {
         if (currentRow.length > 0) { rows.push([...currentRow]); currentRow = []; }
         rows.push([snap]);
-      } else if (snap.layout === 'triple') {
+      } else if (layout === 'triple') {
         currentRow.push(snap);
         if (currentRow.length === 3) { rows.push([...currentRow]); currentRow = []; }
-      } else if (snap.layout === 'grid') {
+      } else if (layout === 'grid') {
         currentRow.push(snap);
         if (currentRow.length === 2) { rows.push([...currentRow]); currentRow = []; }
+      } else {
+        // 想定外の時もとりあえず出す！
+        if (currentRow.length > 0) { rows.push([...currentRow]); currentRow = []; }
+        rows.push([snap]);
       }
     });
+    // 残りを回収
     if (currentRow.length > 0) rows.push(currentRow);
 
-    // 🏆 グループ化した「行」をHTMLに組み立てるだばい！
     const snapsHtml = rows.map((row) => {
-      const isFull = row[0].layout === 'full';
-      const isText = row[0].layout === 'text';
-      const isTriple = row[0].layout === 'triple';
-      const isGrid = row[0].layout === 'grid';
+      // 🎯 row[0].layout がなくても安全に判定するっぺ
+      const layout = row[0].layout || 'full';
+      const isText = layout === 'text';
+      const isTriple = layout === 'triple';
+      const isGrid = layout === 'grid';
 
       // 🎯 文章だけの時
       if (isText) {
