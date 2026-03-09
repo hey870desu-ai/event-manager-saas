@@ -260,47 +260,53 @@ export default function NewsletterStudio() {
   };
 
 
-// --- 🚀 配信開始ボタン（履歴保存もバッチリ統合版！） ---
-  const handleSend = async () => {
-    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
-    if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
-    
-    setIsUploading(true);
+// --- 🚀 配信開始ボタン（文章ブロックを救出する決定版！） ---
+const handleSend = async () => {
+  if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
+  if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
+  
+  setIsUploading(true);
 
-    try {
-      // 1. 写真アップロード
-      let mainImageUrl = "";
-      if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
+  try {
+    let mainImageUrl = mainImagePreview || "";
+    if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
-      // 🎯 ここ！ else if (snap.preview) の中にも layout を追加するんだばい！
-const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-  if (snap.file) {
-    const url = await uploadPhoto(snap.file, "snaps");
-    return { title: snap.title, comment: snap.comment, imageUrl: url, layout: snap.layout || 'full' };
-  } else if (snap.preview) {
-    return { 
-      title: snap.title, 
-      comment: snap.comment, 
-      imageUrl: snap.preview, 
-      layout: snap.layout || 'full' // 👈 これを追加！
-    };
-  }
-  return null;
-}));
+    const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+      let currentUrl = snap.preview || "";
+      
+      // 写真ファイルがあればアップロードしてURLをゲット
+      if (snap.file) {
+        currentUrl = await uploadPhoto(snap.file, "snaps");
+      }
 
-      const finalSnaps = uploadedSnaps.filter(s => s !== null);
+      // 🎯 ここが重要だばい！
+      // 「文章ブロック(text)である」か「写真URLがある」なら、合格にするぞい！
+      if (snap.layout === 'text' || currentUrl) {
+        return { 
+          title: snap.title, 
+          comment: snap.comment, 
+          imageUrl: currentUrl, 
+          layout: snap.layout || 'full' 
+        };
+      }
+      return null;
+    }));
 
-      // 2. APIを叩いてメール発射！！
-      const response = await fetch("/api/send-newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject, mainTitle, mainMessage, mainImageUrl,
-          snaps: finalSnaps,
-          tenantData,
-          recipients: selectedEmails 
-        }),
-      });
+    // null（不合格）を除去して、純粋なデータだけにするっぺ
+    const finalSnaps = uploadedSnaps.filter(s => s !== null);
+
+    // 2. APIを叩いてメール発射！！（ここは今のままでOK！）
+    const response = await fetch("/api/send-newsletter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject, mainTitle, mainMessage, 
+        mainImageUrl: mainImageUrl, // メイン写真も確実に送る
+        snaps: finalSnaps,
+        tenantData,
+        recipients: selectedEmails 
+      }),
+    });
 
       if (response.ok) {
         // 🏆 3. 【ここが大事！】成功したら try の中で履歴を保存するぞい！
