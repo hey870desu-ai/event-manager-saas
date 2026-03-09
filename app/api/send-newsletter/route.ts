@@ -10,51 +10,73 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 HTMLメールの最終奥義：サイズを完全に固定して、メールソフトに「並べ！」と強制するぞい
-    const snapsHtml = snaps.map((snap: any) => {
-      // 🎯 塙さんの理想「1/5サイズ」に合わせて、幅を極限まで絞り込む（540pxの中に入れる）
-      let boxWidth = 540; 
-      let align = "center";
+// 🏆 新戦略：スナップを「行」ごとにグループ化して、1行のテーブルに閉じ込めるぞい！
+    const rows: any[] = [];
+    let currentRow: any[] = [];
 
-      if (snap.layout === 'triple') {
-        boxWidth = 160; // 🎯 160px × 3 = 480px (余裕があるから絶対に横に並ぶ！)
-        align = "left";
+    snaps.forEach((snap: any) => {
+      if (snap.layout === 'full' || snap.layout === 'text') {
+        if (currentRow.length > 0) { rows.push([...currentRow]); currentRow = []; }
+        rows.push([snap]);
+      } else if (snap.layout === 'triple') {
+        currentRow.push(snap);
+        if (currentRow.length === 3) { rows.push([...currentRow]); currentRow = []; }
       } else if (snap.layout === 'grid') {
-        boxWidth = 250; // 🎯 250px × 2 = 500px (余裕たっぷりだばい)
-        align = "left";
+        currentRow.push(snap);
+        if (currentRow.length === 2) { rows.push([...currentRow]); currentRow = []; }
       }
+    });
+    if (currentRow.length > 0) rows.push(currentRow);
+
+    // 🏆 グループ化した「行」をHTMLに組み立てるだばい！
+    const snapsHtml = rows.map((row) => {
+      const isFull = row[0].layout === 'full';
+      const isText = row[0].layout === 'text';
+      const isTriple = row[0].layout === 'triple';
+      const isGrid = row[0].layout === 'grid';
 
       // 🎯 文章だけの時
-      if (snap.layout === 'text') {
+      if (isText) {
         return `
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
             <tr>
-              <td style="background-color: #f0f7ff; border-left: 6px solid #3b82f6; border-radius: 16px; padding: 25px; font-family: sans-serif;">
-                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: bold;">${snap.title || 'INFORMATION'}</p>
-                <p style="color: #4b5563; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${snap.comment || ''}</p>
+              <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; border-radius: 12px; padding: 20px;">
+                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 900;">${row[0].title || ''}</p>
+                <p style="color: #64748b; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${row[0].comment || ''}</p>
               </td>
             </tr>
           </table>
         `;
       }
 
-      // 🎯 写真ブロック：幅(width)も高さ(height)も数字で指定して「アップ」を防ぐ！
+      // 🎯 写真ブロック：1つのテーブルの中に「td」を並べて横並びを強制する！
+      const cellWidth = isTriple ? "33%" : isGrid ? "50%" : "100%";
+      
       return `
-        <table align="${align}" border="0" cellpadding="0" cellspacing="0" width="${boxWidth}" style="display: inline-table; margin: 5px; border-collapse: collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 15px; table-layout: fixed;">
           <tr>
-            <td style="background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden; font-family: sans-serif;">
-              <div style="width: ${boxWidth}px; height: ${boxWidth}px; overflow: hidden;">
-                <img src="${snap.imageUrl}" width="${boxWidth}" height="${boxWidth}" style="width: ${boxWidth}px; height: ${boxWidth}px; display: block; object-fit: cover;" border="0" />
-              </div>
-              <div style="padding: 10px; text-align: left;">
-                <p style="color: #111827; margin: 0; font-size: 12px; font-weight: bold; line-height: 1.2;">${snap.title || ''}</p>
-                ${snap.comment ? `<p style="color: #6b7280; margin: 4px 0 0 0; font-size: 10px; line-height: 1.4;">${snap.comment}</p>` : ''}
-              </div>
-            </td>
+            ${row.map((s: any) => `
+              <td width="${cellWidth}" valign="top" style="padding: 5px;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td bgcolor="#f1f5f9" style="border-radius: 8px; overflow: hidden;">
+                      <img src="${s.imageUrl}" width="100%" style="width: 100%; height: auto; display: block; border-radius: 8px;" border="0" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 2px;">
+                      <p style="color: #111827; margin: 0; font-size: 11px; font-weight: 900; line-height: 1.2;">${s.title || ''}</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            `).join("")}
+            ${isTriple && row.length < 3 ? `<td width="33%">&nbsp;</td>`.repeat(3 - row.length) : ""}
+            ${isGrid && row.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
           </tr>
         </table>
       `;
-    }).join("") + `<div style="clear: both; height: 1px; font-size: 1px; line-height: 1px;">&nbsp;</div>`;
+    }).join("");
 
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];
