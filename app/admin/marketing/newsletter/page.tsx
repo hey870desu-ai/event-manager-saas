@@ -338,7 +338,7 @@ export default function NewsletterStudio() {
   };
 
 
-// --- 🚀 配信開始ボタン（テキストも画像も1枚も漏らさない版！） ---
+// --- 🚀 配信開始ボタン（こだわり調整データを1ミリも漏らさない版！） ---
   const handleSend = async () => {
     if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください！");
     if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
@@ -356,14 +356,22 @@ export default function NewsletterStudio() {
           imageUrl = await uploadPhoto(snap.file, "snaps");
         }
         if (snap.layout === 'text' || imageUrl) {
-          return { title: snap.title, comment: snap.comment, imageUrl: imageUrl, layout: snap.layout || 'full' };
+          // 🎯 ここ！ scale と position を追加して API に渡すぞい！
+          return { 
+            title: snap.title, 
+            comment: snap.comment, 
+            imageUrl: imageUrl, 
+            layout: snap.layout || 'full',
+            scale: snap.scale || 1,
+            position: snap.position || { x: 50, y: 50 }
+          };
         }
         return null;
       }));
 
       const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
-      // 2. APIを叩いてメール発射！！
+      // 2. APIを叩いてメール発射！！（調整データが finalSnaps に入ってるぞい）
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -382,12 +390,12 @@ export default function NewsletterStudio() {
           tenantId: tenantData.id,
           subject, mainTitle, mainMessage,
           mainImageUrl: finalMainImageUrl,
-          snaps: finalSnaps,
+          snaps: finalSnaps, // 🎯 履歴にも調整データが保存されるっぺ！
           status: "sent",
           createdAt: serverTimestamp()
         });
 
-        alert(`${selectedEmails.length}名のお客様に送信しました、履歴に保存されました`);
+        alert(`${selectedEmails.length}名のお客様に送信し、履歴に保存したぞい！！`);
         setSelectedEmails([]);
         fetchArchives(tenantData.id);
       } else {
@@ -499,18 +507,16 @@ export default function NewsletterStudio() {
                     <Trash2 size={16} />
                   </button>
 
-                  {/* 🏆 写真枠（ここを1回だけに整理したぞい！） */}
+                  {/* 🎯 写真枠：比率を 4:3 に合わせてギャップを埋めるっぺ！ */}
                   {snap.layout !== 'text' && (
                     <>
-                      <label className="w-full aspect-square bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all rounded-none relative">
+                      <label className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
                           <img 
                             src={snap.preview} 
                             className="w-full h-full object-cover rounded-none transition-all duration-100" 
                             style={{
-                              // 🎯 ズーム倍率を反映！
                               transform: `scale(${snap.scale || 1})`,
-                              // 🏆 上下左右を動かす魔法（transformOrigin）だばい！
                               transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
                             }}
                             alt="Snap" 
@@ -518,7 +524,7 @@ export default function NewsletterStudio() {
                         ) : (
                           <div className="text-center">
                             <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">写真を選択</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">写真を選択</span>
                           </div>
                         )}
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
