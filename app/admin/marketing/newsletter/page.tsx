@@ -352,14 +352,15 @@ export default function NewsletterStudio() {
           createdAt: serverTimestamp()
         });
 
-        alert(`${selectedEmails.length}名のお客様に届け、履歴に保存したぞい！！`);
+        alert(`${selectedEmails.length}名のお客様に送信しました、履歴に保存されました`);
+        setSelectedEmails([]);
         fetchArchives(tenantData.id);
       } else {
-        throw new Error("配信エラーだばい");
+        throw new Error("配信エラー");
       }
     } catch (e) {
       console.error(e);
-      alert("送信中に問題が発生したっぺ...");
+      alert("送信中に問題が発生...");
     } finally {
       setIsSending(false);
     }
