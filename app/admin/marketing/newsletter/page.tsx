@@ -302,6 +302,23 @@ export default function NewsletterStudio() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
+  // 🏆 必殺技④：履歴を削除する（間違えて送ったやつも整理だばい！）
+  const handleDeleteArchive = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // 🎯 親のボタンクリック（読み込み）が動かないようにガードするぞい！
+    if (!confirm("この履歴を完全に消しますか？元には戻せません！")) return;
+    
+    try {
+      const { deleteDoc, doc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "newsletter_archives", id));
+      
+      // 🎯 画面からもサッと消す
+      setArchives(prev => prev.filter(arch => arch.id !== id));
+      alert("きれいに消したぞい！");
+    } catch (error) {
+      alert("消すのに失敗しちまったっぺ...");
+    }
+  };
+
 
 // --- 🚀 配信開始ボタン（テキストも画像も1枚も漏らさない版！） ---
   const handleSend = async () => {
@@ -610,7 +627,7 @@ export default function NewsletterStudio() {
             </button>
           </div>
 
-          {/* --- 📜 過去のバックナンバー（履歴） --- */}
+          {/* --- 📜 配信履歴・バックナンバー（時間＆削除ボタン付きだばい！） --- */}
           <section className="mt-16 pt-10 border-t border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -621,27 +638,51 @@ export default function NewsletterStudio() {
             
             <div className="grid grid-cols-1 gap-3">
               {archives.map(arch => (
-                <button 
+                <div 
                   key={arch.id} 
-                  onClick={() => loadArchive(arch)}
-                  className="flex justify-between items-center p-5 bg-white hover:bg-blue-50 rounded-[1.5rem] transition-all group border border-slate-100 hover:border-blue-300 shadow-sm"
+                  className="flex items-center bg-white hover:bg-blue-50 rounded-[1.5rem] transition-all group border border-slate-100 hover:border-blue-300 shadow-sm overflow-hidden"
                 >
-                  <div className="flex flex-col items-start gap-1 min-w-0">
-                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${arch.status === 'draft' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                      {arch.status === 'draft' ? '下書き' : '送信済み'}
+                  {/* 🎯 左側：クリックで内容を読み込むエリア */}
+                  <button 
+                    onClick={() => loadArchive(arch)}
+                    className="flex-1 flex justify-between items-center p-5 text-left border-none outline-none"
+                  >
+                    <div className="flex flex-col items-start gap-1 min-w-0">
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
+                        arch.status === 'draft' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                      }`}>
+                        {arch.status === 'draft' ? '下書き' : '送信済み'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
+                        {arch.subject || "(無題)"}
+                      </span>
+                    </div>
+                    
+                    {/* 🎯 修正：日付だけでなく「時間（時:分）」も表示するぞい！ */}
+                    <span className="text-[10px] font-black text-slate-400 whitespace-nowrap ml-4">
+                      {arch.createdAt?.toDate().toLocaleString('ja-JP', { 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      }) || "時刻不明"}
                     </span>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
-                      {arch.subject || "(無題)"}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-black text-slate-400 whitespace-nowrap ml-4">
-                    {arch.createdAt?.toDate().toLocaleDateString() || "Date Unknown"}
-                  </span>
-                </button>
+                  </button>
+
+                  {/* 🎯 右側：削除ボタン（ゴミ箱アイコン） */}
+                  <button 
+                    onClick={(e) => handleDeleteArchive(arch.id, e)}
+                    className="p-5 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all border-l border-slate-50"
+                    title="履歴から削除"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               ))}
+              
               {archives.length === 0 && (
                 <div className="p-10 text-center border-2 border-dashed border-slate-200 rounded-[2rem]">
-                  <p className="text-[10px] text-slate-300 font-bold italic">まだ履歴はありません。最初の一歩を刻もう！</p>
+                  <p className="text-[10px] text-slate-300 font-bold italic">まだ履歴はありません。</p>
                 </div>
               )}
             </div>
