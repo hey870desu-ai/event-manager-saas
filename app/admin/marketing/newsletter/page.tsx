@@ -9,6 +9,17 @@ import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, auth, storage } from "@/lib/firebase";
 
+interface SnapItem {
+  id: number;
+  title: string;
+  comment: string;
+  preview: string | null;
+  file: File | null;
+  layout: string;
+  scale: number;
+  position?: { x: number; y: number };
+}
+
 export default function NewsletterStudio() {
   // 🏆 テナント情報（SNSや住所などの設定）を保持
   const [tenantData, setTenantData] = useState<any>(null);
@@ -29,9 +40,12 @@ export default function NewsletterStudio() {
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const [mainFile, setMainFile] = useState<File | null>(null);
   
-  // 🎯 layout: 'full' を書き足して、パソコンを安心させるぞい
-  const [snaps, setSnaps] = useState([
-    { id: 1, title: '', comment: '', preview: null as string | null, file: null as File | null, layout: 'full' },
+  // 🎯 <SnapItem[]> を書き足して、初期値にも scale と position を入れる
+  const [snaps, setSnaps] = useState<SnapItem[]>([
+    { 
+      id: 1, title: '', comment: '', preview: null, file: null, layout: 'full',
+      scale: 1, position: { x: 50, y: 50 } 
+    },
   ]);
 
   // 🏆 過去の履歴を保存しておくための箱だばい！
@@ -139,14 +153,16 @@ export default function NewsletterStudio() {
     // 枚数制限（最大12枚）
     const actualFiles = files.slice(0, count);
     
-    const newItems = actualFiles.map((file, i) => ({
+    const newItems: SnapItem[] = actualFiles.map((file, i) => ({
       id: Date.now() + i,
       title: '',
       comment: '',
       preview: URL.createObjectURL(file),
       file: file,
       // 🎯 ここで「何枚並びか」を覚えさせるのがコラージュのコツ！
-      layout: count === 1 ? 'full' : count === 3 ? 'triple' : 'grid'
+      layout: count === 1 ? 'full' : count === 3 ? 'triple' : 'grid',
+      scale: 1,
+      position: { x: 50, y: 50 }
     }));
 
     setSnaps([...snaps, ...newItems]);
@@ -156,13 +172,15 @@ export default function NewsletterStudio() {
   const addTextBlock = () => {
     if (snaps.length >= 12) return alert("枠がいっぱいだっぺ！");
     
-    const newTextItem = {
+    const newTextItem: SnapItem = {
       id: Date.now(),
       title: 'おしらせ', // 初期値
       comment: '',
       preview: null,
       file: null,
-      layout: 'text' // 🎯 「text」というレイアウト名を付けるのがコツだばい！
+      layout: 'text',
+      scale: 1,
+      position: { x: 50, y: 50 } // 🎯 「text」というレイアウト名を付けるのがコツだばい！
     };
     
     setSnaps([...snaps, newTextItem]);
@@ -419,7 +437,7 @@ export default function NewsletterStudio() {
                     setMainMessage('いつも大変お世話になっております。今月の様子をお伝えします。');
                     setMainImagePreview(null);
                     setMainFile(null);
-                    setSnaps([{ id: Date.now(), title: '', comment: '', preview: null, file: null, layout: 'full' }]);
+                    setSnaps([{ id: Date.now(), title: '', comment: '', preview: null, file: null, layout: 'full',scale: 1,position: { x: 50, y: 50 } }]);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
                 }}
@@ -481,19 +499,103 @@ export default function NewsletterStudio() {
                     <Trash2 size={16} />
                   </button>
 
-                  {/* 🎯 写真枠：直角（rounded-none）だばい！ */}
+                  {/* 🎯 写真枠：ズーム＆位置調整機能付きだばい！ */}
                   {snap.layout !== 'text' && (
-                    <label className="w-full aspect-square bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all rounded-none">
-                      {snap.preview ? (
-                        <img src={snap.preview} className="w-full h-full object-cover rounded-none" alt="Snap" />
-                      ) : (
-                        <div className="text-center">
-                          <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">写真を選択</span>
+                    <>
+                      <label className="w-full aspect-square bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all rounded-none relative">
+                        {snap.preview ? (
+                          <img 
+                            src={snap.preview} 
+                            className="w-full h-full object-cover rounded-none transition-transform duration-200" 
+                            style={{
+                              transform: `scale(${snap.scale || 1})`,
+                              objectPosition: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
+                            }}
+                            alt="Snap" 
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">写真を選択</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
+                      </label>
+
+                      {/* 🏆 写真調整スライダー（ここから追加！） */}
+                      {snap.preview && (
+                        <div className="bg-slate-50 p-4 mb-4 rounded-xl border border-slate-200 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Adjust</span>
+                            <button 
+                              onClick={() => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].scale = 1;
+                                newSnaps[idx].position = { x: 50, y: 50 };
+                                setSnaps(newSnaps);
+                              }}
+                              className="text-[9px] font-black text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              RESET
+                            </button>
+                          </div>
+                          
+                          {/* ズーム調整 */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Zoom</span>
+                              <span>{Math.round((snap.scale || 1) * 100)}%</span>
+                            </div>
+                            <input type="range" min="1" max="3" step="0.05" value={snap.scale || 1} 
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].scale = parseFloat(e.target.value);
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                            />
+                          </div>
+
+                          {/* 左右位置（X） */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Horizontal</span>
+                              <span>{snap.position?.x || 50}%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value={snap.position?.x || 50} 
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].position = { 
+                                ...newSnaps[idx].position!, 
+                                x: parseInt(e.target.value) 
+                              };
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-400" 
+                            />
+                          </div>
+
+                          {/* 上下位置（Y） */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Vertical</span>
+                              <span>{snap.position?.y || 50}%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value={snap.position?.y || 50} 
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].position = { 
+                                ...newSnaps[idx].position!, 
+                                y: parseInt(e.target.value) 
+                              };
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-400" 
+                            />
+                          </div>
                         </div>
                       )}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
-                    </label>
+                    </>
                   )}
 
                   <input 
