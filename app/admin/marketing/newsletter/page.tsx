@@ -194,10 +194,11 @@ export default function NewsletterStudio() {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
   };
 
-// 🏆 履歴取得（迷子にならない、鉄壁のページめくりだばい！）
-  const fetchArchives = async (tid: string, direction: "next" | "prev" | "first" = "first") => {
+// 🏆 履歴取得（迷子にならない＆最古ワープ対応版！）
+  const fetchArchives = async (tid: string, direction: "next" | "prev" | "first" | "last" = "first") => {
     const { collection, query, where, getDocs, orderBy, limit, startAfter, endBefore, limitToLast } = await import("firebase/firestore");
     
+    // 基本は「新しい順（desc）」
     let q = query(
       collection(db, "newsletter_archives"), 
       where("tenantId", "==", tid),
@@ -205,7 +206,6 @@ export default function NewsletterStudio() {
       limit(10)
     );
 
-    // 🎯 どこから読み始めるかの指示だっぺ！
     if (direction === "next" && lastVisible) {
       q = query(q, startAfter(lastVisible));
     } else if (direction === "prev" && firstVisible) {
@@ -216,18 +216,27 @@ export default function NewsletterStudio() {
         endBefore(firstVisible),
         limitToLast(10)
       );
+    } else if (direction === "last") {
+      // 🎯 【ワープ魔法】逆転させて「古い順（asc）」で最初の10件を呼ぶぞい！
+      q = query(
+        collection(db, "newsletter_archives"),
+        where("tenantId", "==", tid),
+        orderBy("createdAt", "asc"),
+        limit(10)
+      );
     }
 
     const snap = await getDocs(q);
-    
-    // 🎯 データがあれば、メモ（Visible）を更新するぞい！
     if (!snap.empty) {
-      const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // 🎯 「古い順」で取った時は、リスト内を「新しい順」に見えるよう逆転させるべ！
+      if (direction === "last") { docs = docs.reverse(); }
+
       setArchives(docs);
       setFirstVisible(snap.docs[0]);
       setLastVisible(snap.docs[snap.docs.length - 1]);
     } else {
-      // 🎯 もし空っぽなら「これ以上先はねぇぞ」ってことで、ボタンを殺さない工夫だばい
       if (direction === "first") setArchives([]);
     }
   };
@@ -628,13 +637,15 @@ export default function NewsletterStudio() {
               )}
             </div>
           </section>
-          {/* 🎯 630行目付近：数字付きページネーションだばい！ */}
-          <div className="flex justify-center items-center gap-2 mt-10 pb-10">
+          {/* 🎯 << < 1 2 3 > >> フル装備のページネーションだばい！ */}
+<div className="flex justify-center items-center gap-2 mt-10 pb-10">
+  
   {/* 最初へ (<<) */}
   <button 
     onClick={() => { fetchArchives(tenantData.id, "first"); setCurrentPage(1); }}
     disabled={currentPage === 1}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    title="最初のページへ"
   >
     <ChevronsLeft size={18}/>
   </button>
@@ -643,46 +654,62 @@ export default function NewsletterStudio() {
   <button 
     onClick={() => { fetchArchives(tenantData.id, "prev"); setCurrentPage(prev => Math.max(1, prev - 1)); }} 
     disabled={currentPage === 1}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
   >
     <ChevronLeft size={18}/>
   </button>
 
-  {/* 🏆 ページ番号（数字も矢印も連動させるぞい！） */}
+  {/* ページ番号（1, 2, 3） */}
   <div className="flex gap-1 mx-2">
-    {[1, 2, 3].map((pageNum) => (
-      <button
-        key={pageNum}
-        onClick={() => {
-          if (pageNum === currentPage) return;
-          if (pageNum === 1) {
-            fetchArchives(tenantData.id, "first");
-          } else {
-            // 数字に合わせてジャンプ（簡易版だばい）
-            fetchArchives(tenantData.id, pageNum > currentPage ? "next" : "prev");
-          }
-          setCurrentPage(pageNum);
-        }}
-        className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border ${
-          currentPage === pageNum 
-            ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-110' 
-            : 'bg-white text-slate-400 border-slate-200 hover:border-blue-400 hover:bg-slate-50'
-        }`}
-      >
-        {pageNum}
-      </button>
-    ))}
+    {[...Array(Math.min(3, currentPage + 1))].map((_, i) => {
+      const pageNum = currentPage > 2 ? currentPage - 1 + i : i + 1;
+      return (
+        <button
+          key={pageNum}
+          onClick={() => {
+            if (pageNum === currentPage) return;
+            if (pageNum === 1) {
+              fetchArchives(tenantData.id, "first");
+            } else {
+              fetchArchives(tenantData.id, pageNum > currentPage ? "next" : "prev");
+            }
+            setCurrentPage(pageNum);
+          }}
+          className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border ${
+            currentPage === pageNum 
+              ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-110' 
+              : 'bg-white text-slate-400 border-slate-200 hover:border-blue-400 hover:bg-slate-50'
+          }`}
+        >
+          {pageNum}
+        </button>
+      );
+    })}
   </div>
 
   {/* 次へ (>) */}
   <button 
     onClick={() => { fetchArchives(tenantData.id, "next"); setCurrentPage(prev => prev + 1); }} 
     disabled={archives.length < 10}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
   >
     <ChevronRight size={18}/>
   </button>
+
+  {/* 🏆 復活＆ワープの最後へ (>>) */}
+  <button 
+    onClick={() => { 
+      fetchArchives(tenantData.id, "last"); // 🎯 エンジンに「last」を命令！
+      setCurrentPage(999); // 「一番うしろだぞ」とわかる目印だばい
+    }} 
+    disabled={archives.length < 10}
+    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    title="一番古いデータへワープ！"
+  >
+    <ChevronsRight size={18}/>
+  </button>
 </div>
+          
         </div>
       </div>
 
