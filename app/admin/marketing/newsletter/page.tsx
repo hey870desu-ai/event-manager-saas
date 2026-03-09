@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,FileText
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,FileText, RotateCcw
 } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -39,6 +39,7 @@ export default function NewsletterStudio() {
 
   const [lastVisible, setLastVisible] = useState<any>(null); // 🎯 どこまで読み込んだか覚える
   const [firstVisible, setFirstVisible] = useState<any>(null); // 🎯 戻る用
+  const [currentPage, setCurrentPage] = useState(1); // 🎯 いま何ページ目か数える箱だばい！
 
 // 🏆 1. ログインメアドから tenantId を自動取得して連動させるぞい！
   useEffect(() => {
@@ -359,12 +360,33 @@ export default function NewsletterStudio() {
         </div>
 
         <div className="space-y-12 pb-40">
-          {/* 基本設定 */}
+          {/* 🎯 285行目付近：ここをまるごと差し替えだっぺ！ */}
           <section className="space-y-4">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</div>
-              基本設定
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">1</div>
+                基本設定
+              </label>
+              
+              {/* 🏆 迷子脱出！新規作成ボタンだばい！ */}
+              <button 
+                onClick={() => {
+                  if(confirm("今の入力を全部消して、新しいレターを作り始めるべか？")) {
+                    setSubject('【絆レター】活動報告をお届けします');
+                    setMainTitle('今月のトピックス');
+                    setMainMessage('いつも大変お世話になっております。今月の様子をお伝えします。');
+                    setMainImagePreview(null);
+                    setMainFile(null);
+                    setSnaps([{ id: Date.now(), title: '', comment: '', preview: null, file: null, layout: 'full' }]);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 shadow-sm"
+              >
+                <RotateCcw size={12}/> 新規作成に戻る
+              </button>
+            </div>
+            
             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 shadow-sm">
               <label className="block text-[10px] font-black text-slate-500 mb-2 ml-1 uppercase">Email Subject</label>
               <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold" />
@@ -599,26 +621,67 @@ export default function NewsletterStudio() {
               )}
             </div>
           </section>
-          {/* 🎯 ページネーションコントロール（矢印版だばい！） */}
-            <div className="flex justify-center items-center gap-8 mt-8 pb-10">
-              <button 
-                onClick={() => fetchArchives(tenantData.id, "prev")} 
-                disabled={!firstVisible}
-                className="p-3 bg-white rounded-full text-slate-400 hover:text-blue-600 disabled:opacity-20 shadow-sm border border-slate-100 transition-all"
-              >
-                <ChevronLeft size={20}/>
-              </button>
+          {/* 🎯 630行目付近：数字付きページネーションだばい！ */}
+          <div className="flex justify-center items-center gap-2 mt-10 pb-10">
+            
+            {/* 最初へ (<<) */}
+            <button 
+              onClick={() => { fetchArchives(tenantData.id, "first"); setCurrentPage(1); }}
+              disabled={currentPage === 1}
+              className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+              title="最初のページ"
+            >
+              <ChevronsLeft size={18}/>
+            </button>
 
-              <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">ページ切り替え</span>
+            {/* 前へ (<) */}
+            <button 
+              onClick={() => { fetchArchives(tenantData.id, "prev"); setCurrentPage(prev => Math.max(1, prev - 1)); }} 
+              disabled={currentPage === 1}
+              className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+            >
+              <ChevronLeft size={18}/>
+            </button>
 
-              <button 
-                onClick={() => fetchArchives(tenantData.id, "next")} 
-                disabled={!lastVisible || archives.length < 10}
-                className="p-3 bg-white rounded-full text-slate-400 hover:text-blue-600 disabled:opacity-20 shadow-sm border border-slate-100 transition-all"
-              >
-                <ChevronRight size={20}/>
-              </button>
+            {/* ページ番号（1, 2, 3 風の表示） */}
+            <div className="flex gap-1 mx-2">
+              {[...Array(Math.min(3, currentPage + 1))].map((_, i) => {
+                const pageNum = currentPage > 2 ? currentPage - 1 + i : i + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border ${
+                      currentPage === pageNum 
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-110' 
+                        : 'bg-white text-slate-400 border-slate-200 hover:border-blue-400'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <span className="text-slate-300 self-end mb-1 px-1">...</span>
             </div>
+
+            {/* 次へ (>) */}
+            <button 
+              onClick={() => { fetchArchives(tenantData.id, "next"); setCurrentPage(prev => prev + 1); }} 
+              disabled={archives.length < 10}
+              className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+            >
+              <ChevronRight size={18}/>
+            </button>
+
+            {/* 最後へ (>>) ※Firestoreの制限上、次へと同じ動きだべ */}
+            <button 
+              onClick={() => { fetchArchives(tenantData.id, "next"); setCurrentPage(prev => prev + 1); }} 
+              disabled={archives.length < 10}
+              className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+              title="次のページ"
+            >
+              <ChevronsRight size={18}/>
+            </button>
+          </div>
         </div>
       </div>
 
