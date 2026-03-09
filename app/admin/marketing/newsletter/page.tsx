@@ -522,7 +522,33 @@ export default function NewsletterStudio() {
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
                       </label>
 
-                      {/* 🏆 写真調整スライダー（ここから追加！） */}
+                      {/* 🎯 写真枠：ズーム＆位置調整機能の完全版だばい！ */}
+                  {snap.layout !== 'text' && (
+                    <>
+                      <label className="w-full aspect-square bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden shadow-inner hover:border-blue-400 transition-all rounded-none relative">
+                        {snap.preview ? (
+                          <img 
+                            src={snap.preview} 
+                            className="w-full h-full object-cover rounded-none transition-all duration-100" 
+                            style={{
+                              // 🏆 拡大倍率
+                              transform: `scale(${snap.scale || 1})`,
+                              // 🏆 拡大の基準点をスライダーの数字(X, Y)に直結させるぞい！
+                              // これで「バーティカル（上下）」が息を吹き返すっぺ！
+                              transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
+                            }}
+                            alt="Snap" 
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">写真を選択</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
+                      </label>
+
+                      {/* 🏆 写真調整スライダー（ここから差し替えだばい！） */}
                       {snap.preview && (
                         <div className="bg-slate-50 p-4 mb-4 rounded-xl border border-slate-200 space-y-4">
                           <div className="flex justify-between items-center">
@@ -566,9 +592,9 @@ export default function NewsletterStudio() {
                               onChange={(e) => {
                                 const newSnaps = [...snaps];
                                 newSnaps[idx].position = { 
-                                ...newSnaps[idx].position!, 
-                                x: parseInt(e.target.value) 
-                              };
+                                  ...newSnaps[idx].position!, 
+                                  x: parseInt(e.target.value) 
+                                };
                                 setSnaps(newSnaps);
                               }}
                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-400" 
@@ -585,9 +611,9 @@ export default function NewsletterStudio() {
                               onChange={(e) => {
                                 const newSnaps = [...snaps];
                                 newSnaps[idx].position = { 
-                                ...newSnaps[idx].position!, 
-                                y: parseInt(e.target.value) 
-                              };
+                                  ...newSnaps[idx].position!, 
+                                  y: parseInt(e.target.value) 
+                                };
                                 setSnaps(newSnaps);
                               }}
                               className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-400" 
@@ -595,6 +621,8 @@ export default function NewsletterStudio() {
                           </div>
                         </div>
                       )}
+                    </>
+                  )}
                     </>
                   )}
 
