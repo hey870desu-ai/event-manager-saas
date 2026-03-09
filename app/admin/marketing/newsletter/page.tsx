@@ -890,22 +890,31 @@ export default function NewsletterStudio() {
             </div>
           </div>
 
-          {/* 🏆 右側：ここが「直角」＆「レイアウト連動」のプレビューだばい！！ */}
+          {/* 🏆 右側：ここが「比率も調整もメールと同じ」プレビューだばい！！ */}
           <div className="px-12 pb-12 flex flex-wrap gap-y-12 gap-x-4 items-start">
             {snaps.map((snap: any, idx) => (
               <div 
                 key={idx} 
                 className={`space-y-4 ${
-                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : // 🎯 3枚並び
-                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' :        // 🎯 2枚並び（6枚セット）
-                  'w-full'                                             // 🎯 1枚（フル）
+                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : 
+                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 
+                  'w-full'
                 }`}
               >
-                {/* 🎯 写真：rounded-[1.5rem] を消して rounded-none にしたっぺ！ */}
+                {/* 🎯 写真枠：aspect-squareを卒業して4:3に変更だばい！ */}
                 {snap.layout !== 'text' && (
-                  <div className="w-full aspect-square bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
+                  <div className="w-full aspect-[4/3] bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center relative">
                     {snap.preview ? (
-                      <img src={snap.preview} className="w-full h-full object-cover rounded-none" />
+                      <img 
+                        src={snap.preview} 
+                        className="w-full h-full object-cover rounded-none transition-all duration-100" 
+                        style={{
+                          // 🏆 プレビューでも拡大（ズーム）を反映！
+                          transform: `scale(${snap.scale || 1})`,
+                          // 🏆 拡大の中心点（上下左右のズレ）を反映！
+                          transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
+                        }}
+                      />
                     ) : (
                       <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
                     )}
