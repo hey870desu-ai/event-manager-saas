@@ -223,17 +223,34 @@ export default function NewsletterStudio() {
     }
   };
 
-  // 🏆 必殺技②：一時保存（下書き）する
+// 🏆 必殺技②：一時保存（下書き）する（写真も確実に保存する鉄壁版！）
   const handleSaveDraft = async () => {
     if (!tenantData) return;
     setIsUploading(true);
     try {
       const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+
+      // 🎯 保存前に、まだ送ってない写真を全部アップロードするぞい！
+      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
+
+      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+        let imageUrl = snap.preview || "";
+        if (snap.file) {
+          imageUrl = await uploadPhoto(snap.file, "snaps");
+        }
+        return { 
+          title: snap.title, 
+          comment: snap.comment, 
+          imageUrl: imageUrl, 
+          layout: snap.layout || 'full' 
+        };
+      }));
+
       await addDoc(collection(db, "newsletter_archives"), {
         tenantId: tenantData.id,
         subject, mainTitle, mainMessage, 
-        mainImageUrl: mainImagePreview,
-        snaps: snaps.map(s => ({ title: s.title, comment: s.comment, imageUrl: s.preview,layout: s.layout || 'full' })),
+        mainImageUrl: finalMainImageUrl, // 🎯 修正！
+        snaps: uploadedSnaps, // 🎯 修正！
         status: "draft",
         createdAt: serverTimestamp()
       });
@@ -260,74 +277,60 @@ export default function NewsletterStudio() {
   };
 
 
-// --- 🚀 配信開始ボタン（文章ブロックを救出する決定版！） ---
-const handleSend = async () => {
-  if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
-  if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
-  
-  setIsUploading(true);
+// --- 🚀 配信開始ボタン（テキストも画像も1枚も漏らさない版！） ---
+  const handleSend = async () => {
+    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
+    if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
+    
+    setIsUploading(true);
 
-  try {
-    let mainImageUrl = mainImagePreview || "";
-    if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
+    try {
+      // メイン写真の確定
+      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
 
-    const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-      let currentUrl = snap.preview || "";
-      
-      // 写真ファイルがあればアップロードしてURLをゲット
-      if (snap.file) {
-        currentUrl = await uploadPhoto(snap.file, "snaps");
-      }
+      // スナップ写真の確定
+      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+        let imageUrl = snap.preview || "";
+        if (snap.file) {
+          imageUrl = await uploadPhoto(snap.file, "snaps");
+        }
+        if (snap.layout === 'text' || imageUrl) {
+          return { title: snap.title, comment: snap.comment, imageUrl: imageUrl, layout: snap.layout || 'full' };
+        }
+        return null;
+      }));
 
-      // 🎯 ここが重要だばい！
-      // 「文章ブロック(text)である」か「写真URLがある」なら、合格にするぞい！
-      if (snap.layout === 'text' || currentUrl) {
-        return { 
-          title: snap.title, 
-          comment: snap.comment, 
-          imageUrl: currentUrl, 
-          layout: snap.layout || 'full' 
-        };
-      }
-      return null;
-    }));
+      const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
-    // null（不合格）を除去して、純粋なデータだけにするっぺ
-    const finalSnaps = uploadedSnaps.filter(s => s !== null);
-
-    // 2. APIを叩いてメール発射！！（ここは今のままでOK！）
-    const response = await fetch("/api/send-newsletter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject, mainTitle, mainMessage, 
-        mainImageUrl: mainImageUrl, // メイン写真も確実に送る
-        snaps: finalSnaps,
-        tenantData,
-        recipients: selectedEmails 
-      }),
-    });
+      // 2. APIを叩いてメール発射！！
+      const response = await fetch("/api/send-newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject, mainTitle, mainMessage, 
+          mainImageUrl: finalMainImageUrl,
+          snaps: finalSnaps,
+          tenantData,
+          recipients: selectedEmails 
+        }),
+      });
 
       if (response.ok) {
-        // 🏆 3. 【ここが大事！】成功したら try の中で履歴を保存するぞい！
         const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
         await addDoc(collection(db, "newsletter_archives"), {
           tenantId: tenantData.id,
-          subject,
-          mainTitle,
-          mainMessage,
-          mainImageUrl,
+          subject, mainTitle, mainMessage,
+          mainImageUrl: finalMainImageUrl,
           snaps: finalSnaps,
           status: "sent",
           createdAt: serverTimestamp()
         });
 
         alert(`${selectedEmails.length}名のお客様に届け、履歴に保存したぞい！！`);
-        fetchArchives(tenantData.id); // 履歴リストを更新
+        fetchArchives(tenantData.id);
       } else {
         throw new Error("配信エラーだばい");
       }
-
     } catch (e) {
       console.error(e);
       alert("送信中に問題が発生したっぺ...");
