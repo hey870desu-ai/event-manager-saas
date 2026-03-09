@@ -10,60 +10,72 @@ export async function POST(req: Request) {
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
 
-// 🏆 新戦略：どんなデータが来ても「絶対に消えない＆横に並ぶ」安全な一行まとめ魔法だばい！
+// 🏆 【超・改良版】文章と写真を完璧にサンドイッチするロジックだばい！
     const rows: any[] = [];
     let currentRow: any[] = [];
 
     snaps.forEach((snap: any) => {
-      // 🎯 layout が空っぽなら 'full'（1枚）として扱うことで消滅を防ぐぞい！
-      const layout = snap.layout || 'full'; 
+      const layout = snap.layout || 'full';
 
-      if (layout === 'full' || layout === 'text') {
-        if (currentRow.length > 0) { rows.push([...currentRow]); currentRow = []; }
-        rows.push([snap]);
-      } else if (layout === 'triple') {
-        currentRow.push(snap);
-        if (currentRow.length === 3) { rows.push([...currentRow]); currentRow = []; }
-      } else if (layout === 'grid') {
-        currentRow.push(snap);
-        if (currentRow.length === 2) { rows.push([...currentRow]); currentRow = []; }
+      // 🎯 文章(text)や1枚もの(full)は「割り込み」として扱うぞい！
+      if (layout === 'text' || layout === 'full') {
+        // 1. もし待機中の写真があれば、先にそれを1行として確定させるっぺ！
+        if (currentRow.length > 0) {
+          rows.push({ items: [...currentRow], layout: currentRow[0].layout });
+          currentRow = [];
+        }
+        // 2. 文章やフルサイズを、独立した「1行」として追加するぞい！
+        rows.push({ items: [snap], layout: layout });
       } else {
-        // 想定外の時もとりあえず出す！
-        if (currentRow.length > 0) { rows.push([...currentRow]); currentRow = []; }
-        rows.push([snap]);
+        // 🎯 3連(triple)や2連(grid)の時
+        // もし違うレイアウトが混ざりそうなら、一旦区切る
+        if (currentRow.length > 0 && currentRow[0].layout !== layout) {
+          rows.push({ items: [...currentRow], layout: currentRow[0].layout });
+          currentRow = [];
+        }
+        
+        currentRow.push(snap);
+
+        // 🎯 3枚または2枚たまったら1行確定！
+        const limit = layout === 'triple' ? 3 : 2;
+        if (currentRow.length === limit) {
+          rows.push({ items: [...currentRow], layout: layout });
+          currentRow = [];
+        }
       }
     });
-    // 残りを回収
-    if (currentRow.length > 0) rows.push(currentRow);
+    // 最後に残った写真たちも忘れずに回収！
+    if (currentRow.length > 0) {
+      rows.push({ items: [...currentRow], layout: currentRow[0].layout });
+    }
 
-const snapsHtml = rows.map((row) => {
-      const layout = row[0].layout || 'full';
-      const isText = layout === 'text';
-      const isTriple = layout === 'triple';
-      const isGrid = layout === 'grid';
+    // 🏆 HTML組み立て：直角・高さ固定・読み込み対策版だばい！
+    const snapsHtml = rows.map((row: any) => {
+      const layout = row.layout;
 
-      // 🎯 文章ブロック：角丸(12px)を消して直角にするぞい！
-      if (isText) {
+      // 🎯 【編集後記】文章ブロックを100%表示させる！
+      if (layout === 'text') {
+        const s = row.items[0];
         return `
-          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
             <tr>
-              <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; border-radius: 0; padding: 25px;">
-                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 900;">${row[0].title || ''}</p>
-                <p style="color: #4b5563; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${row[0].comment || ''}</p>
+              <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; padding: 25px;">
+                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 900;">${s.title || '編集後記'}</p>
+                <p style="color: #4b5563; margin: 10px 0 0 0; font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${s.comment || ''}</p>
               </td>
             </tr>
           </table>
         `;
       }
 
-      // 🎯 写真ブロック：幅と高さを計算して「ガタつき」をなくすっぺ！
-      const cellWidth = isTriple ? "33.3%" : isGrid ? "50%" : "100%";
-      const imgHeight = isTriple ? "120" : isGrid ? "180" : "auto"; // 3枚並びは120px、2枚並びは180pxで揃える
+      // 🎯 写真ブロック：サイズ固定で読み込み中のガタつきを防ぐ！
+      const cellWidth = layout === 'triple' ? "33.3%" : layout === 'grid' ? "50%" : "100%";
+      const imgHeight = layout === 'triple' ? "120" : layout === 'grid' ? "180" : "auto";
       
       return `
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 15px; table-layout: fixed;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; table-layout: fixed;">
           <tr>
-            ${row.map((s: any) => `
+            ${row.items.map((s: any) => `
               <td width="${cellWidth}" valign="top" style="padding: 5px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                   <tr>
@@ -72,16 +84,15 @@ const snapsHtml = rows.map((row) => {
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding: 8px 2px;">
+                    <td style="padding: 10px 2px;">
                       <p style="color: #111827; margin: 0; font-size: 11px; font-weight: 900; line-height: 1.2;">${s.title || ''}</p>
                     </td>
                   </tr>
                 </table>
               </td>
             `).join("")}
-            ${/* 空セル埋め（崩れ防止） */ ""}
-            ${isTriple && row.length < 3 ? `<td width="33.3%">&nbsp;</td>`.repeat(3 - row.length) : ""}
-            ${isGrid && row.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
+            ${layout === 'triple' && row.items.length < 3 ? `<td width="33.3%">&nbsp;</td>`.repeat(3 - row.items.length) : ""}
+            ${layout === 'grid' && row.items.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
           </tr>
         </table>
       `;
