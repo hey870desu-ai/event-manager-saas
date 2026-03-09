@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,FileText, RotateCcw
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw
 } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
