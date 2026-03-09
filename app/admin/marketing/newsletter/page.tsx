@@ -272,16 +272,21 @@ export default function NewsletterStudio() {
       let mainImageUrl = "";
       if (mainFile) mainImageUrl = await uploadPhoto(mainFile, "main");
 
-      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-        if (snap.file) {
-          const url = await uploadPhoto(snap.file, "snaps");
-          return { title: snap.title, comment: snap.comment, imageUrl: url,layout: snap.layout || 'full' };
-        } else if (snap.preview) {
-          // 下書きから復元した画像（URLのみ）の場合
-          return { title: snap.title, comment: snap.comment, imageUrl: snap.preview };
-        }
-        return null;
-      }));
+      // 🎯 ここ！ else if (snap.preview) の中にも layout を追加するんだばい！
+const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+  if (snap.file) {
+    const url = await uploadPhoto(snap.file, "snaps");
+    return { title: snap.title, comment: snap.comment, imageUrl: url, layout: snap.layout || 'full' };
+  } else if (snap.preview) {
+    return { 
+      title: snap.title, 
+      comment: snap.comment, 
+      imageUrl: snap.preview, 
+      layout: snap.layout || 'full' // 👈 これを追加！
+    };
+  }
+  return null;
+}));
 
       const finalSnaps = uploadedSnaps.filter(s => s !== null);
 
@@ -379,89 +384,66 @@ export default function NewsletterStudio() {
             </div>
           </section>
 
-          {/* 🎯 スナップ写真セクション：入力枠もプレビューと連動する魔法だばい！ */}
-          <section className="space-y-4">
-            <div className="flex justify-between items-end mb-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">3</div>
-                スナップ写真（最大10枚）
-              </label>
-              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">現在 {snaps.length} / 10 枚</span>
-            </div>
-            
-            {/* 🎯 grid から flex flex-wrap に変更！これで3枚並びが可能になるぞい！ */}
-            <div className="flex flex-wrap gap-6 items-start">
-              {snaps.map((snap, idx) => (
-                <div 
-                  key={idx} 
-                  className={`bg-white p-5 rounded-3xl border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm ${
-                    snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' : 
-                    snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
-                  }`}
-                >
-                  <button onClick={() => removeSnap(idx)} className="absolute -top-2 -right-2 bg-white text-red-500 p-2 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors z-10">
-                    <Trash2 size={16} />
-                  </button>
+          {/* 🎯 273行目付近：ここをまるごと入れ替えだっぺ！ */}
+<section className="space-y-4">
+  <div className="flex justify-between items-end mb-2">
+    <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+      <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">3</div>
+      スナップ写真（最大10枚）
+    </label>
+    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">現在 {snaps.length} / 10 枚</span>
+  </div>
+  
+  <div className="flex flex-wrap gap-6 items-start">
+    {snaps.map((snap: any, idx) => (
+      <div 
+        key={idx} 
+        className={`bg-white p-5 rounded-none border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm ${
+          snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' : 
+          snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
+        }`}
+      >
+        <button onClick={() => removeSnap(idx)} className="absolute -top-2 -right-2 bg-white text-red-500 p-2 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors z-10">
+          <Trash2 size={16} />
+        </button>
 
-                  {/* 🎯 プレビューも角をピシッと直角にするぞい！ */}
-                {snap.layout !== 'text' && (
-                  <div className="w-full aspect-square bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
-                    {snap.preview ? (
-                      <img src={snap.preview} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
-                    )}
-                  </div>
-                )}
+        {snap.layout !== 'text' && (
+          <div className="w-full aspect-square bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center mb-4">
+            {snap.preview ? (
+              <img src={snap.preview} className="w-full h-full object-cover rounded-none" />
+            ) : (
+              <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
+            )}
+          </div>
+        )}
 
-                  <input 
-                    type="text" 
-                    placeholder="タイトル" 
-                    value={snap.title} 
-                    onChange={(e) => {
-                      const newSnaps = [...snaps];
-                      newSnaps[idx].title = e.target.value;
-                      setSnaps(newSnaps);
-                    }} 
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black mb-2 outline-none" 
-                  />
-                  <textarea 
-                    placeholder="本文メッセージ..." 
-                    value={snap.comment} 
-                    onChange={(e) => {
-                      const newSnaps = [...snaps];
-                      newSnaps[idx].comment = e.target.value;
-                      setSnaps(newSnaps);
-                    }} 
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] leading-relaxed outline-none resize-none" 
-                    rows={snap.layout === 'text' ? 4 : 2} 
-                  />
-                </div>
-              ))}
-
-              {/* 🎯 追加ボタンエリアも flex の中に同居させるぞい！ */}
-              {snaps.length < 12 && (
-                <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                  <label className="h-32 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 cursor-pointer transition-all gap-1 bg-white/50 shadow-sm">
-                    <PlusCircle size={20} /><span className="text-[8px] font-black uppercase">1枚追加</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleBatchUpload(e, 1)} />
-                  </label>
-                  <label className="h-32 border-2 border-dashed border-blue-200 rounded-3xl flex flex-col items-center justify-center text-blue-500 hover:bg-blue-50 cursor-pointer transition-all gap-1 bg-blue-50/30 shadow-sm">
-                    <div className="flex gap-1"><Camera size={14}/><Camera size={14}/></div>
-                    <span className="text-[8px] font-black uppercase">3枚セット</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 3)} />
-                  </label>
-                  <label className="h-32 border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center text-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all gap-1 bg-indigo-50/30 shadow-sm">
-                    <Sparkles size={20} /><span className="text-[8px] font-black uppercase">6枚セット</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleBatchUpload(e, 6)} />
-                  </label>
-                  <button onClick={addTextBlock} className="h-32 border-2 border-dashed border-emerald-200 rounded-3xl flex flex-col items-center justify-center text-emerald-500 hover:bg-emerald-50 transition-all gap-1 bg-emerald-50/30 shadow-sm">
-                    <FileText size={20} /><span className="text-[8px] font-black uppercase">文章のみ</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
+        <input 
+          type="text" 
+          placeholder="タイトル" 
+          value={snap.title} 
+          onChange={(e) => {
+            const newSnaps = [...snaps];
+            newSnaps[idx].title = e.target.value;
+            setSnaps(newSnaps);
+          }} 
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-xs font-black mb-2 outline-none" 
+        />
+        <textarea 
+          placeholder="本文..." 
+          value={snap.comment} 
+          onChange={(e) => {
+            const newSnaps = [...snaps];
+            newSnaps[idx].comment = e.target.value;
+            setSnaps(newSnaps);
+          }} 
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-[10px] leading-relaxed outline-none resize-none" 
+          rows={snap.layout === 'text' ? 4 : 2} 
+        />
+      </div>
+    ))}
+    {/* 追加ボタンエリアは今のままでOKだばい！ */}
+  </div>
+</section>
 
           {/* 🏆 04. 送信先の選択 */}
           <section className="space-y-4">
@@ -622,32 +604,32 @@ export default function NewsletterStudio() {
             </div>
           </div>
 
-          {/* 🏆 右側：ここを flex flex-wrap に変えることで、やっと横に並ぶぞい！！ */}
+          {/* 🏆 右側：ここが「直角」＆「レイアウト連動」のプレビューだばい！！ */}
           <div className="px-12 pb-12 flex flex-wrap gap-y-12 gap-x-4 items-start">
             {snaps.map((snap: any, idx) => (
               <div 
                 key={idx} 
                 className={`space-y-4 ${
-                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : // 🎯 3枚並びの幅
-                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' :        // 🎯 2枚並びの幅
+                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : // 🎯 3枚並び
+                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' :        // 🎯 2枚並び（6枚セット）
                   'w-full'                                             // 🎯 1枚（フル）
                 }`}
               >
-                {/* 🎯 文章じゃない時だけ写真を表示 */}
+                {/* 🎯 写真：rounded-[1.5rem] を消して rounded-none にしたっぺ！ */}
                 {snap.layout !== 'text' && (
-                  <div className="w-full aspect-square bg-slate-50 rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
+                  <div className="w-full aspect-square bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center">
                     {snap.preview ? (
-                      <img src={snap.preview} className="w-full h-full object-cover" />
+                      <img src={snap.preview} className="w-full h-full object-cover rounded-none" />
                     ) : (
                       <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
                     )}
                   </div>
                 )}
                 
-                {/* 🎯 文章部分：'text' の時は横長の長方形デザイン */}
+                {/* 🎯 文章部分：ここも rounded-none で直角だばい！ */}
                 <div className={`${
                   snap.layout === 'text' 
-                    ? 'p-10 bg-blue-50/50 rounded-[2rem] border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]' 
+                    ? 'p-10 bg-blue-50/50 rounded-none border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]' 
                     : 'px-2'
                 } text-left`}>
                   <h4 className={`font-black text-slate-900 ${snap.layout === 'text' ? 'text-2xl mb-3' : 'text-[14px] mb-2'}`}>

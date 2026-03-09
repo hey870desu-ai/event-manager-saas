@@ -36,29 +36,29 @@ export async function POST(req: Request) {
     // 残りを回収
     if (currentRow.length > 0) rows.push(currentRow);
 
-    const snapsHtml = rows.map((row) => {
-      // 🎯 row[0].layout がなくても安全に判定するっぺ
+const snapsHtml = rows.map((row) => {
       const layout = row[0].layout || 'full';
       const isText = layout === 'text';
       const isTriple = layout === 'triple';
       const isGrid = layout === 'grid';
 
-      // 🎯 文章だけの時
+      // 🎯 文章ブロック：角丸(12px)を消して直角にするぞい！
       if (isText) {
         return `
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
             <tr>
-              <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; border-radius: 12px; padding: 20px;">
+              <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; border-radius: 0; padding: 25px;">
                 <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 900;">${row[0].title || ''}</p>
-                <p style="color: #64748b; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${row[0].comment || ''}</p>
+                <p style="color: #4b5563; margin: 5px 0 0 0; font-size: 13px; line-height: 1.6;">${row[0].comment || ''}</p>
               </td>
             </tr>
           </table>
         `;
       }
 
-      // 🎯 写真ブロック：1つのテーブルの中に「td」を並べて横並びを強制する！
-      const cellWidth = isTriple ? "33%" : isGrid ? "50%" : "100%";
+      // 🎯 写真ブロック：幅と高さを計算して「ガタつき」をなくすっぺ！
+      const cellWidth = isTriple ? "33.3%" : isGrid ? "50%" : "100%";
+      const imgHeight = isTriple ? "120" : isGrid ? "180" : "auto"; // 3枚並びは120px、2枚並びは180pxで揃える
       
       return `
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 15px; table-layout: fixed;">
@@ -67,8 +67,8 @@ export async function POST(req: Request) {
               <td width="${cellWidth}" valign="top" style="padding: 5px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                   <tr>
-                    <td bgcolor="#f1f5f9" style="border-radius: 8px; overflow: hidden;">
-                      <img src="${s.imageUrl}" width="100%" style="width: 100%; height: auto; display: block; border-radius: 8px;" border="0" />
+                    <td bgcolor="#f1f5f9" style="height: ${imgHeight}px; overflow: hidden; border-radius: 0;">
+                      <img src="${s.imageUrl}" width="100%" height="${imgHeight}" style="width: 100%; height: ${imgHeight}px; object-fit: cover; display: block; border-radius: 0;" border="0" />
                     </td>
                   </tr>
                   <tr>
@@ -79,7 +79,8 @@ export async function POST(req: Request) {
                 </table>
               </td>
             `).join("")}
-            ${isTriple && row.length < 3 ? `<td width="33%">&nbsp;</td>`.repeat(3 - row.length) : ""}
+            ${/* 空セル埋め（崩れ防止） */ ""}
+            ${isTriple && row.length < 3 ? `<td width="33.3%">&nbsp;</td>`.repeat(3 - row.length) : ""}
             ${isGrid && row.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
           </tr>
         </table>
