@@ -5,7 +5,7 @@ import {
   Camera, Send, Instagram, MessageCircle, Facebook, 
   Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw
 } from 'lucide-react';
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, auth, storage } from "@/lib/firebase";
 
@@ -35,6 +35,7 @@ export default function NewsletterStudio() {
   ]);
 
   // 🏆 過去の履歴を保存しておくための箱だばい！
+  const [totalCount, setTotalCount] = useState(0); // 🎯 全データ数を覚える箱
   const [archives, setArchives] = useState<any[]>([]);
 
   const [lastVisible, setLastVisible] = useState<any>(null); // 🎯 どこまで読み込んだか覚える
@@ -197,6 +198,13 @@ export default function NewsletterStudio() {
 // 🏆 履歴取得（迷子にならない＆最古ワープ対応版！）
   const fetchArchives = async (tid: string, direction: "next" | "prev" | "first" | "last" = "first") => {
     const { collection, query, where, getDocs, orderBy, limit, startAfter, endBefore, limitToLast } = await import("firebase/firestore");
+
+    // 🎯 1. 最初に全件数を数える（ページ番号を正しく出すためだばい！）
+    const coll = collection(db, "newsletter_archives");
+    const countQuery = query(coll, where("tenantId", "==", tid));
+    const countSnap = await getCountFromServer(countQuery);
+    const total = countSnap.data().count;
+    setTotalCount(total);
     
     // 基本は「新しい順（desc）」
     let q = query(
@@ -637,15 +645,14 @@ export default function NewsletterStudio() {
               )}
             </div>
           </section>
-          {/* 🎯 << < 1 2 3 > >> フル装備のページネーションだばい！ */}
+          {/* 🎯 正真正銘、完結版のページネーションだばい！ */}
 <div className="flex justify-center items-center gap-2 mt-10 pb-10">
   
   {/* 最初へ (<<) */}
   <button 
     onClick={() => { fetchArchives(tenantData.id, "first"); setCurrentPage(1); }}
     disabled={currentPage === 1}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
-    title="最初のページへ"
+    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 disabled:opacity-20 border border-slate-200 shadow-sm"
   >
     <ChevronsLeft size={18}/>
   </button>
@@ -654,31 +661,32 @@ export default function NewsletterStudio() {
   <button 
     onClick={() => { fetchArchives(tenantData.id, "prev"); setCurrentPage(prev => Math.max(1, prev - 1)); }} 
     disabled={currentPage === 1}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
+    className="p-2 bg-white rounded-lg text-slate-400 border border-slate-200"
   >
     <ChevronLeft size={18}/>
   </button>
 
-  {/* ページ番号（1, 2, 3） */}
+  {/* 🏆 ページ番号（今ある分だけを表示するぞい！） */}
   <div className="flex gap-1 mx-2">
-    {[...Array(Math.min(3, currentPage + 1))].map((_, i) => {
-      const pageNum = currentPage > 2 ? currentPage - 1 + i : i + 1;
+    {Array.from({ length: Math.ceil(totalCount / 10) }).map((_, i) => {
+      const pageNum = i + 1;
+      // 🎯 今のページの前後1ページだけ出すプロ仕様だばい！
+      if (pageNum < currentPage - 1 || pageNum > currentPage + 1) {
+        if (pageNum === 1 || pageNum === Math.ceil(totalCount / 10)) { /* 端っこは出す */ }
+        else return null;
+      }
+
       return (
         <button
           key={pageNum}
           onClick={() => {
-            if (pageNum === currentPage) return;
-            if (pageNum === 1) {
-              fetchArchives(tenantData.id, "first");
-            } else {
-              fetchArchives(tenantData.id, pageNum > currentPage ? "next" : "prev");
-            }
+            if (pageNum === 1) fetchArchives(tenantData.id, "first");
+            else if (pageNum === Math.ceil(totalCount / 10)) fetchArchives(tenantData.id, "last");
+            else fetchArchives(tenantData.id, pageNum > currentPage ? "next" : "prev");
             setCurrentPage(pageNum);
           }}
-          className={`w-8 h-8 rounded-lg text-[10px] font-black transition-all border ${
-            currentPage === pageNum 
-              ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-110' 
-              : 'bg-white text-slate-400 border-slate-200 hover:border-blue-400 hover:bg-slate-50'
+          className={`w-10 h-8 rounded-lg text-[10px] font-black border transition-all ${
+            currentPage === pageNum ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'
           }`}
         >
           {pageNum}
@@ -687,24 +695,15 @@ export default function NewsletterStudio() {
     })}
   </div>
 
-  {/* 次へ (>) */}
-  <button 
-    onClick={() => { fetchArchives(tenantData.id, "next"); setCurrentPage(prev => prev + 1); }} 
-    disabled={archives.length < 10}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
-  >
-    <ChevronRight size={18}/>
-  </button>
-
-  {/* 🏆 復活＆ワープの最後へ (>>) */}
+  {/* 🏆 最後のページへワープ (>>) */}
   <button 
     onClick={() => { 
-      fetchArchives(tenantData.id, "last"); // 🎯 エンジンに「last」を命令！
-      setCurrentPage(999); // 「一番うしろだぞ」とわかる目印だばい
+      const lastPage = Math.ceil(totalCount / 10);
+      fetchArchives(tenantData.id, "last"); 
+      setCurrentPage(lastPage); // 🎯 999 ではなく「本当の最後」を教えるぞい！
     }} 
-    disabled={archives.length < 10}
-    className="p-2 bg-white rounded-lg text-slate-400 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-20 border border-slate-200 transition-all shadow-sm"
-    title="一番古いデータへワープ！"
+    disabled={currentPage === Math.ceil(totalCount / 10) || totalCount === 0}
+    className="p-2 bg-white rounded-lg text-slate-400 border border-slate-200"
   >
     <ChevronsRight size={18}/>
   </button>
