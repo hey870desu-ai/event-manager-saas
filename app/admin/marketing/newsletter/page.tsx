@@ -12,7 +12,8 @@ import { db, auth, storage } from "@/lib/firebase";
 export default function NewsletterStudio() {
   // 🏆 テナント情報（SNSや住所などの設定）を保持
   const [tenantData, setTenantData] = useState<any>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false); // 送信用
+  const [isSaving, setIsSaving] = useState(false);   // 保存用
   // 🏆 顧客リスト（絆リスト）用のStateを追加だばい！
   const [allRecipients, setAllRecipients] = useState<any[]>([]); 
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]); 
@@ -226,7 +227,7 @@ export default function NewsletterStudio() {
 // 🏆 必殺技②：一時保存（下書き）する（写真も確実に保存する鉄壁版！）
   const handleSaveDraft = async () => {
     if (!tenantData) return;
-    setIsUploading(true);
+    setIsSaving(true);
     try {
       const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
 
@@ -259,7 +260,7 @@ export default function NewsletterStudio() {
     } catch (e) {
       alert("保存失敗だっぺ...");
     } finally {
-      setIsUploading(false);
+      setIsSending(false);
     }
   };
 
@@ -279,10 +280,10 @@ export default function NewsletterStudio() {
 
 // --- 🚀 配信開始ボタン（テキストも画像も1枚も漏らさない版！） ---
   const handleSend = async () => {
-    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでくんちぇ！");
+    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください！");
     if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
     
-    setIsUploading(true);
+    setIsSending(true);
 
     try {
       // メイン写真の確定
@@ -335,7 +336,7 @@ export default function NewsletterStudio() {
       console.error(e);
       alert("送信中に問題が発生したっぺ...");
     } finally {
-      setIsUploading(false);
+      setIsSending(false);
     }
   };
 
@@ -535,23 +536,27 @@ export default function NewsletterStudio() {
 
           {/* --- 🚀 アクションエリア --- */}
           <div className="space-y-4 pt-10">
-            {/* 一時保存（下書き）ボタン */}
+            {/* 🎯 一時保存ボタン：isSaving を見るように変更！ */}
             <button 
               onClick={handleSaveDraft} 
-              disabled={isUploading}
-              className="w-full py-4 text-blue-600 text-xs font-black uppercase tracking-widest bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all border border-blue-100 flex items-center justify-center gap-2"
+              disabled={isSaving || isSending}
+              className="w-full py-4 text-blue-600 text-xs font-black uppercase tracking-widest bg-blue-50 hover:bg-blue-100 rounded-none transition-all border border-blue-100 flex items-center justify-center gap-2"
             >
-              <PlusCircle size={14}/> 今の内容を下書きとして保存する
+              {isSaving ? (
+                <><Loader2 className="animate-spin" size={14}/> 保存中...</>
+              ) : (
+                <><PlusCircle size={14}/> 今の内容を下書きとして保存する</>
+              )}
             </button>
 
-            {/* 本番配信ボタン */}
+            {/* 🎯 本番配信ボタン：isSending だけを見るから、もう勝手にクルクルしないぞい！ */}
             <button 
               onClick={handleSend} 
-              disabled={isUploading || selectedEmails.length === 0} 
-              className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xl flex items-center justify-center gap-4 hover:bg-blue-600 shadow-2xl transition-all disabled:bg-slate-300"
+              disabled={isSending || isSaving || selectedEmails.length === 0} 
+              className="w-full bg-slate-900 text-white py-6 rounded-none font-black text-xl flex items-center justify-center gap-4 hover:bg-blue-600 shadow-2xl transition-all disabled:bg-slate-300"
             >
-              {isUploading ? (
-                <><Loader2 className="animate-spin" /> 送信・保存中だっぺ...</>
+              {isSending ? (
+                <><Loader2 className="animate-spin" /> 送信中...</>
               ) : (
                 <><Send size={24} /> {selectedEmails.length > 0 ? `${selectedEmails.length}名に一斉配信を開始！` : "一斉配信を開始する"}</>
               )}
