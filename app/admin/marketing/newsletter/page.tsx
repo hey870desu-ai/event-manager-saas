@@ -260,7 +260,7 @@ export default function NewsletterStudio() {
     } catch (e) {
       alert("保存失敗だっぺ...");
     } finally {
-      setIsSending(false);
+      setIsSaving(false);
     }
   };
 
