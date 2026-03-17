@@ -627,6 +627,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                   <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleExcelImport} />
                 </label>
               </div>
+              </div>
 
               <div className="space-y-4">
                  {hasBranches && (
