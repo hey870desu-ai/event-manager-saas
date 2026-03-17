@@ -258,6 +258,17 @@ const fetchTargets = async () => {
       const customerMap = new Map<string, any>(); 
       let blockedCount = 0;
 
+      // 🏆 修正ポイント：まずは「インポートされた名簿」を読み込む！
+      const manualSnap = await getDocs(collection(db, "tenants", tenantData.id, "manual_contacts"));
+      manualSnap.forEach(doc => {
+        const d = doc.data();
+        customerMap.set(d.email, {
+          name: d.name,
+          company: d.company || "",
+          phone: d.phone || "",
+        });
+      });
+
       await Promise.all(targetEvents.map(async (event) => {
         const resSnap = await getDocs(collection(db, "events", event.id, "reservations"));
         resSnap.forEach(doc => {
@@ -379,6 +390,60 @@ const handleSaveMemo = async (email: string, memo: string) => {
     link.click();
   };
 
+  // 🚀 Excelインポートの心臓部だばい！
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !tenantData) return;
+
+    // XLSXライブラリを動的に読み込む（ビルドサイズ節約だばい）
+    const XLSX = await import("xlsx");
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+        if (data.length === 0) return alert("Excelの中身が空っぽだっぺ！");
+
+        setLoadingTargets(true);
+        let importCount = 0;
+
+        // 🎯 Firestoreのテナント専用「外部名簿BOX」に保存するぞい
+        for (const row of data) {
+          const email = row['メールアドレス'] || row['email'] || row['メアド'];
+          const name = row['氏名'] || row['名前'] || row['name'];
+
+          if (email && name) {
+            const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
+            await setDoc(contactRef, {
+              email: email.trim(),
+              name: name.trim(),
+              company: row['会社名'] || row['組織'] || "",
+              phone: row['電話番号'] || "",
+              source: 'excel_import',
+              importedAt: new Date()
+            }, { merge: true });
+            importCount++;
+          }
+        }
+
+        alert(`${importCount} 名の絆をインポートしたぞい！リストを再抽出してくんちぇ。`);
+        fetchTargets(); // 🔄 自動でリストを更新するべ！
+
+      } catch (err) {
+        console.error(err);
+        alert("インポート中にエラーだっぺ...");
+      } finally {
+        setLoadingTargets(false);
+        e.target.value = ""; // 連続選択できるようにリセット
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
     // ★ ここで「チェックされた人」がいるか判定するだっぺ！
@@ -469,337 +534,142 @@ const handleSaveMemo = async (email: string, memo: string) => {
   </div>
 </div>
 
-      <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* 左カラム: リスト抽出 */}
+        {/* 📂 左カラム: リスト抽出・絆名簿エリア */}
         <div className="lg:col-span-1 space-y-6">
-           <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative overflow-hidden">
+           <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-              <h2 className="text-white font-bold mb-4 flex items-center gap-2"><Filter size={18} className="text-indigo-400"/> 配信ターゲット抽出</h2>
               
+              <div className="flex justify-between items-center mb-6 gap-2">
+                <h2 className="text-white font-bold flex items-center gap-2">
+                  <Filter size={18} className="text-indigo-400"/> 配信ターゲット抽出
+                </h2>
+                <label className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/20 transition-all whitespace-nowrap">
+                  <FileText size={12} /> Excelインポート
+                  <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleExcelImport} />
+                </label>
+              </div>
+
               <div className="space-y-4">
-                 
                  {hasBranches && (
                    <div>
                       <label className="block text-xs text-slate-500 font-bold mb-2">対象範囲 (部署・支部)</label>
-                      <select 
-                        value={targetBranch}
-                        onChange={(e) => {
-                          setTargetBranch(e.target.value);
-                          setTargetEventId("all");
-                        }}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none cursor-pointer hover:border-indigo-500/50 transition-colors"
-                      >
+                      <select value={targetBranch} onChange={(e) => { setTargetBranch(e.target.value); setTargetEventId("all"); }} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-indigo-500/50 shadow-inner">
                          <option value="all">👑 全部署・全イベント</option>
-                         {safeBranches.map(b => (
-                           <option key={b} value={b}>{b}</option>
-                         ))}
+                         {safeBranches.map(b => <option key={b} value={b}>{b}</option>)}
                       </select>
                    </div>
                  )}
-
                  <div>
                     <label className="block text-xs text-slate-500 font-bold mb-2">特定のイベント (任意)</label>
-                    <select 
-                      value={targetEventId}
-                      onChange={(e) => setTargetEventId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none cursor-pointer hover:border-indigo-500/50 transition-colors"
-                    >
-                       <option value="all">
-                         {hasBranches && targetBranch === "all" ? "全イベント対象" : "この範囲の全イベント"}
-                       </option>
-                       
-                       {filteredEvents.map(e => (
-                           <option key={e.id} value={e.id}>
-                             {e.date} : {e.title}
-                           </option>
-                         ))}
-                       
-                       {filteredEvents.length === 0 && (
-                         <option disabled>該当するイベントがありません</option>
-                       )}
+                    <select value={targetEventId} onChange={(e) => setTargetEventId(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-indigo-500/50 shadow-inner">
+                       <option value="all">{hasBranches && targetBranch === "all" ? "全イベント対象" : "この範囲の全イベント"}</option>
+                       {filteredEvents.map(e => <option key={e.id} value={e.id}>{e.date} : {e.title}</option>)}
                     </select>
                  </div>
-
-                 <button 
-                   onClick={fetchTargets}
-                   disabled={loadingTargets}
-                   className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg hover:shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                   {loadingTargets ? <RefreshCw className="animate-spin" size={18}/> : <Users size={18}/>}
-                   リストを抽出・名寄せ
+                 <button onClick={fetchTargets} disabled={loadingTargets} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50">
+                   {loadingTargets ? <RefreshCw className="animate-spin" size={20}/> : <Users size={20}/>} リストを抽出・名寄せ
                  </button>
               </div>
            </div>
 
            <div className={`bg-slate-900/50 border border-slate-800 p-6 rounded-xl text-center transition-all duration-500 ${extracted ? "opacity-100 translate-y-0" : "opacity-50 translate-y-2"}`}>
-  <div className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Total Recipients</div>
-  
-  {/* 1. 数字の下に少し余裕を持たせるっぺ */}
-  <div className="text-4xl font-mono font-bold text-white mb-6">
-     {recipients.length.toLocaleString()}
-  </div>
-  
-  {/* 2. ボタンを配置。mb-6 を足して下のチェックマークとの距離を離すぞい！ */}
-  {extracted && (
-    <button 
-      onClick={handleDownloadCSV}
-      className="mb-6 w-full py-3 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
-    >
-      <FileDown size={14}/> 絆リストをCSV出力
-    </button>
-  )}
-
-  {/* 3. チェックマーク（重複除去済み）の周りもスッキリさせるっぺ */}
-  <div className="text-[10px] text-emerald-400 flex justify-center items-center gap-1 font-bold pb-2">
-     <CheckCircle size={12}/> 重複アドレス除去済み
-  </div>
-              
-              {/* 📂 抽出プレビューのエリア（recipients.length > 0 の中）を以下に差し替え */}
-{recipients.length > 0 && (
-  <div className="mt-4 pt-4 border-t border-slate-800 text-left">
-    
-    {/* 🔍 検索バー */}
-    <div className="relative mb-3">
-      <input 
-        type="text"
-        placeholder="名前やアドレスで検索..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-indigo-500 transition-all"
-      />
-      <Filter size={14} className="absolute left-3 top-3 text-slate-500" />
-    </div>
-
-    {/* 人数カウントの補助情報 */}
-    <div className="flex justify-between items-center px-1 mb-2">
-      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-        {selectedEmails.size > 0 ? `✅ ${selectedEmails.size}名を選択中` : "リスト一覧"}
-      </p>
-      {selectedEmails.size > 0 && (
-        <button 
-          onClick={() => setSelectedEmails(new Set())}
-          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold"
-        >
-          選択を解除
-        </button>
-      )}
-    </div>
-
-    {/* 連絡帳風のリスト */}
-    <div className="max-h-[65vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
-      {/* 📂 リスト表示のループ内 */}
-{displayedRecipients.map((r, i) => (
-  <div 
-    key={i} 
-    className={`p-3 rounded-lg transition-colors border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
-  >
-    <div className="flex items-center gap-3">
-      <input 
-        type="checkbox"
-        checked={selectedEmails.has(r.email)}
-        onChange={() => {
-          const newSet = new Set(selectedEmails);
-          if (newSet.has(r.email)) newSet.delete(r.email);
-          else newSet.add(r.email);
-          setSelectedEmails(newSet);
-        }}
-        className="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-800 cursor-pointer"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold text-white truncate">{r.name}</div>
-        <div className="text-[10px] text-slate-600 truncate">{r.email}</div>
-      </div>
-    </div>
-
-    {/* ★ 絆メモの入力欄をここに追加だっぺ！ */}
-    <div className="mt-2 ml-7">
-      <input 
-        type="text"
-        placeholder="絆メモ（例：交流会で名刺交換）"
-        defaultValue={r.memo || ""}
-        onBlur={(e) => handleSaveMemo(r.email, e.target.value)}
-        className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic placeholder:text-slate-700"
-      />
-    </div>
-  </div>
-))}
-      {displayedRecipients.length === 0 && (
-        <div className="p-10 text-center text-slate-600 text-xs">
-          一致する人は見つからなかったっぺ...
-        </div>
-      )}
-    </div>
-  </div>
-)}
+              <div className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Total Recipients</div>
+              <div className="text-4xl font-mono font-bold text-white mb-6">{recipients.length.toLocaleString()}</div>
+              {extracted && (
+                <button onClick={handleDownloadCSV} className="mb-6 w-full py-3 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                  <FileDown size={14}/> 絆リストをCSV出力
+                </button>
+              )}
+              <div className="text-[10px] text-emerald-400 flex justify-center items-center gap-1 font-bold pb-2"><CheckCircle size={12}/> 重複アドレス除去済み</div>
+              {recipients.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-800 text-left">
+                  <div className="relative mb-3">
+                    <input type="text" placeholder="名前やアドレスで検索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-indigo-500 transition-all"/>
+                    <Filter size={14} className="absolute left-3 top-3 text-slate-500" />
+                  </div>
+                  <div className="max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
+                    {displayedRecipients.map((r, i) => (
+                      <div key={i} className={`p-3 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" checked={selectedEmails.has(r.email)} onChange={() => { const newSet = new Set(selectedEmails); if (newSet.has(r.email)) newSet.delete(r.email); else newSet.add(r.email); setSelectedEmails(newSet); }} className="w-4 h-4 rounded border-slate-700 text-indigo-600 bg-slate-800 cursor-pointer" />
+                          <div className="flex-1 min-w-0"><div className="text-xs font-bold text-white truncate">{r.name}</div><div className="text-[10px] text-slate-600 truncate">{r.email}</div></div>
+                        </div>
+                        <div className="mt-2 ml-7">
+                          <input type="text" placeholder="絆メモ" defaultValue={r.memo || ""} onBlur={(e) => handleSaveMemo(r.email, e.target.value)} className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
            </div>
         </div>
 
-{/* ▼▼▼ 右カラム: メール作成（予約配信対応版） ▼▼▼ */}
+        {/* 📂 右カラム: メール作成エリア */}
         <div className="lg:col-span-2 space-y-6">
-           <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative">
-              
+           <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative shadow-2xl">
               {!extracted && (
                  <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-xl border border-slate-800/50">
-                    <Filter className="text-slate-600 mb-2" size={48}/>
-                    <p className="text-slate-400 font-bold">左側のメニューからリストを抽出してください</p>
+                    <Filter className="text-slate-600 mb-2" size={48}/><p className="text-slate-400 font-bold">左側のメニューからリストを抽出してください</p>
                  </div>
               )}
-
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-white font-bold flex items-center gap-2"><Mail size={18} className="text-indigo-400"/> メール作成</h2>
-                
                 <div className="flex items-center gap-2">
                    <FileText size={14} className="text-slate-500"/>
-                   <select 
-                     className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1 outline-none cursor-pointer hover:border-indigo-500"
-                     onChange={(e) => applyTemplate(e.target.value)}
-                     defaultValue=""
-                   >
-                     <option value="" disabled>テンプレートから読み込む</option>
-                     {EMAIL_TEMPLATES.map(t => (
-                       <option key={t.id} value={t.id}>{t.label}</option>
-                     ))}
+                   <select className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1 outline-none cursor-pointer" onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
+                     <option value="" disabled>テンプレート読込</option>
+                     {EMAIL_TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                    </select>
                 </div>
               </div>
-              
               <div className="space-y-6">
-                 {/* 配信設定エリア（新機能！） */}
+                 {/* 🏆 配信設定：ここもしっかり復活させたぞい！ */}
                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                     <label className="block text-xs text-slate-500 font-bold mb-3">配信タイミング</label>
                     <div className="flex flex-col md:flex-row gap-6">
                        <label className="flex items-center gap-3 cursor-pointer group">
-                          <input 
-                            type="radio" 
-                            name="deliveryType" 
-                            checked={!scheduledTime} 
-                            onChange={() => setScheduledTime("")}
-                            className="w-4 h-4 text-indigo-500 border-slate-700 focus:ring-indigo-500 bg-transparent"
-                          />
-                          <div className="group-hover:text-white transition-colors">
-                             <span className="block text-sm font-bold text-slate-200">今すぐ配信</span>
-                             <span className="block text-xs text-slate-500">送信ボタンを押すと即時配信されます</span>
-                          </div>
+                          <input type="radio" name="deliveryType" checked={!scheduledTime} onChange={() => setScheduledTime("")} className="w-4 h-4 text-indigo-500 bg-transparent border-slate-700"/>
+                          <div className="group-hover:text-white transition-colors"><span className="block text-sm font-bold text-slate-200">今すぐ配信</span><span className="block text-xs text-slate-500">即時配信されます</span></div>
                        </label>
-                       
                        <label className="flex items-center gap-3 cursor-pointer group">
-                          <input 
-                            type="radio" 
-                            name="deliveryType" 
-                            checked={!!scheduledTime} 
-                            onChange={() => {
-                               // デフォルトで明日の朝9時をセット
-                               const tmrw = new Date();
-                               tmrw.setDate(tmrw.getDate() + 1);
-                               tmrw.setHours(9, 0, 0, 0);
-                               // datetime-local用のフォーマット (YYYY-MM-DDThh:mm)
-                               const iso = tmrw.toISOString().slice(0, 16); // 秒をカット
-                               // 日本時間へ補正が必要なら別途処理しますが、簡易的にローカル時間をセット
-                               // ※本当はライブラリを使うと楽ですが、ここでは手動入力させます
-                               setScheduledTime(iso); 
-                            }}
-                            className="w-4 h-4 text-indigo-500 border-slate-700 focus:ring-indigo-500 bg-transparent"
-                          />
-                          <div className="group-hover:text-white transition-colors">
-                             <span className="block text-sm font-bold text-slate-200">予約配信</span>
-                             <span className="block text-xs text-slate-500">指定した日時に自動で配信します</span>
-                          </div>
+                          <input type="radio" name="deliveryType" checked={!!scheduledTime} onChange={() => setScheduledTime(new Date().toISOString().slice(0, 16))} className="w-4 h-4 text-indigo-500 bg-transparent border-slate-700"/>
+                          <div className="group-hover:text-white transition-colors"><span className="block text-sm font-bold text-slate-200">予約配信</span><span className="block text-xs text-slate-500">指定した日時に配信します</span></div>
                        </label>
                     </div>
-
-                    {/* 予約日時入力エリア（予約選択時のみ表示） */}
                     {scheduledTime && (
                        <div className="mt-4 pl-7 animate-in fade-in slide-in-from-top-2">
-                          <input 
-                            type="datetime-local"
-                            value={scheduledTime}
-                            onChange={(e) => setScheduledTime(e.target.value)}
-                            min={new Date().toISOString().slice(0, 16)}
-                            className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 cursor-pointer"
-                          />
-                          <p className="mt-2 text-xs text-amber-500 flex items-center gap-1">
-                             <Clock size={12}/> 設定した日時にシステムが自動送信します
-                          </p>
+                          <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500" />
+                          <p className="mt-2 text-xs text-amber-500 flex items-center gap-1"><Clock size={12}/> 設定した日時に自動送信します</p>
                        </div>
                     )}
                  </div>
-
                  <div>
                     <label className="block text-xs text-slate-500 font-bold mb-2">件名 (Subject)</label>
-                    <input 
-                      type="text" 
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="例: 【重要】セミナーのご案内"
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:border-indigo-500 outline-none transition-colors"
-                    />
+                    <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="例: 【重要】セミナーのご案内" className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none transition-colors" />
                  </div>
-                 
                  <div>
                     <label className="block text-xs text-slate-500 font-bold mb-2">本文 (Body)</label>
-                    <div className="text-[10px] text-slate-500 mb-2 bg-slate-950 p-3 rounded border border-slate-800 flex items-start gap-2">
-                       <span className="text-yellow-500">💡</span> 
-                       <div>
-                         本文中の「参加者各位」は、送信時に自動で「〇〇 様」に置き換わります。<br/>
-                         送信者名: <span className="text-indigo-400 font-bold">{tenantData?.name || "..."}</span>
-                       </div>
-                    </div>
-                    <textarea 
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      placeholder="いつも大変お世話になっております。..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-600 focus:border-indigo-500 outline-none transition-colors font-sans leading-relaxed min-h-[600px]" 
-                    />
+                    <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="いつも大変お世話になっております。..." className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none font-sans leading-relaxed min-h-[450px]" />
                  </div>
               </div>
-
               <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
                  <div className="text-xs text-slate-500 flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
-                    <AlertTriangle size={14} className="text-amber-500"/>
-                    {scheduledTime ? "予約後の変更・キャンセルは管理画面から可能です" : "一度送信すると取り消しはできません"}
+                    <AlertTriangle size={14} className="text-amber-500"/>{scheduledTime ? "予約後の変更・キャンセルは管理画面から可能です" : "一度送信すると取り消しはできません"}
                  </div>
-                 
                  <div className="flex gap-3 w-full md:w-auto">
-                    <button 
-                      onClick={() => setShowPreview(true)}
-                      disabled={!subject && !body}
-                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg transition-all flex items-center gap-2 border border-slate-700 w-full md:w-auto justify-center"
-                    >
-                      <Eye size={18}/> プレビュー
-                    </button>
-
-                    <button 
-                      onClick={() => handleSend(true)}
-                      disabled={sending}
-                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg transition-all flex items-center gap-2 border border-slate-700 w-full md:w-auto justify-center"
-                    >
-                      <PlayCircle size={18}/> テスト送信 (自分のみ)
-                    </button>
-
-                    {/* 送信ボタン（テキスト可変） */}
-                    <button 
-                      onClick={() => handleSend(false)}
-                      disabled={sending || recipients.length === 0}
-                      className={`px-6 py-3 font-bold rounded-lg transition-all flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto justify-center ${
-                          scheduledTime 
-                            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20" 
-                            : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20"
-                      }`}
-                    >
+                    <button onClick={() => setShowPreview(true)} disabled={!subject && !body} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><Eye size={18}/> プレビュー</button>
+                    <button onClick={() => handleSend(true)} disabled={sending} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><PlayCircle size={18}/> テスト送信</button>
+                    <button onClick={() => handleSend(false)} disabled={sending || recipients.length === 0} className={`px-6 py-3 font-black rounded-lg transition-all flex items-center gap-2 shadow-lg w-full md:w-auto justify-center ${scheduledTime ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}>
                       {sending ? <RefreshCw className="animate-spin" size={18}/> : scheduledTime ? <Clock size={18}/> : <Send size={18}/>}
-                      {scheduledTime 
-    ? "配信予約を確定" 
-    : `${selectedEmails.size > 0 ? selectedEmails.size : recipients.length}名に想いを届ける`
-  }
+                      {scheduledTime ? "配信予約を確定" : `${selectedEmails.size > 0 ? selectedEmails.size : recipients.length}名に想いを届ける`}
                     </button>
                  </div>
               </div>
            </div>
-        
         </div>
-        {/* ▲▲▲ 右カラムここまで ▲▲▲ */}
-
       </main>
 {/* ▼▼▼ 追加: メールプレビューモーダル ▼▼▼ */}
       {showPreview && (
