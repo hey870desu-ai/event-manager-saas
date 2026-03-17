@@ -390,12 +390,11 @@ const handleSaveMemo = async (email: string, memo: string) => {
     link.click();
   };
 
-  // 🚀 Excelインポートの心臓部だばい！
+  // 🚀 CSV/Excelインポートの「超・賢い」版だばい！
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !tenantData) return;
 
-    // XLSXライブラリを動的に読み込む（ビルドサイズ節約だばい）
     const XLSX = await import("xlsx");
     const reader = new FileReader();
 
@@ -406,39 +405,53 @@ const handleSaveMemo = async (email: string, memo: string) => {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-        if (data.length === 0) return alert("Excelの中身が空っぽだっぺ！");
+        if (data.length === 0) return alert("中身が空っぽだっぺ！");
+
+        // 🕵️‍♂️ デバッグ用：最初の1行をコンソールに出して確認するぞい
+        console.log("📊 読み込みデータ1行目:", data[0]);
 
         setLoadingTargets(true);
         let importCount = 0;
 
-        // 🎯 Firestoreのテナント専用「外部名簿BOX」に保存するぞい
-        for (const row of data) {
-          const email = row['メールアドレス'] || row['email'] || row['メアド'];
-          const name = row['氏名'] || row['名前'] || row['name'];
+        // 🎯 賢い列探し：よくある名前を全部チェックするぞい！
+        const emailKeys = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先'];
+        const nameKeys = ['氏名', '名前', 'name', '姓名', 'ユーザー名', '顧客名'];
 
-          if (email && name) {
+        for (const row of data) {
+          // rowの中から、emailKeysのどれかに当てはまる「値」を探すっぺ
+          const foundEmailKey = Object.keys(row).find(key => emailKeys.includes(key.toLowerCase()));
+          const foundNameKey = Object.keys(row).find(key => nameKeys.includes(key.toLowerCase()));
+
+          const email = foundEmailKey ? String(row[foundEmailKey]).trim() : null;
+          const name = foundNameKey ? String(row[foundNameKey]).trim() : '名前なし';
+
+          if (email && email.includes('@')) { // メアドっぽい形式かチェック
             const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
             await setDoc(contactRef, {
-              email: email.trim(),
-              name: name.trim(),
+              email: email,
+              name: name,
               company: row['会社名'] || row['組織'] || "",
               phone: row['電話番号'] || "",
-              source: 'excel_import',
+              source: 'csv_import',
               importedAt: new Date()
             }, { merge: true });
             importCount++;
           }
         }
 
-        alert(`${importCount} 名の絆をインポートしたぞい！リストを再抽出してくんちぇ。`);
-        fetchTargets(); // 🔄 自動でリストを更新するべ！
+        if (importCount === 0) {
+          alert("0名だばい...！CSVの1行目（見出し）に「名前」「メールアドレス」という文字が入っているか確認してくんちぇ！！");
+        } else {
+          alert(`${importCount} 名の絆をインポートしたぞい！！リストを再抽出してくんちぇ。`);
+          fetchTargets(); 
+        }
 
       } catch (err) {
         console.error(err);
         alert("インポート中にエラーだっぺ...");
       } finally {
         setLoadingTargets(false);
-        e.target.value = ""; // 連続選択できるようにリセット
+        e.target.value = ""; 
       }
     };
     reader.readAsBinaryString(file);
