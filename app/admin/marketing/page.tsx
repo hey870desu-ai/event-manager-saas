@@ -390,7 +390,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
     link.click();
   };
 
-  // 🚀 CSV/Excelインポートの「超・賢い」版だばい！
+// 🚀 CSV/Excelインポートの「超・執念」版だばい！
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !tenantData) return;
@@ -398,39 +398,48 @@ const handleSaveMemo = async (email: string, memo: string) => {
     const XLSX = await import("xlsx");
     const reader = new FileReader();
 
+    // 🎯 ArrayBufferで読み込むことで文字化けを防ぐぞい！
     reader.onload = async (evt) => {
       try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const dataArray = evt.target?.result;
+        const wb = XLSX.read(dataArray, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const data: any[] = XLSX.utils.sheet_to_json(ws);
+        const jsonData: any[] = XLSX.utils.sheet_to_json(ws);
 
-        if (data.length === 0) return alert("中身が空っぽだっぺ！");
-
-        // 🕵️‍♂️ デバッグ用：最初の1行をコンソールに出して確認するぞい
-        console.log("📊 読み込みデータ1行目:", data[0]);
+        if (jsonData.length === 0) return alert("中身が空っぽだっぺ！");
 
         setLoadingTargets(true);
         let importCount = 0;
 
-        // 🎯 賢い列探し：よくある名前を全部チェックするぞい！
-        const emailKeys = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先'];
-        const nameKeys = ['氏名', '名前', 'name', '姓名', 'ユーザー名', '顧客名'];
+        // 🎯 探し出すキーワードを大幅に増やしたぞい！
+        const emailKeys = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先', 'address'];
+        const nameKeys = ['氏名', '名前', 'name', '姓名', 'ユーザー', 'ユーザー名', '顧客名', '担当者'];
 
-        for (const row of data) {
-          // rowの中から、emailKeysのどれかに当てはまる「値」を探すっぺ
-          const foundEmailKey = Object.keys(row).find(key => emailKeys.includes(key.toLowerCase()));
-          const foundNameKey = Object.keys(row).find(key => nameKeys.includes(key.toLowerCase()));
+        for (const row of jsonData) {
+          // 1. まずはキーワードで列を探す
+          let foundEmailKey = Object.keys(row).find(key => emailKeys.includes(key.trim().toLowerCase()));
+          let foundNameKey = Object.keys(row).find(key => nameKeys.includes(key.trim().toLowerCase()));
+
+          // 2. 【魔法のバックアップ】もしキーワードで見つからなかったら、
+          // 全列を調べて「@」が入ってる場所をメアド、それ以外を名前にする強硬手段だばい！
+          if (!foundEmailKey) {
+            foundEmailKey = Object.keys(row).find(key => String(row[key]).includes('@'));
+          }
+          if (!foundNameKey) {
+            // メアドじゃない列で、一番最初に文字が入ってる列を名前にしちゃうっぺ
+            foundNameKey = Object.keys(row).find(key => key !== foundEmailKey && String(row[key]).length > 0);
+          }
 
           const email = foundEmailKey ? String(row[foundEmailKey]).trim() : null;
           const name = foundNameKey ? String(row[foundNameKey]).trim() : '名前なし';
 
-          if (email && email.includes('@')) { // メアドっぽい形式かチェック
+          // 🎯 最後にメアドの形式チェックをしてFirestoreに叩き込む！
+          if (email && email.includes('@')) {
             const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
             await setDoc(contactRef, {
               email: email,
               name: name,
-              company: row['会社名'] || row['組織'] || "",
+              company: row['会社名'] || row['組織'] || row['チーム'] || "",
               phone: row['電話番号'] || "",
               source: 'csv_import',
               importedAt: new Date()
@@ -440,21 +449,22 @@ const handleSaveMemo = async (email: string, memo: string) => {
         }
 
         if (importCount === 0) {
-          alert("0名だばい...！CSVの1行目（見出し）に「名前」「メールアドレス」という文字が入っているか確認してくんちぇ！！");
+          alert("0名だばい...！データの1行目に「ユーザー」や「メアド」という項目があるか確認してくんちぇ。");
         } else {
           alert(`${importCount} 名の絆をインポートしたぞい！！リストを再抽出してくんちぇ。`);
           fetchTargets(); 
         }
 
       } catch (err) {
-        console.error(err);
+        console.error("Import Error:", err);
         alert("インポート中にエラーだっぺ...");
       } finally {
         setLoadingTargets(false);
         e.target.value = ""; 
       }
     };
-    reader.readAsBinaryString(file);
+    // 🎯 バイナリじゃなくて「ArrayBuffer」で読むのがプロの技だばい！
+    reader.readAsArrayBuffer(file);
   };
 
   const handleSend = async (isTest: boolean = false) => {
