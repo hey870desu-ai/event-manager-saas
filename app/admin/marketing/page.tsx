@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
-import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown } from "lucide-react";
+import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2 } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
@@ -477,6 +477,42 @@ const handleSaveMemo = async (email: string, memo: string) => {
     reader.readAsArrayBuffer(file);
   };
 
+  // 🧹 文字化けしたインポートデータを一気に消し去る魔法だばい！
+  const handleClearImports = async () => {
+    if (!tenantData) return;
+    if (!confirm("インポートした名簿をすべて削除して、やり直すべか？（イベント予約者は消えねぇから安心だばい！）")) return;
+
+    setLoadingTargets(true);
+    try {
+      const { collection, query, where, getDocs, writeBatch } = await import("firebase/firestore");
+      
+      // 1. インポートしたデータ（sourceがcsv_importのもの）だけを探す
+      const q = query(
+        collection(db, "tenants", tenantData.id, "manual_contacts"),
+        where("source", "==", "csv_import")
+      );
+      
+      const snap = await getDocs(q);
+      const batch = writeBatch(db); // 🎯 まとめて消すためのバッチ処理だばい！
+
+      snap.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // 2. 実行！！
+      await batch.commit();
+      
+      alert(`きれいに掃除したぞい！(${snap.docs.length}件削除)`);
+      fetchTargets(); // 🔄 画面を更新！
+
+    } catch (e) {
+      console.error(e);
+      alert("お掃除に失敗しちまったっぺ…");
+    } finally {
+      setLoadingTargets(false);
+    }
+  };
+
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
     // ★ ここで「チェックされた人」がいるか判定するだっぺ！
@@ -578,6 +614,14 @@ const handleSaveMemo = async (email: string, memo: string) => {
                 <h2 className="text-white font-bold flex items-center gap-2">
                   <Filter size={18} className="text-indigo-400"/> 配信ターゲット抽出
                 </h2>
+                <div className="flex gap-2">
+    {/* 🧹 お掃除ボタン */}
+    <button 
+      onClick={handleClearImports}
+      className="flex items-center gap-1 text-[10px] font-black text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/30 hover:bg-rose-500/20 transition-all whitespace-nowrap"
+    >
+      <Trash2 size={12} /> 名簿リセット
+    </button>
                 <label className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/20 transition-all whitespace-nowrap">
                   <FileText size={12} /> Excelインポート
                   <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleExcelImport} />
