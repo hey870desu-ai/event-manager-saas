@@ -390,7 +390,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
     link.click();
   };
 
-// 🚀 CSV/Excelインポートの「超・執念」版だばい！
+// 🚀 CSV/Excelインポートの「文字化け絶対許さない」版だばい！
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !tenantData) return;
@@ -398,12 +398,32 @@ const handleSaveMemo = async (email: string, memo: string) => {
     const XLSX = await import("xlsx");
     const reader = new FileReader();
 
-    // 🎯 ArrayBufferで読み込むことで文字化けを防ぐぞい！
     reader.onload = async (evt) => {
       try {
-        const dataArray = evt.target?.result;
-        const wb = XLSX.read(dataArray, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
+        const arrayBuffer = evt.target?.result as ArrayBuffer;
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        let workbook;
+        
+        // 🎯 CSVファイルの場合の文字化け対策だばい！
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          // 1. まずは日本のExcelで多い「Shift-JIS」として解読してみるぞい
+          const sjisDecoder = new TextDecoder('shift-jis');
+          const sjisText = sjisDecoder.decode(uint8Array);
+          
+          // 2. もし「」という変な記号が多ければ「UTF-8」として読み直す賢い仕組みだっぺ！
+          if (sjisText.includes('')) {
+            const utf8Decoder = new TextDecoder('utf-8');
+            workbook = XLSX.read(utf8Decoder.decode(uint8Array), { type: 'string' });
+          } else {
+            workbook = XLSX.read(sjisText, { type: 'string' });
+          }
+        } else {
+          // 3. Excelファイル(.xlsx)ならそのまま読み込んでOKだばい
+          workbook = XLSX.read(uint8Array, { type: 'array' });
+        }
+
+        const ws = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[] = XLSX.utils.sheet_to_json(ws);
 
         if (jsonData.length === 0) return alert("中身が空っぽだっぺ！");
@@ -411,29 +431,22 @@ const handleSaveMemo = async (email: string, memo: string) => {
         setLoadingTargets(true);
         let importCount = 0;
 
-        // 🎯 探し出すキーワードを大幅に増やしたぞい！
+        // 🎯 探し出すキーワード（ユーザー・メアド対応！）
         const emailKeys = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先', 'address'];
         const nameKeys = ['氏名', '名前', 'name', '姓名', 'ユーザー', 'ユーザー名', '顧客名', '担当者'];
 
         for (const row of jsonData) {
-          // 1. まずはキーワードで列を探す
+          // 列名を特定するぞい
           let foundEmailKey = Object.keys(row).find(key => emailKeys.includes(key.trim().toLowerCase()));
           let foundNameKey = Object.keys(row).find(key => nameKeys.includes(key.trim().toLowerCase()));
 
-          // 2. 【魔法のバックアップ】もしキーワードで見つからなかったら、
-          // 全列を調べて「@」が入ってる場所をメアド、それ以外を名前にする強硬手段だばい！
-          if (!foundEmailKey) {
-            foundEmailKey = Object.keys(row).find(key => String(row[key]).includes('@'));
-          }
-          if (!foundNameKey) {
-            // メアドじゃない列で、一番最初に文字が入ってる列を名前にしちゃうっぺ
-            foundNameKey = Object.keys(row).find(key => key !== foundEmailKey && String(row[key]).length > 0);
-          }
+          // 【予備策】キーワードがなければ、中身で判断！
+          if (!foundEmailKey) foundEmailKey = Object.keys(row).find(key => String(row[key]).includes('@'));
+          if (!foundNameKey) foundNameKey = Object.keys(row).find(key => key !== foundEmailKey && String(row[key]).length > 0);
 
           const email = foundEmailKey ? String(row[foundEmailKey]).trim() : null;
           const name = foundNameKey ? String(row[foundNameKey]).trim() : '名前なし';
 
-          // 🎯 最後にメアドの形式チェックをしてFirestoreに叩き込む！
           if (email && email.includes('@')) {
             const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
             await setDoc(contactRef, {
@@ -448,22 +461,19 @@ const handleSaveMemo = async (email: string, memo: string) => {
           }
         }
 
-        if (importCount === 0) {
-          alert("0名だばい...！データの1行目に「ユーザー」や「メアド」という項目があるか確認してくんちぇ。");
-        } else {
-          alert(`${importCount} 名の絆をインポートしたぞい！！リストを再抽出してくんちぇ。`);
-          fetchTargets(); 
-        }
+        alert(`${importCount} 名の絆を読み込んだぞい！文字化けしてねぇか確認してくんちぇ！！`);
+        fetchTargets(); 
 
       } catch (err) {
         console.error("Import Error:", err);
-        alert("インポート中にエラーだっぺ...");
+        alert("読み込みエラーだっぺ...");
       } finally {
         setLoadingTargets(false);
         e.target.value = ""; 
       }
     };
-    // 🎯 バイナリじゃなくて「ArrayBuffer」で読むのがプロの技だばい！
+    
+    // 🎯 どんな形式でも対応できるように「ArrayBuffer」で読み込むのがコツだばい！
     reader.readAsArrayBuffer(file);
   };
 
