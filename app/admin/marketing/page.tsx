@@ -556,9 +556,21 @@ const handleSaveMemo = async (email: string, memo: string) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        recipients: finalRecipients, 
-        subject: isTest ? `[TEST] ${subject}` : subject,
-        body: body,
+          // 🏆 ここで名前をクリーニングするっぺ！
+      recipients: finalRecipients.map(r => {
+        // 🚨 変な名前リスト（これに当てはまったら「お客様」にする）
+        const genericNames = ['仮登録中', 'ユーザー', '名前なし', '仮登録', '仮'];
+        
+        return {
+          ...r,
+          name: (!r.name || genericNames.includes(r.name.trim())) 
+                ? 'お客様' 
+                : r.name
+        };
+      }),
+      subject: isTest ? `[TEST] ${subject}` : subject,
+      body: body,
+        
         senderName: tenantData?.name || "絆太郎",
         replyTo: user?.email,
         themeColor: tenantData?.themeColor,
