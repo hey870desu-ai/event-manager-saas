@@ -680,14 +680,87 @@ const handleSaveMemo = async (email: string, memo: string) => {
                     <Filter size={14} className="absolute left-3 top-3 text-slate-500" />
                   </div>
                   <div className="max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
+  {displayedRecipients.map((r, i) => (
+    <div 
+      key={i} 
+      className={`p-4 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 transition-colors ${selectedEmails.has(r.email) ? 'bg-indigo-500/20' : ''}`}
+    >
+      <div className="flex items-center gap-4"> {/* 🆙 隙間を少し広げたぞい */}
+        <input 
+          type="checkbox" 
+          checked={selectedEmails.has(r.email)} 
+          onChange={() => { 
+            const newSet = new Set(selectedEmails); 
+            if (newSet.has(r.email)) newSet.delete(r.email); 
+            else newSet.add(r.email); 
+            setSelectedEmails(newSet); 
+          }} 
+          className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-800 cursor-pointer" 
+        />
+        <div className="flex-1 min-w-0">
+          {/* 🏆 名前：text-xs → text-sm (または text-base) に大きく！色は純白！ */}
+          <div className="text-sm font-bold text-white truncate mb-0.5">{r.name}</div>
+          
+          {/* 🏆 メアド：text-[10px] → text-xs に大きく！色も明るいグレーに！ */}
+          <div className="text-xs text-slate-300 truncate font-medium">{r.email}</div>
+        </div>
+      </div>
+      
+      {/* 絆メモ欄も少しだけゆとりを持たせたぞい */}
+      <div className="mt-3 ml-9">
+        <input 
+          type="text" 
+          placeholder="絆メモ（例：交流会で名刺交換）" 
+          defaultValue={r.memo || ""} 
+          onBlur={(e) => handleSaveMemo(r.email, e.target.value)} 
+          className="w-full bg-slate-950 border border-slate-800/50 rounded px-3 py-1.5 text-xs text-slate-200 focus:border-indigo-500/50 outline-none transition-all italic placeholder:text-slate-700" 
+        />
+      </div>
+    </div>
+  ))}
+</div>{/* 📂 名簿リストを表示するスクロールエリア */}
+                  <div className="max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
                     {displayedRecipients.map((r, i) => (
-                      <div key={i} className={`p-3 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}>
+                      <div 
+                        key={i} 
+                        className={`p-3 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
+                      >
                         <div className="flex items-center gap-3">
-                          <input type="checkbox" checked={selectedEmails.has(r.email)} onChange={() => { const newSet = new Set(selectedEmails); if (newSet.has(r.email)) newSet.delete(r.email); else newSet.add(r.email); setSelectedEmails(newSet); }} className="w-4 h-4 rounded border-slate-700 text-indigo-600 bg-slate-800 cursor-pointer" />
-                          <div className="flex-1 min-w-0"><div className="text-xs font-bold text-white truncate">{r.name}</div><div className="text-[10px] text-slate-600 truncate">{r.email}</div></div>
+                          {/* チェックボックス */}
+                          <input 
+                            type="checkbox" 
+                            checked={selectedEmails.has(r.email)} 
+                            onChange={() => { 
+                              const newSet = new Set(selectedEmails); 
+                              if (newSet.has(r.email)) newSet.delete(r.email); 
+                              else newSet.add(r.email); 
+                              setSelectedEmails(newSet); 
+                            }} 
+                            className="w-4 h-4 rounded border-slate-700 text-indigo-600 bg-slate-800 cursor-pointer" 
+                          />
+                          
+                          {/* 🎯 文字情報：ここを白く大きくしたぞい！ */}
+                          <div className="flex-1 min-w-0">
+                            {/* 🏆 名前：text-xs → text-sm にアップ、text-white で純白に！ */}
+                            <div className="text-sm font-bold text-white truncate">
+                              {r.name}
+                            </div>
+                            {/* 🏆 メアド：text-[10px] → text-xs にアップ、text-slate-300 で明るく！ */}
+                            <div className="text-xs text-slate-300 truncate">
+                              {r.email}
+                            </div>
+                          </div>
                         </div>
+
+                        {/* 絆メモの入力欄 */}
                         <div className="mt-2 ml-7">
-                          <input type="text" placeholder="絆メモ" defaultValue={r.memo || ""} onBlur={(e) => handleSaveMemo(r.email, e.target.value)} className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic" />
+                          <input 
+                            type="text" 
+                            placeholder="絆メモ" 
+                            defaultValue={r.memo || ""} 
+                            onBlur={(e) => handleSaveMemo(r.email, e.target.value)} 
+                            className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic" 
+                          />
                         </div>
                       </div>
                     ))}
