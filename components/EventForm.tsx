@@ -1021,15 +1021,15 @@ useEffect(() => {
           <Layout size={18}/> タイムテーブル構成
         </label>
         
-        {/* 📂 タイムテーブル構成エリア */}
-      <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+        {/* 📂 タイムテーブル構成エリア（ここを差し替えてくんちぇ！） */}
+      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
         {timeSlots.map((slot, idx) => (
           <div 
             key={idx} 
-            className="grid grid-cols-1 md:grid-cols-[auto_1fr_160px] gap-3 items-center bg-slate-900/80 p-3 md:p-2 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all shadow-md w-full"
+            className="grid grid-cols-1 md:grid-cols-[260px_1fr_160px] gap-4 items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all shadow-md w-full"
           >
-            {/* ⏰ 1. 時間入力（幅を固定してズレを防ぐぞい） */}
-            <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+            {/* ⏰ 1. 時間入力（PCでは260pxの固定幅を確保だばい） */}
+            <div className="flex items-center gap-2 shrink-0">
               <div className="text-slate-700 hidden md:block"><GripVertical size={16} /></div>
               <input 
                 type="time" 
@@ -1046,7 +1046,7 @@ useEffect(() => {
               />
             </div>
 
-            {/* 📝 2. 内容入力（PCでは残りのスペースを自動で埋めるっぺ） */}
+            {/* 📝 2. 内容入力（真ん中の広大なスペースだぞい） */}
             <input 
               type="text" 
               placeholder="内容（例：開会挨拶）" 
@@ -1055,38 +1055,35 @@ useEffect(() => {
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
             />
             
-            {/* 🔘 3. 操作ボタン（PCで160pxの「専用席」を確保。絶対にハミ出さないぞい！） */}
-            <div className="flex items-center justify-end gap-1 w-full md:w-[160px] shrink-0 border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
+            {/* 🔘 3. 操作ボタン（右端160pxに「上・下・ゴミ箱」を整列だばい！） */}
+            <div className="flex items-center justify-end gap-1 shrink-0 border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
               {/* ⬆️ 上へ移動 */}
               <button 
                 type="button" 
                 onClick={() => moveTimeSlot(idx, 'up')}
                 disabled={idx === 0}
-                className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0"
-                title="上に移動"
+                className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0 active:scale-90"
               >
                 <ArrowUp size={22} />
               </button>
 
-              {/* ⬇️ 下へ移動（これをしっかり追加したぞい！） */}
+              {/* ⬇️ 下へ移動 */}
               <button 
                 type="button" 
                 onClick={() => moveTimeSlot(idx, 'down')}
                 disabled={idx === timeSlots.length - 1}
-                className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0"
-                title="下に移動"
+                className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0 active:scale-90"
               >
                 <ArrowDown size={22} />
               </button>
               
               <div className="w-px h-6 bg-slate-700 mx-1 hidden md:block"></div>
 
-              {/* 🗑️ 削除ボタン（PCでも絶対に見えるように赤色にしたぞい！） */}
+              {/* 🗑️ 削除ボタン（赤くして視認性アップ！） */}
               <button 
                 type="button" 
                 onClick={() => removeTimeSlot(idx)} 
-                className="p-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 bg-slate-800 md:bg-transparent rounded-lg transition-all"
-                title="削除"
+                className="p-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 bg-slate-800 md:bg-transparent rounded-lg transition-all active:scale-90"
               >
                 <Trash2 size={22} />
               </button>
