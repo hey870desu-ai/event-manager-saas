@@ -1011,49 +1011,89 @@ useEffect(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-800">
            <div><label className="block text-xs text-slate-500 mb-2 flex items-center gap-1"><AlignLeft size={14}/> イベント概要 (HTML可)</label><textarea name="content" value={formData.content} onChange={handleChange} rows={8} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-mono text-sm" /></div>
            
-           <div className="bg-slate-950 rounded-lg border border-slate-800 p-4">
-              <label className="block text-xs text-slate-500 mb-3 flex items-center gap-1"><Layout size={14}/> タイムテーブル構成</label>
-              {/* タイムテーブル構成のループ部分 */}
-<div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-  {timeSlots.map((slot, idx) => (
-    <div key={idx} className="flex gap-2 items-center group bg-slate-900/50 p-1 rounded-lg border border-transparent hover:border-slate-700 transition-all">
-      {/* グリップアイコン（飾り） */}
-      <div className="text-slate-700"><GripVertical size={14} /></div>
-      
-      <input type="time" value={slot.start} onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
-      <span className="text-slate-500 text-xs">-</span>
-      <input type="time" value={slot.end} onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white" />
-      <input type="text" placeholder="内容" value={slot.label} onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-white" />
-      
-      {/* ★追加: 上下ボタンエリア */}
-      <div className="flex items-center gap-0.5">
-        <button 
-          type="button" 
-          onClick={() => moveTimeSlot(idx, 'up')}
-          disabled={idx === 0}
-          className="p-1 text-slate-500 hover:text-indigo-400 disabled:opacity-0 transition-all"
-        >
-          <ArrowUp size={14} />
-        </button>
-        <button 
-          type="button" 
-          onClick={() => moveTimeSlot(idx, 'down')}
-          disabled={idx === timeSlots.length - 1}
-          className="p-1 text-slate-500 hover:text-indigo-400 disabled:opacity-0 transition-all"
-        >
-          <ArrowDown size={14} />
-        </button>
+           <div className="bg-slate-950 rounded-xl border border-slate-800 p-4 md:p-6 shadow-inner">
+<label className="block text-sm text-indigo-400 font-bold mb-4 flex items-center gap-2">
+<Layout size={18}/> タイムテーブル構成
+</label>
+
+<div className="bg-slate-950 rounded-xl border border-slate-800 p-4 md:p-6 shadow-inner">
+        <label className="block text-sm text-indigo-400 font-bold mb-4 flex items-center gap-2">
+          <Layout size={18}/> タイムテーブル構成
+        </label>
         
-        {/* 削除ボタン */}
-        <button type="button" onClick={() => removeTimeSlot(idx)} className="p-1 text-slate-600 hover:text-red-400 transition-colors">
-          <Trash2 size={14} />
+        {/* 🏆 スマホでも指で押しやすい、クッキリ・ハッキリUIだばい！ */}
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+          {timeSlots.map((slot, idx) => (
+            <div 
+              key={idx} 
+              className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-slate-900/80 p-3 md:p-2 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all shadow-md"
+            >
+              {/* ⏰ 時間入力（スマホでは横並び、PCではコンパクトに） */}
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="text-slate-700 hidden md:block"><GripVertical size={16} /></div>
+                <input 
+                  type="time" 
+                  value={slot.start} 
+                  onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} 
+                  className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+                />
+                <span className="text-slate-500 font-bold">~</span>
+                <input 
+                  type="time" 
+                  value={slot.end} 
+                  onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} 
+                  className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+                />
+              </div>
+
+              {/* 📝 内容入力 */}
+              <input 
+                type="text" 
+                placeholder="内容（例：開会挨拶）" 
+                value={slot.label} 
+                onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} 
+                className="w-full flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+              />
+              
+              {/* 🔘 操作ボタン（スマホで押しやすい20pxサイズ！） */}
+              <div className="flex items-center justify-end gap-2 w-full md:w-auto border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
+                <button 
+                  type="button" 
+                  onClick={() => moveTimeSlot(idx, 'up')}
+                  disabled={idx === 0}
+                  className="p-3 md:p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all disabled:opacity-0 active:scale-90"
+                >
+                  <ArrowUp size={20} />
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => moveTimeSlot(idx, 'down')}
+                  disabled={idx === timeSlots.length - 1}
+                  className="p-3 md:p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all disabled:opacity-0 active:scale-90"
+                >
+                  <ArrowDown size={20} />
+                </button>
+                <div className="w-px h-6 bg-slate-800 mx-1 hidden md:block"></div>
+                <button 
+                  type="button" 
+                  onClick={() => removeTimeSlot(idx)} 
+                  className="p-3 md:p-2 text-slate-500 hover:text-rose-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all active:scale-90"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button 
+          type="button" 
+          onClick={addTimeSlot} 
+          className="mt-4 w-full py-4 flex items-center justify-center gap-2 border-2 border-dashed border-slate-700 rounded-xl text-sm font-black text-slate-400 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-900/10 transition-all active:scale-95"
+        >
+          <Plus size={18}/> 行を追加する
         </button>
       </div>
-    </div>
-  ))}
-</div>
-              <button type="button" onClick={addTimeSlot} className="mt-3 w-full py-2 flex items-center justify-center gap-2 border border-dashed border-slate-700 rounded text-xs text-slate-400 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-indigo-900/10 transition-colors"><Plus size={14}/> 行を追加する</button>
-           </div>
         </div>
       </div>
 {/* 📂 components/EventForm.tsx の表示部分 */}
