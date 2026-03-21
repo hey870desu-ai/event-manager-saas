@@ -1028,7 +1028,7 @@ useEffect(() => {
           {/* B. タイムテーブル（概要の下に配置。横幅をフルに使ってボタンを救出！） */}
           <div className="w-full bg-slate-950 rounded-xl border border-slate-800 p-4 md:p-6 shadow-2xl">
             <label className="block text-sm text-indigo-400 font-bold mb-4 flex items-center gap-2">
-              <Layout size={18}/> タイムテーブル構成（PCでも広々！）
+              <Layout size={18}/> タイムテーブル構成
             </label>
             
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 custom-scrollbar">
