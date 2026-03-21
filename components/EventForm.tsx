@@ -1096,11 +1096,12 @@ useEffect(() => {
       </div>
         </div>
       </div>
+      </div>
 {/* 📂 components/EventForm.tsx の表示部分 */}
 
 {/* ★★★ 4. アンケート設定 (固定項目表示 + 便利ボタン) ★★★ */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
-        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><ListChecks size={20} className="text-purple-400"/> アンケート・質問設定</h3>
+        <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg"><ListChecks size={20} className="text-purple-400"/> 申し込みフォームの質問設定</h3>
         <p className="text-xs text-slate-500 mb-4">申し込みフォームに追加する独自の質問を設定できます。</p>
         
         {/* 固定項目の表示エリア（安心用・編集不可） */}
