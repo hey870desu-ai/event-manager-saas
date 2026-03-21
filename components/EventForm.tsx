@@ -1024,66 +1024,71 @@ useEffect(() => {
         {/* 🏆 スマホでも指で押しやすい、クッキリ・ハッキリUIだばい！ */}
         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
           {timeSlots.map((slot, idx) => (
-            <div 
-              key={idx} 
-              className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-slate-900/80 p-3 md:p-2 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all shadow-md"
-            >
-              {/* ⏰ 時間入力（スマホでは横並び、PCではコンパクトに） */}
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <div className="text-slate-700 hidden md:block"><GripVertical size={16} /></div>
-                <input 
-                  type="time" 
-                  value={slot.start} 
-                  onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} 
-                  className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
-                />
-                <span className="text-slate-500 font-bold">~</span>
-                <input 
-                  type="time" 
-                  value={slot.end} 
-                  onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} 
-                  className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
-                />
-              </div>
+  <div 
+    key={idx} 
+    className="flex flex-col md:flex-row gap-3 items-center bg-slate-900/80 p-3 md:p-2 rounded-xl border border-slate-800 hover:border-indigo-500/30 transition-all shadow-md w-full"
+  >
+    {/* 1. 時間入力エリア（幅を固定してズレを防ぐぞい！） */}
+    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+      <div className="text-slate-700 hidden md:block"><GripVertical size={16} /></div>
+      <input 
+        type="time" 
+        value={slot.start} 
+        onChange={(e) => handleTimeSlotChange(idx, "start", e.target.value)} 
+        className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+      />
+      <span className="text-slate-500 font-bold">~</span>
+      <input 
+        type="time" 
+        value={slot.end} 
+        onChange={(e) => handleTimeSlotChange(idx, "end", e.target.value)} 
+        className="flex-1 md:w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+      />
+    </div>
 
-              {/* 📝 内容入力 */}
-              <input 
-                type="text" 
-                placeholder="内容（例：開会挨拶）" 
-                value={slot.label} 
-                onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} 
-                className="w-full flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
-              />
-              
-              {/* 🔘 操作ボタン（スマホで押しやすい20pxサイズ！） */}
-              <div className="flex items-center justify-end gap-2 w-full md:w-auto border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
-                <button 
-                  type="button" 
-                  onClick={() => moveTimeSlot(idx, 'up')}
-                  disabled={idx === 0}
-                  className="p-3 md:p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all disabled:opacity-0 active:scale-90"
-                >
-                  <ArrowUp size={20} />
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => moveTimeSlot(idx, 'down')}
-                  disabled={idx === timeSlots.length - 1}
-                  className="p-3 md:p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all disabled:opacity-0 active:scale-90"
-                >
-                  <ArrowDown size={20} />
-                </button>
-                <div className="w-px h-6 bg-slate-800 mx-1 hidden md:block"></div>
-                <button 
-                  type="button" 
-                  onClick={() => removeTimeSlot(idx)} 
-                  className="p-3 md:p-2 text-slate-500 hover:text-rose-400 bg-slate-800 md:bg-transparent rounded-lg md:rounded-full transition-all active:scale-90"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
-            </div>
-          ))}
+    {/* 2. 内容入力（ここが flex-1 で残りのスペースを全部埋めるっぺ！） */}
+    <input 
+      type="text" 
+      placeholder="内容（例：開会挨拶）" 
+      value={slot.label} 
+      onChange={(e) => handleTimeSlotChange(idx, "label", e.target.value)} 
+      className="flex-1 min-w-0 w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:border-indigo-500 outline-none min-h-[44px]" 
+    />
+    
+    {/* 3. 操作ボタンエリア（shrink-0 で押し出されるのを防ぐぞい！） */}
+    <div className="flex items-center gap-1 shrink-0 w-full md:w-auto justify-end border-t md:border-t-0 border-slate-800 pt-2 md:pt-0">
+      <button 
+        type="button" 
+        onClick={() => moveTimeSlot(idx, 'up')}
+        disabled={idx === 0}
+        className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0 active:scale-90"
+        title="上に移動"
+      >
+        <ArrowUp size={20} />
+      </button>
+      <button 
+        type="button" 
+        onClick={() => moveTimeSlot(idx, 'down')}
+        disabled={idx === timeSlots.length - 1}
+        className="p-2 text-slate-400 hover:text-indigo-400 bg-slate-800 md:bg-transparent rounded-lg transition-all disabled:opacity-0 active:scale-90"
+        title="下に移動"
+      >
+        <ArrowDown size={20} />
+      </button>
+      
+      <div className="w-px h-6 bg-slate-800 mx-1 hidden md:block"></div>
+
+      <button 
+        type="button" 
+        onClick={() => removeTimeSlot(idx)} 
+        className="p-2 text-slate-500 hover:text-rose-400 bg-slate-800 md:bg-transparent rounded-lg transition-all active:scale-90"
+        title="削除"
+      >
+        <Trash2 size={20} />
+      </button>
+    </div>
+  </div>
+))}
         </div>
 
         <button 
