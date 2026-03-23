@@ -40,6 +40,7 @@ type Lecturer = {
   title: string;
   profile: string;
   image: string;
+  suffix: string;
 };
 
 type Ticket = {
@@ -158,10 +159,16 @@ const removeTicket = (index: number) => {
   }
 };
 
-  // ★追加：講師リスト操作用の関数群
   const addLecturer = () => {
-    setLecturers([...lecturers, { id: Math.random().toString(36), name: "", title: "", profile: "", image: "" }]);
-  };
+  setLecturers([...lecturers, { 
+    id: Math.random().toString(36), 
+    name: "", 
+    title: "", 
+    profile: "", 
+    image: "",
+    suffix: "様" // 🏆 最初は「様」にしておくっぺ！
+  }]);
+};
 
   const updateLecturer = (index: number, field: keyof Lecturer, value: string) => {
     const newLecturers = [...lecturers];
@@ -277,7 +284,8 @@ useEffect(() => {
           name: event.lecturer,
           title: event.lecturerTitle || "",
           profile: event.lecturerProfile || "",
-          image: event.lecturerImage || ""
+          image: event.lecturerImage || "",
+          suffix: "様"
         }]);
       }
 
@@ -980,13 +988,32 @@ useEffect(() => {
                 </div>
                 
                 {/* 右側：入力欄 */}
-                <div className="md:col-span-9 lg:col-span-10 space-y-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
-                     <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">氏名</label>
-                        <input type="text" value={lec.name} onChange={(e) => updateLecturer(index, "name", e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white" placeholder="氏名"/>
-                     </div>
-                     <div>
+<div className="md:col-span-9 lg:col-span-10 space-y-4">
+   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+     <div>
+        <label className="text-[10px] text-slate-500 block mb-1">氏名</label>
+        {/* 🏆 ここを横並び（flex）にして、敬称を選べるようにしたぞい！ */}
+        <div className="flex gap-2">
+           <input 
+              type="text" 
+              value={lec.name} 
+              onChange={(e) => updateLecturer(index, "name", e.target.value)} 
+              className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white outline-none focus:border-pink-500" 
+              placeholder="氏名"
+           />
+           <select 
+              value={lec.suffix || "様"} 
+              onChange={(e) => updateLecturer(index, "suffix", e.target.value)}
+              className="w-20 bg-slate-900 border border-slate-700 rounded px-1 py-2 text-white text-xs outline-none focus:border-pink-500 cursor-pointer"
+           >
+              <option value="様">様</option>
+              <option value="氏">氏</option>
+              <option value="先生">先生</option>
+              <option value="">(なし)</option>
+           </select>
+        </div>
+     </div>
+     <div>
                         <label className="text-[10px] text-slate-500 block mb-1">肩書</label>
                         <input type="text" value={lec.title} onChange={(e) => updateLecturer(index, "title", e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white" placeholder="役職など"/>
                      </div>
