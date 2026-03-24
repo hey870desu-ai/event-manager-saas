@@ -5,7 +5,7 @@ import React from 'react';
 
 type Props = {
   tenantId: string;
-  isConnected: boolean; // すでに連携済みかどうかのフラグ
+  isConnected?: boolean; // すでに連携済みかどうかのフラグ
 };
 
 export default function StripeConnectButton({ tenantId, isConnected }: Props) {
