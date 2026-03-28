@@ -175,6 +175,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
                 type: rData?.type,
                 customAnswers: rData?.customAnswers,
                 reservationId: reservationId,
+                eventId: eventId,
                 eventTitle: eData?.title,
                 eventDate: eData?.date,
                 eventTime: `${eData?.startTime} - ${eData?.endTime}`,
