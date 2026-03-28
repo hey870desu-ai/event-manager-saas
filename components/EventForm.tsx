@@ -560,6 +560,7 @@ useEffect(() => {
         lecturers: lecturers,
         // 互換性のため、1人目のデータを古いフィールドにも入れておく
         lecturer: lecturers[0]?.name || "",
+        lecturerSuffix: lecturers[0]?.suffix !== undefined ? lecturers[0].suffix : "様",
         lecturerTitle: lecturers[0]?.title || "",
         lecturerProfile: lecturers[0]?.profile || "",
         lecturerImage: lecturers[0]?.image || "",
@@ -1002,7 +1003,7 @@ useEffect(() => {
               placeholder="氏名"
            />
            <select 
-              value={lec.suffix || "様"} 
+              value={lec.suffix}
               onChange={(e) => updateLecturer(index, "suffix", e.target.value)}
               className="w-20 bg-slate-900 border border-slate-700 rounded px-1 py-2 text-white text-xs outline-none focus:border-pink-500 cursor-pointer"
            >

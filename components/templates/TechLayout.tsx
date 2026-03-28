@@ -167,7 +167,9 @@ if (submitted) {
                 <div className="bg-[#1A1D2D] rounded-xl p-4 md:p-5 border border-white/5 shadow-inner flex flex-row gap-4 items-start">
                     {event.lecturerImage && <div className="shrink-0"><img src={event.lecturerImage} alt={event.lecturer} className="w-20 h-28 md:w-24 md:h-32 rounded-lg object-cover border border-white/10 shadow-lg"/></div>}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg md:text-xl font-bold text-white mb-1 tracking-wide leading-tight">{event.lecturer ? `${event.lecturer} 氏` : "講師調整中"}</h3>
+                      <h3 className="text-lg md:text-xl font-bold text-white mb-1 tracking-wide leading-tight">
+              {event.lecturer ? `${event.lecturer} ${event.lecturerSuffix || ""}` : "講師調整中"}
+            </h3>
                       <p className="text-xs font-medium mb-3 tracking-wider" style={{ color: themeColor }}>{event.lecturerTitle}</p>
                       <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-wrap hidden md:block">{event.lecturerProfile}</p>
                     </div>

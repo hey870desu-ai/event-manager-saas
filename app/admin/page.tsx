@@ -1738,8 +1738,8 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       <CreditCard size={16}/> 決済システム連携
     </h3>
     <p className="text-[10px] text-slate-500 mb-4">
-      有料セミナーを開催する場合、ここからStripeアカウントを連携してくんちぇ。<br />
-      参加費はあなたの口座へ直接振り込まれるようになるぞい！
+      有料セミナーを開催する場合、ここからStripeアカウントを連携してください。<br />
+      参加費はあなたの口座へ直接振り込まれるようになります。
     </p>
 
     {/* 🏆 ここにインポートしたボタンを置くぞい！！ */}
