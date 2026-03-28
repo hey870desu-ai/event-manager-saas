@@ -7,23 +7,23 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
-import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
 import Link from "next/link"; // ★ Linkコンポーネントを追加
-import StripeConnectButton from "@/components/admin/StripeConnectButton";
+import StripeConnectButton from "../../components/admin/StripeConnectButton";
 import { where } from "firebase/firestore";
 
 // ★相対パスのまま維持
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star, MessageSquare, Clock, FileText, Shield, CreditCard } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
-type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[]; };
+type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string;isSpotPaid?: boolean; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
-type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean; };
+type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string; };
 
 // テンプレート定義
 const MAIL_TEMPLATES = {
@@ -70,6 +70,29 @@ ${orgName}
 --------------------------------------------------
 `
   },
+// ... remind: { ... } の後ろに追加
+  ticket: {
+    label: "🎟️ 当日チケット (QR)",
+    subject: "【重要】当日の受付用QRコードをお送りします",
+    body: (eventTitle: string, orgName: string) => `
+${eventTitle}
+参加者各位
+
+${orgName}です。
+いよいよ開催が近づいてまいりました。
+
+当日の受付用QRコードをお送りします。
+以下のQRコードを受付にてご提示ください。
+
+{qr}
+
+皆様のご来場を心よりお待ちしております。
+
+--------------------------------------------------
+${orgName}
+--------------------------------------------------
+`
+  },
   custom: {
     label: "手動入力（空紙）",
     subject: "",
@@ -80,6 +103,7 @@ ${orgName}
 export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [events, setEvents] = useState<EventData[]>([]);
   const [permissionError, setPermissionError] = useState(false);
   const [currentUserTenant, setCurrentUserTenant] = useState<string>("");
@@ -101,10 +125,31 @@ export default function AdminDashboard() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
-  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all'>('checked-in');
-
-  const [orgName, setOrgName] = useState("Event Manager"); 
+  // ✅ これを足すだけで波線は消えるぞい！
+  const [modalStep, setModalStep] = useState(1);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  // ▼ ここから貼り付ける ▼
+  const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
+  const [targetParticipant, setTargetParticipant] = useState<ReservationData | null>(null);
+  
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const toggleSelectAll = () => {
+    if (selectedParticipantIds.length === participants.length) setSelectedParticipantIds([]);
+    else setSelectedParticipantIds(participants.map(p => p.id));
+  };
+  const toggleSelectParticipant = (id: string) => {
+    setSelectedParticipantIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]);
+  };
+  // ▲ ここまで貼り付ける ▲
+  const [orgName, setOrgName] = useState("絆太郎 Event Manager"); 
   const [editingOrgName, setEditingOrgName] = useState(""); 
+
+  const [legalCompanyName, setLegalCompanyName] = useState(""); // 正式な会社名
+  const [representative, setRepresentative] = useState("");     // 代表者名
+  const [legalAddress, setLegalAddress] = useState("");        // 所在地
+  const [legalPhone, setLegalPhone] = useState("");          // 連絡先電話番号
+  const [legalHomepage, setLegalHomepage] = useState("");      // 公式HP
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
@@ -112,6 +157,7 @@ export default function AdminDashboard() {
   
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminName, setNewAdminName] = useState(""); // ✨ お名前用を追加だばい！
   
   const [newAdminBranch, setNewAdminBranch] = useState(""); 
   const [newAdminTenantId, setNewAdminTenantId] = useState(""); 
@@ -121,6 +167,52 @@ export default function AdminDashboard() {
 
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  // ▼▼▼ 追加：複製機能のロジック ▼▼▼
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  // ✨ SNSリンク用のStateを追加だばい！
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [lineUrl, setLineUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  // テナント情報をここで確定させる
+  const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
+  
+  // 両方の判定を持っておくのがコツだばい！
+  const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
+  const isStandard = currentTenantData?.plan?.toUpperCase() === 'STANDARD';
+
+ // 📂 app/admin/page.tsx 147行目付近
+
+  const handleDuplicate = async (e: React.MouseEvent, event: EventData) => {
+  e.stopPropagation();
+
+  // ★ スタンダード（サブスク）以外は、たとえスポットでお金を払ってても複製は禁止だぞい！
+  if (!isStandard) {
+    alert("【機能制限】イベントの複製は、スタンダードプラン専用の機能です。");
+    return;
+  }
+
+  if (!confirm('このイベントを複製しますか？')) return;
+    
+    setDuplicatingId(event.id);
+    try {
+      // IDと作成日以外のデータをコピー
+      const { id, createdAt, ...eventData } = event; 
+      
+      await addDoc(collection(db, 'events'), {
+        ...eventData,
+        title: `${eventData.title} のコピー`, // タイトルを変更
+        status: 'draft', // ステータスは必ず下書きに戻すっぺ！
+        isSpotPaid: false, // ★重要：コピー先は「未払い」状態からスタートだぞい！
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Duplicate error:", error);
+      alert("複製に失敗しました。"); // 標準語でスマートに！
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+  // ▲▲▲ 追加ここまで ▲▲▲
 
   const router = useRouter();
   // ★追加： 「本部」という名前を、会社名（署名）に書き換える関数
@@ -185,6 +277,25 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [router]);
 
+  // ▼ ここを追加：初回ログイン判定ロジック
+  useEffect(() => {
+    if (!loading && user) {
+      // ユーザーごとに「見たよ」フラグを保存するっぺ
+      const hasVisited = localStorage.getItem(`bantaro_visited_${user.email}`);
+      if (!hasVisited) {
+        setIsWelcomeModalOpen(true);
+      }
+    }
+  }, [user, loading]);
+
+  // モーダルを閉じる時の関数
+  const closeWelcomeModal = () => {
+    if (user?.email) {
+      localStorage.setItem(`bantaro_visited_${user.email}`, 'true');
+    }
+    setIsWelcomeModalOpen(false);
+  };
+
 useEffect(() => {
     if (!user || !currentUserTenant) return; // テナントID確定まで待つ
 
@@ -212,9 +323,15 @@ useEffect(() => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         // データがあればそれをセット。なければ "Event Manager" などのデフォルト値
-        const name = data.orgName || data.name || "Event Manager"; // orgName(署名用)優先、なければテナント名
+        const name = data.orgName || data.name || "絆太郎"; // orgName(署名用)優先、なければテナント名
         setOrgName(name);
         setEditingOrgName(name);
+        // ✨ 法人情報をセット
+        setLegalCompanyName(data.legalCompanyName || "");
+        setRepresentative(data.representative || "");
+        setLegalAddress(data.address || "");
+        setLegalPhone(data.phone || "");
+        setLegalHomepage(data.homepage || "");
       }
     });
 
@@ -293,6 +410,55 @@ useEffect(() => {
     } catch (err) { console.error(err); alert("通信エラーが発生しました"); }
   };
 
+  const [inviting, setInviting] = useState(false); // 送信中フラグ
+
+  // ✨ targetName を追加したぞい！
+const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, targetName: string, targetTenantId: string, targetBranch: string) => {
+  e.preventDefault();
+  if (!targetEmail || !targetName || !targetTenantId) return alert("名前とメアドを入れてくんちぇ！");
+
+  if (!confirm(`${targetName} さんを「絆太郎」に招待してもいいべか？`)) return;
+
+  setInviting(true);
+  try {
+    // 1. DB（admin_users）に名前も一緒に登録するっぺ
+    await setDoc(doc(db, "admin_users", targetEmail), {
+      name: targetName, // ✨ 名前を保存！
+      email: targetEmail,
+      tenantId: targetTenantId,
+      branchId: targetBranch,
+      role: "staff",
+      addedAt: serverTimestamp(),
+    });
+
+    // 2. メール送信APIにお名前もバトンタッチするぞい！
+    const res = await fetch('/api/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: targetEmail, 
+        name: targetName, // ✨ これでメールに名前がいくっぺ！
+        tenantId: targetTenantId,
+        tenantName: orgName 
+      }),
+    });
+
+    if (res.ok) {
+      alert("招待メールを飛ばしたぞい！");
+      setNewAdminEmail("");
+      setNewAdminName(""); // ✨ 入力欄を空にする
+      setNewAdminBranch("");
+    } else {
+      throw new Error("メールの送信に失敗したっぺ...");
+    }
+  } catch (err: any) {
+    console.error(err);
+    alert("エラーだばい: " + err.message);
+  } finally {
+    setInviting(false);
+  }
+};
+
   const handleRemoveAdmin = async (email: string) => { if(email!==SUPER_ADMIN_EMAIL && confirm("削除しますか？")) deleteDoc(doc(db, "admin_users", email)); };
   
   const toggleCheckIn = async (r: ReservationData) => {
@@ -306,24 +472,47 @@ useEffect(() => {
     });
   };
   
-  const handleSaveOrgName = async () => {
-    try {
-      // 共通設定ではなく、自分のテナント情報に「署名用名称(orgName)」として保存
-      await updateDoc(doc(db, "tenants", currentUserTenant), { 
-        orgName: editingOrgName 
-      });
-      alert("団体名・署名を保存しました！\nメールテンプレートに反映されます。");
-    } catch (e) { 
-      alert("保存に失敗しました"); 
-      console.error(e); 
-    }
-  };
+  const handleSaveTenantSettings = async () => {
+  try {
+    await updateDoc(doc(db, "tenants", currentUserTenant), { 
+      orgName: editingOrgName, // 表の顔（CARE DESIGN WORKS）
+      legalCompanyName,        // 裏の顔（株式会社はなひろ）
+      representative,
+      address: legalAddress,
+      phone: legalPhone,
+      homepage: legalHomepage,
+      instagramUrl,
+      lineUrl,
+      facebookUrl,
+      updatedAt: serverTimestamp()
+    });
+    alert("基本情報と特商法用データを保存したよ！\nこれでStripeの審査も怖くない！");
+  } catch (e) { 
+    alert("保存に失敗した..."); 
+    console.error(e); 
+  }
+};
 
-  const openMailModal = () => {
+  const openMailModal = (target?: ReservationData) => {
     if (!currentEventForList) return;
-    setMailTargetType('checked-in'); 
-    setMailSubject(MAIL_TEMPLATES.thankyou.subject);
-    setMailBody(MAIL_TEMPLATES.thankyou.body(currentEventForList.title, orgName));
+    
+    if (target) {
+       setTargetParticipant(target);
+       setMailTargetType('individual');
+       setMailSubject(`【${currentEventForList.title}】ご案内`);
+       setMailBody(`${target.name} 様\n\nお世話になっております。\n${orgName}です。\n\n`);
+    } else if (selectedParticipantIds.length > 0) {
+       // ▼ 複数選択モード
+       setTargetParticipant(null);
+       setMailTargetType('selected');
+       setMailSubject(`【${currentEventForList.title}】ご案内`);
+       setMailBody(`参加者各位\n\nお世話になっております。\n${orgName}です。\n\n`);
+    } else {
+       setTargetParticipant(null);
+       setMailTargetType('checked-in'); 
+       setMailSubject(MAIL_TEMPLATES.thankyou.subject);
+       setMailBody(MAIL_TEMPLATES.thankyou.body(currentEventForList.title, orgName));
+    }
     setIsMailModalOpen(true);
   };
 
@@ -332,81 +521,142 @@ useEffect(() => {
     const tmpl = MAIL_TEMPLATES[key];
     setMailSubject(tmpl.subject);
     setMailBody(typeof tmpl.body === 'function' ? tmpl.body(currentEventForList.title, orgName) : tmpl.body);
-    if (key === 'remind') setMailTargetType('all');
-    else if (key === 'thankyou') setMailTargetType('checked-in');
+    
+    if (key === 'remind' || key === 'ticket') {
+       if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('all');
+    } else if (key === 'thankyou') {
+       if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('checked-in');
+    }
   };
 
   const sendMail = async () => {
     if (!currentEventForList) return;
-    const targets = mailTargetType === 'all' ? participants : participants.filter(p => p.checkedIn);
+    
+    let targets: ReservationData[] = [];
+    if (mailTargetType === 'individual' && targetParticipant) {
+       targets = [targetParticipant];
+    } else if (mailTargetType === 'selected') {
+       // ▼ チェックされた人だけを抽出
+       targets = participants.filter(p => selectedParticipantIds.includes(p.id));
+    } else {
+       targets = mailTargetType === 'all' ? participants : participants.filter(p => p.checkedIn);
+    }
+
     if (targets.length === 0) { alert("送信対象がいません。"); return; }
     if (!mailSubject || !mailBody) { alert("件名と本文を入力してください。"); return; }
-    const targetName = mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】";
+    
+    const targetName = mailTargetType === 'individual' 
+       ? `${targetParticipant?.name} 様` 
+       : (mailTargetType === 'selected' ? `【選択した${targets.length}名】` : (mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】"));
+
     if (!confirm(`【最終確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n\nお一人ずつ宛名（〇〇様）を入れて送信します。\n送信には少し時間がかかりますが、そのままお待ちください。\n\n本当によろしいですか？`)) return;
+    
     setSendingMail(true);
     try {
       const res = await fetch('/api/send-thankyou', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          recipients: targets.map(p => ({ name: p.name, email: p.email })), 
+          recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })), 
           subject: mailSubject, 
           body: mailBody,
           eventTitle: currentEventForList.title,
           eventDate: currentEventForList.date,
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
+          // ★ 追加：イベントに設定されたお問い合わせ先をAPIに渡す
+        contactName: currentEventForList.contactName || orgName,
+        contactEmail: currentEventForList.contactEmail || "",
+        contactPhone: currentEventForList.contactPhone || "",
         }),
       });
-      if (res.ok) { alert("全員への送信が完了しました！"); setIsMailModalOpen(false); } 
+      if (res.ok) { alert("送信が完了しました！"); setIsMailModalOpen(false); } 
       else { alert("送信中にエラーが発生しました。"); }
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
   };
 
-  const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => { 
-      e.stopPropagation(); 
-      setDownloadingId(eventId);
-      const formatPhone = (input: any) => {
-        if (!input) return "";
-        const num = input.toString().replace(/[^0-9]/g, "");
-        if (num.length === 11) { return num.replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3"); }
-        if (num.length === 10) {
-           if (num.startsWith("03") || num.startsWith("06")) { return num.replace(/^(\d{2})(\d{4})(\d{4})$/, "$1-$2-$3"); }
-           return num.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3");
-        }
-        return input.toString().replace(/[="]/g, "").trim();
-      };
+  const handleDownloadCSV = async (e: React.MouseEvent, eventId: string, title: string) => {
+  e.stopPropagation();
 
-      try {
-        const s = await getDocs(query(collection(db, "events", eventId, "reservations")));
-        const r = s.docs.map(d => d.data() as ReservationData).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
-        if(!r.length) { alert("データなし"); return; }
-        const csv = [
-          "ステータス,名前,メール,電話,会社,部署,形式,職種,きっかけ,紹介,会員,日時", 
-          ...r.map(x => {
-            const cleanPhone = formatPhone(x.phone);
-            return [
-              `"${x.checkedIn ? "受付済" : "未"}"`,
-              `"${x.name}"`,
-              `"${x.email}"`,
-              `"${cleanPhone}"`,
-              `"${x.company}"`,
-              `"${x.department}"`,
-              `"${x.type}"`,
-              `"${x.jobTitles}"`,
-              `"${x.source}"`,
-              `"${x.referrer}"`,
-              `"${x.membership}"`,
-              `"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`
-            ].join(",");
-          })
-        ].join("\r\n");
-        const a = document.createElement("a"); 
-        a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], {type:"text/csv"})); 
-        a.download = `${title}_リスト.csv`; 
-        a.click();
-      } catch(e) { alert("失敗"); } finally { setDownloadingId(null); }
+  // ★ ここに追加！フリープランなら門前払いだばい！
+  if (isFreePlan) {
+    setIsUpgradeModalOpen(true);
+    return;
+  }
+
+  setDownloadingId(eventId);
+
+  // 電話番号の整形関数
+  const formatPhone = (input: any) => {
+    if (!input) return "";
+    const num = input.toString().replace(/[^0-9]/g, "");
+    if (num.length === 11) return num.replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3");
+    if (num.length === 10) {
+      if (num.startsWith("03") || num.startsWith("06")) return num.replace(/^(\d{2})(\d{4})(\d{4})$/, "$1-$2-$3");
+      return num.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3");
+    }
+    return input.toString().replace(/[="]/g, "").trim();
   };
 
+  try {
+    // 1. まずイベント情報を取得して、今の質問項目(customFields)を特定するっぺ！
+    const eventSnap = await getDoc(doc(db, "events", eventId));
+    if (!eventSnap.exists()) { alert("イベントが見つかりません"); return; }
+    const eventData = eventSnap.data();
+    const customFields = eventData.customFields || []; // 今の質問リスト
+
+    // 2. 予約データを取得
+    const s = await getDocs(query(collection(db, "events", eventId, "reservations")));
+    const r = s.docs.map(d => d.data() as any).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    if(!r.length) { alert("データなし"); return; }
+
+    // 3. CSVヘッダーの作成
+    // 基本項目 ＋ 今のカスタム質問のラベルだけを並べるぞい
+    const baseHeaders = ["ステータス", "名前", "メール", "電話", "形式", "金額"];
+    const customLabels = customFields.map((f: any) => f.label);
+    const headers = [...baseHeaders, ...customLabels, "申込日時"];
+
+    // 4. 各行のデータ作成
+    const csvRows = r.map(x => {
+      const cleanPhone = formatPhone(x.phone);
+      
+      // 基本データの配列
+      const row = [
+        `"${x.checkedIn ? "受付済" : "未受付"}"`,
+        `"${x.name || ""}"`,
+        `"${x.email || ""}"`,
+        `"${cleanPhone}"`,
+        `"${x.type === 'online' ? "オンライン" : "会場"}"`,
+        `"${x.price || 0}"`
+      ];
+
+      // ★ カスタム回答を「今の質問順」に並べるっぺ！
+      customLabels.forEach((label: string) => {
+        const answer = x.customAnswers ? x.customAnswers[label] : "";
+        // 配列（チェックボックス）ならスラッシュ区切りにするぞい
+        const formattedAnswer = Array.isArray(answer) ? answer.join("/") : (answer || "");
+        row.push(`"${formattedAnswer.toString().replace(/"/g, '""')}"`); // ダブルクォーテーションをエスケープ
+      });
+
+      // 最後に日時を追加
+      row.push(`"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`);
+      
+      return row.join(",");
+    });
+
+    // 5. CSVの合体とダウンロード
+    const csv = [headers.join(","), ...csvRows].join("\r\n");
+    const a = document.createElement("a"); 
+    a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], {type:"text/csv"})); 
+    a.download = `${title}_参加者リスト.csv`; 
+    a.click();
+
+  } catch(err) { 
+    console.error(err);
+    alert("CSVの作成に失敗しました"); 
+  } finally { 
+    setDownloadingId(null); 
+  }
+};
 // ... (export default function の中にある downloadFeedbackCSV をこれに書き換え) ...
 
   const downloadFeedbackCSV = () => {
@@ -479,83 +729,183 @@ useEffect(() => {
 
   const filteredEvents = events;
   
-  const targetCount = mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length;
+  const targetCount = mailTargetType === 'individual' ? 1 : (mailTargetType === 'selected' ? selectedParticipantIds.length : (mailTargetType === 'all' ? participants.length : participants.filter(p => p.checkedIn).length));
 
-  const currentTenantData = tenantList.find(t => t.id === currentUserTenant);
-  const isFreePlan = currentTenantData?.plan === 'free';
-
+  
   if (permissionError) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><ShieldAlert className="text-red-500 w-16 mb-4"/><p>権限がありません</p></div>;
   if (loading || !user) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-indigo-500"></div></div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
-      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="text-indigo-500"/>
-              <h1 className="text-xl font-bold text-white hidden sm:block">Event Manager</h1>
-            </div>
-            <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-orange-600/90 hover:text-white text-slate-300 rounded-full transition-all text-xs font-bold border border-slate-700">
-              <Megaphone size={14} /> <span className="hidden md:inline">Information</span>
-            </button>
-          </div>
-          <div className="flex gap-4">
-             <button onClick={() => router.push("/admin/marketing")} className="flex items-center gap-2 px-3 py-1.5 bg-violet-900/30 hover:bg-violet-600 border border-violet-500/30 text-violet-400 hover:text-white rounded-lg transition-all text-xs font-bold">
-               <Mail size={16}/> <span className="hidden md:inline">メールマーケティング</span>
-            </button>
-            <button onClick={() => router.push("/admin/analytics")} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/30 hover:bg-emerald-600 border border-emerald-500/30 text-emerald-400 hover:text-white rounded-lg transition-all text-xs font-bold">
-               <BarChart2 size={16}/> <span className="hidden md:inline">分析・データ管理</span>
-            </button>
-            <button onClick={() => router.push("/admin/scan")} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-900/30 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-400 hover:text-white rounded-lg transition-all text-xs font-bold animate-pulse hover:animate-none">
-               <ScanBarcode size={16}/> <span className="hidden md:inline">当日受付・QR</span>
-            </button>
-{/* ▼▼▼ お問い合わせ管理ボタン (スーパー管理者のみ表示) ▼▼▼ */}
-            {isSuperAdminMode && (
-              <button 
-                onClick={() => router.push("/admin/contacts")} 
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 rounded-lg transition-all text-xs font-bold"
-              >
-                 <MessageSquare size={16}/> 
-                 <span className="hidden md:inline">お問い合わせ管理</span>
-              </button>
-            )}
-            {/* ▲▲▲ 追加ここまで ▲▲▲ */}
+    <div className="min-h-screen bg-slate-50 text-slate-600 font-sans">
+      {/* ▼▼▼ 1. このスタイル定義を追加してください ▼▼▼ */}
+      <style>{`
+        @keyframes burnEffect {
+          0% { background-position: 0% 50%; box-shadow: 0 0 5px rgba(249, 115, 22, 0.5); }
+          50% { background-position: 100% 50%; box-shadow: 0 0 20px rgba(220, 38, 38, 0.8), 0 0 10px rgba(251, 191, 36, 0.6); transform: scale(1.02); }
+          100% { background-position: 0% 50%; box-shadow: 0 0 5px rgba(249, 115, 22, 0.5); }
+        }
+        .btn-fire {
+          background: linear-gradient(90deg, #f59e0b, #ef4444, #f97316); /* 黄→赤→オレンジ */
+          background-size: 200% 200%; /* グラデーションを伸ばして動かす */
+          animation: burnEffect 2s infinite ease-in-out; /* 2秒かけてメラメラ動く */
+          border: none; /* 枠線を消す */
+        }
+      `}</style>
+      <header className="bg-white/90 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+  <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center relative">
+    
+    {/* 左側：ロゴとインフォ */}
+    <div className="flex items-center gap-3 shrink-0">
+      <img src="/icon.webp" alt="絆太郎" className="h-8 w-8 object-contain" />
+      <h1 className="text-xl font-bold text-slate-800 hidden sm:block">絆太郎</h1>
+      
+      {/* インフォメーションボタン（これだけは外に出しておくと便利だっぺ！） */}
+      <button onClick={() => router.push("/admin/info")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full hover:bg-orange-50 transition-all border border-slate-200">
+        <Megaphone size={14} /> 
+        <span className="hidden md:inline text-xs font-bold">Information</span>
+      </button>
+    </div>
 
-            {/* ▼▼▼ 契約・請求ボタン (ここは全員に見せる) ▼▼▼ */}
-            <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 rounded-lg transition-all text-xs font-bold">
-               <CreditCard size={16}/> <span className="hidden md:inline">契約・請求</span>
-            </button>
-            {/* ▲▲▲ 追加ここまで ▲▲▲ */}
+    {/* 【PC版】横並びメニュー（md以上の画面で見える） */}
+    <div className="hidden md:flex gap-2 items-center">
+      {/* 1. 名刺スキャン */}
+      <button 
+  onClick={() => alert("名刺スキャン機能は現在開発中です。近日公開予定ですので、楽しみにお待ちください。")} 
+  className="bg-slate-400 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center shadow-sm opacity-80 cursor-default"
+>
+  <ScanLine size={16} /> <span>名刺スキャン（近日公開）</span>
+</button>
+      {/* 2. 絆リスト */}
+      <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <Mail size={16}/> <span>絆リスト</span>
+      </button>
+      {/* 3. 分析 */}
+      <button onClick={() => router.push("/admin/analytics")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <BarChart2 size={16}/> <span>分析</span>
+      </button>
+      {/* 4. 当日受付 */}
+      <button onClick={() => router.push("/admin/scan")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+        <ScanBarcode size={16}/> <span>当日受付</span>
+      </button>
+      {/* 5. 契約 */}
+      <button onClick={() => router.push("/dashboard")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-slate-100">
+        <CreditCard size={16}/> <span>契約</span>
+      </button>
+      {/* 2.8 営業ツール（リッチメール） ✨新登場だばい！ */}
+      <button 
+        onClick={() => router.push("/admin/marketing/newsletter")} 
+        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex gap-1.5 items-center hover:shadow-md transition-all shadow-blue-200/50 border-none"
+      >
+        <Sparkles size={16}/> <span>営業ツール</span>
+      </button>
+      
+      <div className="w-px h-4 bg-slate-200 mx-1" /> {/* 仕切り線 */}
+      
+      {/* 6. 設定 / 7. ログアウト */}
+      <button onClick={()=>setIsSettingsOpen(true)} className="p-1.5 hover:bg-slate-100 rounded-md text-slate-500"><Settings size={20}/></button>
+      <button onClick={handleLogout} className="p-1.5 hover:bg-red-50 rounded-md text-slate-500 hover:text-red-500"><LogOut size={20}/></button>
+    </div>
 
-            <button onClick={()=>setIsSettingsOpen(true)}><Settings/></button>
-            <button onClick={handleLogout}><LogOut/></button>
-          </div>
+    {/* 【スマホ版】メニュー切り替えボタン（md未満の画面で見える） */}
+    <button 
+      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      className="md:hidden p-2 text-slate-600 bg-slate-100 rounded-lg active:scale-95 transition-all"
+    >
+      {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+    </button>
+
+    {/* 【スマホ用】スライドメニュー本体 */}
+    {isMobileMenuOpen && (
+      <div className="absolute top-16 left-0 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl flex flex-col p-4 gap-2 animate-in slide-in-from-top duration-300 md:hidden z-50">
+        
+        {/* 1. 名刺スキャン（特等席！） */}
+        <button 
+  onClick={() => alert("名刺スキャン機能は現在開発中です。近日公開予定です。")} 
+  className="flex items-center gap-4 p-4 bg-slate-500 text-white rounded-2xl font-bold shadow-lg opacity-80"
+>
+  <ScanLine size={24} /> <span className="text-base">名刺スキャン（近日公開）</span>
+</button>
+{/* 営業ツール（スマホでは目立つように一番上に！） */}
+        <button 
+          onClick={() => { router.push("/admin/marketing/newsletter"); setIsMobileMenuOpen(false); }} 
+          className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-2xl font-black border border-blue-100 shadow-sm"
+        >
+          <Sparkles size={22} className="text-blue-600" /> <span className="text-base">営業ツール（リッチメール）</span>
+        </button>
+
+        <div className="grid grid-cols-1 gap-2 mt-1">
+          {/* 2. 絆リスト */}
+          <button onClick={() => { setIsMobileMenuOpen(false); isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing"); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <Mail size={22} className="text-orange-500" /> <span className="text-base">絆リスト</span>
+          </button>
+          
+          {/* 3. 分析・データ管理 */}
+          <button onClick={() => { router.push("/admin/analytics"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <BarChart2 size={22} className="text-blue-500" /> <span className="text-base">分析・データ管理</span>
+          </button>
+          
+          {/* 4. 当日受付・QR */}
+          <button onClick={() => { router.push("/admin/scan"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <ScanBarcode size={22} className="text-emerald-500" /> <span className="text-base">当日受付・QR</span>
+          </button>
+          
+          {/* 5. 契約・請求 */}
+          <button onClick={() => { router.push("/dashboard"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <CreditCard size={22} className="text-slate-500" /> <span className="text-base">契約・請求</span>
+          </button>
         </div>
-      </header>
+
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {/* 6. 設定 */}
+          <button onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }} className="flex items-center justify-center gap-2 p-4 bg-slate-100 text-slate-600 rounded-2xl text-sm font-bold">
+            <Settings size={20} /> 設定
+          </button>
+          {/* 7. ログアウト */}
+          <button onClick={handleLogout} className="flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold">
+            <LogOut size={20} /> ログアウト
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* ▼▼▼ 追加ここから ▼▼▼ */}
+{/* ▼▼▼ 修正：黒背景をやめ、清潔感のある薄いエメラルドグリーンに変更 ▼▼▼ */}
 {user?.email === SUPER_ADMIN_EMAIL && (
-  <div className="mb-8 p-4 bg-slate-900/50 border border-emerald-500/30 rounded-xl flex justify-between items-center animate-in fade-in">
+  <div className="mb-8 p-5 bg-emerald-50/60 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm animate-in fade-in">
     <div>
-      <h3 className="text-emerald-400 font-bold flex items-center gap-2">
-        <Shield size={20} /> スーパー管理者エリア
+      <h3 className="text-emerald-800 font-bold flex items-center gap-2 text-lg">
+        <Shield size={22} className="text-emerald-600"/> スーパー管理者エリア
       </h3>
-      <p className="text-slate-400 text-xs">新規テナントの契約・発行はこちらから</p>
+      <p className="text-emerald-600/80 text-sm mt-1">新規テナントの契約・発行などの管理業務はこちらから</p>
     </div>
     <Link 
       href="/super-admin"
-      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg shadow-emerald-900/20"
+      className="bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:shadow-md whitespace-nowrap"
     >
       管理コンソールへ移動
     </Link>
   </div>
 )}
 {/* ▲▲▲ 追加ここまで ▲▲▲ */}
+        {/* ▼▼▼ 修正：ボタンを水色グラデーションに変更 ▼▼▼ */}
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-white">Events</h2>
-          <button onClick={() => { setSelectedEvent(null); setIsEventModalOpen(true); }} className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex gap-2"><Plus/> 新規イベント</button>
+          <h2 className="text-2xl font-bold text-slate-800">Events</h2>
+          <button 
+  onClick={() => { 
+    // ★ スタンダードじゃない（＝フリーの人）は1件制限だっぺ！
+    if (!isStandard && events.length >= 1) {
+      alert("【作成制限】現在、管理できるイベントは1件までとなっております。別のイベントを作成するには、現在のイベントを削除するか、スタンダードプランをご検討ください。");
+      return;
+    }
+    setSelectedEvent(null); 
+    setIsEventModalOpen(true); 
+  }} 
+  className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center"
+>
+  <Plus size={20} strokeWidth={3}/> 新規イベント
+</button>
         </div>
         
         {/* グリッドをやめて、縦積みのリストにする (max-w-6xl で幅広に) */}
@@ -574,132 +924,197 @@ useEffect(() => {
               key={ev.id} 
               onClick={()=>{setSelectedEvent(ev);setIsEventModalOpen(true);}} 
               className={`
-                relative group flex flex-col h-full rounded-2xl overflow-hidden transition-all duration-500 cursor-pointer
+                relative group flex flex-col h-full rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer border
                 ${isPublished 
-                  /* ↓↓↓ ここを変更しました（緑→白LED風） ↓↓↓ */
-                  ? "bg-slate-900/80 border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:shadow-[0_0_25px_rgba(255,255,255,0.4)] hover:border-white/40" 
-                  : "bg-slate-900 border border-slate-800 hover:border-indigo-500/50"
+                  /* 公開中：枠線を少し濃くし、影を強調 */
+                  ? "bg-white border-orange-400/50 shadow-md hover:shadow-xl hover:border-orange-500 ring-1 ring-orange-100" 
+                  : "bg-white border-slate-300 shadow-sm hover:shadow-md hover:border-slate-400"
                 }
               `}
             >
-              {isPublished && (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-50 pointer-events-none" />
-              )}
-
-              <div className={`h-1 w-full absolute top-0 z-10 ${isPublished ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-slate-700'}`}/>
+              {/* ▼▼▼ 修正：黄色〜淡いオレンジの優しいグラデーションに変更 ▼▼▼ */}
+<div className={`h-2 w-full absolute top-0 z-10 ${isPublished ? 'bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 shadow-sm' : 'bg-slate-300'}`}/>
               
               <div className="p-6 flex-1 relative z-10">
                 <div className="flex justify-between mb-4">
                   <div className="flex gap-2">
-                    <span className={`
-                      text-xs px-2 py-0.5 rounded-full border flex items-center gap-1
-                      ${isPublished 
-                        ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/30 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
-                        : "border-slate-700 text-slate-400"
-                      }
-                    `}>
-                      {isPublished ? '公開中' : '下書き'}
-                    </span>
+                    {/* ▼▼▼ 修正：公開中の時だけ btn-fire を適用 ▼▼▼ */}
+<span className={`
+  text-xs px-3 py-0.5 rounded-full flex items-center gap-1 font-bold tracking-wide
+  ${isPublished 
+    /* 公開中：メラメラ燃えるエフェクト（枠線なし） */
+    ? "btn-fire text-white shadow-md" 
+    /* 下書き：グレー背景＋枠線あり */
+    : "bg-slate-100 text-slate-500 border border-slate-300"
+  }
+`}>
+  {isPublished ? '公開中' : '下書き'}
+</span>
                     
                     {isSuperAdminMode && (
-                       <span className="text-[10px] bg-slate-800 text-indigo-300 px-2 py-0.5 rounded flex items-center gap-1 border border-slate-700 truncate max-w-[150px]">
-                         <Tag size={10}/> 
+                       /* ▼▼▼ 修正：テナント名を「ネイビー背景・白文字」に変更 ▼▼▼ */
+                       <span className="text-[10px] bg-slate-800 text-white px-3 py-0.5 rounded flex items-center gap-1 border border-slate-700 truncate max-w-[150px] shadow-sm">
+                         <Tag size={10} className="text-slate-300"/> 
                          {displayLabel}
                        </span>
                     )}
                   </div>
-                  <button onClick={(e)=>handleDelete(e,ev.id)} className="text-slate-500 hover:text-red-400 transition-colors" title="削除">
-                      <Trash2 size={18}/>
-                  </button>
+                  {/* ▼▼▼ ここに変更！ゴミ箱の左に複製ボタンを追加 ▼▼▼ */}
+                  <div className="flex items-center gap-1">
+                    {/* 複製ボタン */}
+                    <button 
+                      onClick={(e)=>handleDuplicate(e,ev)} 
+                      disabled={duplicatingId===ev.id}
+                      className="text-slate-400 hover:text-orange-600 transition-colors bg-white rounded-full p-1.5 hover:bg-orange-50" 
+                      title="イベントを複製"
+                    >
+                        {duplicatingId===ev.id ? (
+                          <div className="animate-spin w-4 h-4 border-2 border-slate-300 border-t-orange-500 rounded-full"/>
+                        ) : (
+                          <Copy size={18}/>
+                        )}
+                    </button>
+
+                    {/* 削除ボタン（既存） */}
+                    <button 
+                      onClick={(e)=>handleDelete(e,ev.id)} 
+                      className="text-slate-400 hover:text-red-600 transition-colors bg-white rounded-full p-1.5 hover:bg-red-50" 
+                      title="削除"
+                    >
+                        <Trash2 size={18}/>
+                    </button>
+                  </div>
+                  {/* ▲▲▲ ここまで ▲▲▲ */}
                 </div>
                 
-                <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-indigo-400 transition-colors">{ev.title}</h3>
+                {/* ★ここが重要！文字色を text-white から text-slate-900 (黒) に変更 */ }
+                <h3 className="text-xl font-bold text-slate-900 mb-3 line-clamp-2 group-hover:text-orange-600 transition-colors leading-snug">
+                  {ev.title}
+                </h3>
                 
-                <div className="text-sm text-slate-400 flex flex-col gap-1">
+                <div className="text-sm text-slate-600 flex flex-col gap-1.5 font-medium">
                   <span className="flex gap-2 items-center">
-                    <Calendar size={14} className={isPublished ? "text-emerald-500" : "text-slate-500"}/>
+                    <Calendar size={16} className={isPublished ? "text-orange-600" : "text-slate-400"}/>
                     {ev.date}
                   </span>
                   <span className="flex gap-2 items-center">
-                    <MapPin size={14} className={isPublished ? "text-emerald-500" : "text-slate-500"}/>
+                    <MapPin size={16} className={isPublished ? "text-orange-600" : "text-slate-400"}/>
                     {safeStr(ev.venueName)||"場所未定"}
                   </span>
                 </div>
               </div>
 
-              {/* カードの下部アクションエリア */}
-              <div className="bg-slate-900/50 px-4 py-3 border-t border-slate-800 flex flex-wrap md:flex-nowrap justify-between items-center gap-4 relative z-10" onClick={e=>e.stopPropagation()}>
+              {/* ▼▼▼ 修正：背景をグレーからベージュ（bg-orange-50）に変更 ▼▼▼ */}
+<div className="bg-orange-50 px-5 py-4 border-t border-orange-100 flex flex-wrap md:flex-nowrap justify-between items-center gap-4 relative z-10" onClick={e=>e.stopPropagation()}>
                 
-                {/* 左側：参加者ボタン */}
+                {/* 左側：参加者ボタン（ここをグラデーションボタン化！） */}
                 <div className="flex items-center gap-3 w-full md:w-auto">
                   <button 
                       onClick={(e)=>{e.stopPropagation();setCurrentEventForList(ev);setIsParticipantsOpen(true);}} 
-                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-orange-600 hover:text-white px-5 py-2.5 rounded-lg text-slate-300 transition-colors border border-slate-700 hover:border-orange-500 text-sm font-bold"
+                      /* ▼▼▼ 修正：黄色〜淡いオレンジのグラデーションに変更（ホバー時は少し濃く） ▼▼▼ */
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 hover:from-amber-300 hover:via-orange-400 hover:to-orange-500 text-[#051e34] px-6 py-2.5 rounded-lg transition-all border-none text-sm font-bold shadow-md hover:shadow-lg active:scale-95"
                       title="参加者リスト"
                   >
-                      <ListChecks size={18}/> 
-                      {/* PCでもスマホでも文字を出す（参加者は重要なので） */}
+                      <ListChecks size={18} className="text-[#051e34]"/> 
                       <span>参加者リスト</span>
                   </button>
                   
-                  {/* 人数バッジ */}
-                  <div className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500 text-black font-bold text-xs shadow-lg shadow-cyan-500/20">
-                     <Users size={12} className="text-black/70"/>
-                     <span>{counts[ev.id] || 0}名</span>
+                  {/* 人数バッジ：導火線エフェクト（火花2本バージョン！） */}
+                  <div className="relative group rounded-full p-[2px] overflow-hidden">
+                    {/* ▼火花のアニメーション（2つの火花が追いかけっこ） */}
+                    <div className="absolute inset-[-100%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,transparent_0%,transparent_35%,#fbbf24_45%,#ef4444_50%,transparent_50%,transparent_85%,#fbbf24_95%,#ef4444_100%)]" />
+                    
+                    {/* ▼前面の白いプレート */}
+                    <div className="relative flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-slate-700 font-bold text-xs shadow-sm">
+                       <Users size={14} className="text-slate-500"/>
+                       <span>{counts[ev.id] || 0}名</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* 右側：アクションボタン群（PCでは文字付きリスト表示！） */}
+                {/* 右側：アクションボタン群（文字と枠を濃く） */}
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
                    
-                   {/* QRコード */}
+                   {/* 共通スタイル：border-slate-300, text-slate-600 に変更 */}
                    <button 
-                     onClick={(e) => { e.stopPropagation(); setQrEvent(ev); setIsQrModalOpen(true); }}
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-emerald-500"
+                     onClick={(e) => { 
+  e.stopPropagation();
+  // ★ ここに制限を移動！スポット未払いのフリーユーザーはお断りだばい
+    if (isFreePlan && !ev.isSpotPaid) {
+      setIsUpgradeModalOpen(true);
+      return;
+    } 
+  setQrEvent(ev); 
+  setIsQrModalOpen(true); 
+}}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
                        <QrCode size={18}/>
-                       <span className="hidden lg:inline text-xs font-bold">QR表示</span>
+                       <span className="hidden lg:inline">QR表示</span>
                    </button>
 
-                   {/* アンケート結果 */}
                    <button 
-                     onClick={(e) => { e.stopPropagation(); setCurrentEventForList(ev); setIsFeedbackOpen(true); }}
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-orange-600 hover:text-white px-4 py-2.5 rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-orange-500"
+                     onClick={(e) => { 
+  e.stopPropagation();
+  // ★ ここに追加！
+    if (isFreePlan) {
+      setIsUpgradeModalOpen(true);
+      return;
+    } 
+  setCurrentEventForList(ev); 
+  setIsFeedbackOpen(true); 
+}}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
                        <MessageSquare size={18}/>
-                       <span className="hidden lg:inline text-xs font-bold">結果を見る</span>
+                       <span className="hidden lg:inline">結果</span>
                    </button>
 
-                   {/* CSV */}
                    <button 
                      onClick={(e)=>handleDownloadCSV(e,ev.id,ev.title)} 
                      disabled={downloadingId===ev.id} 
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-emerald-500" 
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
-                       {downloadingId===ev.id?<div className="animate-spin w-4 h-4 border-2 border-white rounded-full border-t-transparent"/>:<FileDown size={18}/>}
-                       <span className="hidden lg:inline text-xs font-bold">CSV</span>
+                       {downloadingId===ev.id?<div className="animate-spin w-4 h-4 border-2 border-blue-500 rounded-full border-t-transparent"/>:<FileDown size={18}/>}
+                       <span className="hidden lg:inline">CSV</span>
                    </button>
                    
-                   {/* URLコピー */}
                    <button 
-                     onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);setCopiedId(ev.id);setTimeout(()=>setCopiedId(null),2000);}} 
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-indigo-600 hover:text-white px-4 py-2.5 rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-indigo-500" 
+                     onClick={(e) => {
+  e.stopPropagation();
+  
+  navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);
+  setCopiedId(ev.id);
+  setTimeout(() => setCopiedId(null), 2000);
+}}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs" 
                    >
-                       {copiedId===ev.id?<Check size={18}/>:<Share2 size={18}/>}
-                       <span className="hidden lg:inline text-xs font-bold">URL</span>
+                       {copiedId===ev.id?<Check size={18} className="text-emerald-500"/>:<Share2 size={18}/>}
+                       <span className="hidden lg:inline">URL</span>
                    </button>
                    
-                   {/* 公開ページ */}
-                   <a 
-                     href={`/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`} 
-                     target="_blank" 
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-indigo-600 hover:text-white px-4 py-2.5 rounded-lg text-slate-400 transition-colors border border-slate-700 hover:border-indigo-500" 
-                   >
-                       <ExternalLink size={18}/>
-                       <span className="hidden lg:inline text-xs font-bold">公開P</span>
-                   </a>
+                   <button 
+  onClick={(e) => {
+    e.stopPropagation();
+    if (ev.status !== 'published') {
+      alert("このイベントは現在「下書き」状態です。公開設定に変更するまで、参加者はこのURLにアクセスしても閲覧できません。");
+      return;
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+    window.open(`${baseUrl}/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
+  }}
+  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border shadow-sm font-bold text-xs ${
+    ev.status === 'published' 
+    ? "bg-white hover:bg-slate-100 text-slate-600 border-slate-300" 
+    : "bg-slate-50 text-slate-400 border-dashed border-slate-300 cursor-not-allowed"
+  }`}
+>
+  {ev.status === 'published' ? <ExternalLink size={18}/> : <Lock size={18}/>}
+  <span className="hidden lg:inline">{ev.status === 'published' ? '公開P' : '非公開中'}</span>
+</button>
                 </div>
               </div>
+              {/* ▲▲▲ 差し替えここまで ▲▲▲ */}
             </div>
             );
           })}
@@ -711,7 +1126,7 @@ useEffect(() => {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col">
              <div className="p-4 border-b border-slate-800 flex justify-between bg-[#0f111a] sticky top-0 z-10"><h2 className="text-xl font-bold text-white">イベント編集</h2><button onClick={()=>setIsEventModalOpen(false)}><X/></button></div>
-             <div className="p-6"><EventForm event={selectedEvent} onSuccess={()=>setIsEventModalOpen(false)}/></div>
+             <div className="p-6"><EventForm event={selectedEvent} onSuccess={()=>setIsEventModalOpen(false)}isFreePlan={isFreePlan}/></div>
           </div>
         </div>
       )}
@@ -729,9 +1144,9 @@ useEffect(() => {
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
-               <button onClick={openMailModal} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
-                 <Mail size={16}/> メール送信
-               </button>
+               <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
+  <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
+</button>
             </div>
             
             <div className="flex-1 overflow-y-auto">
@@ -739,43 +1154,143 @@ useEffect(() => {
                  <table className="w-full text-left border-collapse">
                    <thead className="bg-slate-900 text-xs text-slate-500 sticky top-0 z-10">
                      <tr>
+                       <th className="p-2 w-10 text-center"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={participants.length > 0 && selectedParticipantIds.length === participants.length} onChange={toggleSelectAll} /></th>
                        <th className="p-2 md:p-4 whitespace-nowrap">受付</th>
                        <th className="p-2 md:p-4">参加者情報</th>
+                       <th className="p-2 md:p-4">お支払い</th> {/* ★ これを追加！ */}
                        <th className="hidden md:table-cell p-4">会社</th>
                        <th className="hidden md:table-cell p-4">形式</th>
+                       <th className="p-2 md:p-4 text-center">個別送信</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800">
-                     {participants.map(p=>(
-                       <tr key={p.id} className={p.checkedIn?'bg-emerald-900/10':''}>
-                         <td className="p-2 md:p-4 align-middle">
-                           <button onClick={()=>toggleCheckIn(p)} className={`w-full md:w-auto px-2 md:px-3 py-2 md:py-1.5 rounded text-xs font-bold flex justify-center items-center gap-1 transition-all active:scale-95 ${p.checkedIn?'bg-emerald-500 text-white shadow-emerald-500/20':'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                             {p.checkedIn?<Check size={16} strokeWidth={3}/>:<UserCheck size={16}/>} 
-                             <span className="hidden md:inline">{p.checkedIn?"受付済":"受付する"}</span>
-                           </button>
-                         </td>
-                         <td className="p-2 md:p-4">
-                           <div className="font-bold text-white text-sm md:text-base mb-0.5">{p.name}</div>
-                           <div className="md:hidden space-y-1">
-                             <div className="text-xs text-slate-400">🏢 {p.company}</div>
-                             <div className="flex items-center gap-2">
-                               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${p.type==='online'?'border-blue-500/30 text-blue-400':'border-orange-500/30 text-orange-400'}`}>{p.type==='online'?'オンライン':'会場参加'}</span>
-                             </div>
-                           </div>
-                           <div className="text-xs text-slate-500 hidden md:block">{p.email}</div>
-                         </td>
-                         <td className="p-4 text-sm text-slate-300 hidden md:table-cell">{p.company}</td>
-                         <td className="p-4 hidden md:table-cell"><span className={`text-xs px-2 py-1 rounded border ${p.type==='online'?'border-blue-500/30 text-blue-400':'border-orange-500/30 text-orange-400'}`}>{p.type==='online'?'Online':'Venue'}</span></td>
-                       </tr>
-                     ))}
-                   </tbody>
+  {participants.map((p) => (
+    <tr key={p.id} className={p.checkedIn ? 'bg-emerald-900/10' : ''}>
+      {/* 1. チェックボックス */}
+      <td className="p-2 text-center align-middle">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-indigo-500 cursor-pointer"
+          checked={selectedParticipantIds.includes(p.id)}
+          onChange={() => toggleSelectParticipant(p.id)}
+        />
+      </td>
+
+      {/* 2. 受付ボタン */}
+      <td className="p-2 md:p-4 align-middle">
+        <button
+          onClick={() => toggleCheckIn(p)}
+          className={`w-full md:w-auto px-2 md:px-3 py-2 md:py-1.5 rounded text-xs font-bold flex justify-center items-center gap-1 transition-all active:scale-95 ${
+            p.checkedIn
+              ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+              : 'bg-slate-800 text-slate-400 border border-slate-700'
+          }`}
+        >
+          {p.checkedIn ? <Check size={16} strokeWidth={3} /> : <UserCheck size={16} />}
+          <span className="hidden md:inline">{p.checkedIn ? "受付済" : "受付する"}</span>
+        </button>
+      </td>
+
+      {/* 3. 参加者情報 */}
+      <td className="p-2 md:p-4">
+        <div className="font-bold text-white text-sm md:text-base mb-0.5">{p.name}</div>
+        <div className="md:hidden space-y-1">
+          <div className="text-xs text-slate-400">🏢 {p.company}</div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                p.type === 'online' ? 'border-blue-500/30 text-blue-400' : 'border-orange-500/30 text-orange-400'
+              }`}
+            >
+              {p.type === 'online' ? 'オンライン' : '会場参加'}
+            </span>
+          </div>
+        </div>
+        <div className="text-xs text-slate-500 hidden md:block">{p.email}</div>
+      </td>
+
+      {/* ★ 追加：お支払い金額（ここが今回のキモだっぺ！） */}
+      <td className="p-2 md:p-4 align-middle">
+        <div className="flex flex-col gap-1">
+          {/* 金額の表示 */}
+          <span className="text-white font-black text-sm md:text-base">
+            ¥{(Number((p as any).price) || 0).toLocaleString()}
+          </span>
+          
+          {/* 支払いステータスの出し分け */}
+          {(p as any).status === 'paid' ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
+              <Check size={10} strokeWidth={3} /> 決済済み
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30 w-fit">
+              当日現金
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* 4. 会社名（PCのみ） */}
+      <td className="p-4 text-sm text-slate-300 hidden md:table-cell">{p.company}</td>
+
+      {/* 5. 形式（PCのみ） */}
+      <td className="p-4 hidden md:table-cell">
+        <span
+          className={`text-xs px-2 py-1 rounded border ${
+            p.type === 'online' ? 'border-blue-500/30 text-blue-400' : 'border-orange-500/30 text-orange-400'
+          }`}
+        >
+          {p.type === 'online' ? 'Online' : 'Venue'}
+        </span>
+      </td>
+
+      {/* 6. 個別メールボタン */}
+      <td className="p-2 md:p-4 text-center">
+        <button
+          onClick={() => openMailModal(p)}
+          className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-colors"
+          title="個別にメール"
+        >
+          <Mail size={16} />
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
                  </table>
                )}
             </div>
-            <div className="p-3 bg-slate-900 text-xs text-slate-400 flex justify-between shrink-0">
-              <span>Total: {participants.length}</span>
-              <span className="text-emerald-400 font-bold">受付済: {participants.filter(p=>p.checkedIn).length}</span>
-            </div>
+            {/* ▼▼▼ フッター：合計金額の計算と表示をパワーアップ！ ▼▼▼ */}
+<div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+  {/* 左側：人数統計 */}
+  <div className="flex gap-4 text-xs text-slate-400">
+    <span>申込数: <span className="text-white font-bold">{participants.length}</span> 名</span>
+    <span>受付済: <span className="text-emerald-400 font-bold">{participants.filter(p=>p.checkedIn).length}</span> 名</span>
+  </div>
+
+  {/* 右側：金額合計（ここが塙さんのこだわりだっぺ！） */}
+  <div className="flex flex-wrap justify-end gap-3 md:gap-6">
+    {/* 1. 全体の売上予定額 */}
+    <div className="flex flex-col items-end">
+      <span className="text-[10px] text-slate-500 uppercase font-bold">売上予定（合計）</span>
+      <span className="text-white font-black text-lg">
+        ¥{participants.reduce((sum, p) => sum + (Number((p as any).price) || 0), 0).toLocaleString()}
+      </span>
+    </div>
+
+    {/* 2. 当日現金で回収するべき残額 */}
+    <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
+      <span className="text-[10px] text-orange-400 uppercase font-bold">当日現金（未回収分）</span>
+      <span className="text-orange-500 font-black text-lg">
+        ¥{participants
+          .filter(p => (p as any).status !== 'paid') // 決済済み以外を集計
+          .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
+          .toLocaleString()}
+      </span>
+    </div>
+  </div>
+</div>
+{/* ▲▲▲ 修正ここまで ▲▲▲ */}
           </div>
         </div>
       )}
@@ -1045,22 +1560,43 @@ useEffect(() => {
                <span className="text-xs text-slate-500 py-1.5">テンプレート:</span>
                <button onClick={()=>applyTemplate('thankyou')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">御礼 (受付済)</button>
                <button onClick={()=>applyTemplate('remind')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">リマインド (全員)</button>
+               <button onClick={()=>applyTemplate('ticket')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-orange-400 border-orange-500/50 hover:bg-slate-800 hover:text-orange-300 transition-colors">🎟️ チケット (QR)</button>
                <button onClick={()=>applyTemplate('custom')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">空紙</button>
              </div>
 
              <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
                  <label className="block text-xs text-slate-400 mb-3 font-bold">送信先を選択</label>
-                 <div className="flex flex-col sm:flex-row gap-4">
-                   <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='all' ? 'bg-indigo-900/30 border-indigo-500 ring-1 ring-indigo-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
-                     <input type="radio" name="target" checked={mailTargetType==='all'} onChange={()=>setMailTargetType('all')} className="accent-indigo-500 w-5 h-5"/>
-                     <div><div className="text-sm font-bold text-white">全員に送る</div><div className="text-xs text-slate-400">未受付の人も含む ({participants.length}名)</div></div>
-                   </label>
-                   <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='checked-in' ? 'bg-emerald-900/30 border-emerald-500 ring-1 ring-emerald-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
-                     <input type="radio" name="target" checked={mailTargetType==='checked-in'} onChange={()=>setMailTargetType('checked-in')} className="accent-emerald-500 w-5 h-5"/>
-                     <div><div className="text-sm font-bold text-white">受付済のみに送る</div><div className="text-xs text-slate-400">来場した人のみ ({participants.filter(p=>p.checkedIn).length}名)</div></div>
-                   </label>
-                 </div>
+{/* ▼ 置き換えここから ▼ */}
+{mailTargetType === 'individual' && targetParticipant ? (
+   <div className="bg-indigo-900/30 border border-indigo-500 p-3 rounded-lg flex items-center gap-3">
+      <div className="bg-indigo-500 text-white rounded-full p-1"><UserCheck size={16}/></div>
+      <div>
+         <div className="text-sm font-bold text-white">{targetParticipant.name} 様</div>
+         <div className="text-xs text-indigo-300">個別送信モード</div>
+      </div>
+   </div>
+) : mailTargetType === 'selected' ? (
+   <div className="bg-orange-900/30 border border-orange-500 p-3 rounded-lg flex items-center gap-3">
+      <div className="bg-orange-500 text-white rounded-full p-1"><Check size={16}/></div>
+      <div>
+         <div className="text-sm font-bold text-white">選択した {selectedParticipantIds.length} 名</div>
+         <div className="text-xs text-orange-300">複数選択モード</div>
+      </div>
+   </div>
+) : (
+   <div className="flex flex-col sm:flex-row gap-4">
+     <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='all' ? 'bg-indigo-900/30 border-indigo-500 ring-1 ring-indigo-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
+       <input type="radio" name="target" checked={mailTargetType==='all'} onChange={()=>setMailTargetType('all')} className="accent-indigo-500 w-5 h-5"/>
+       <div><div className="text-sm font-bold text-white">全員に送る</div><div className="text-xs text-slate-400">未受付の人も含む ({participants.length}名)</div></div>
+     </label>
+     <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all flex-1 ${mailTargetType==='checked-in' ? 'bg-emerald-900/30 border-emerald-500 ring-1 ring-emerald-500' : 'bg-slate-950 border-slate-700 hover:bg-slate-800'}`}>
+       <input type="radio" name="target" checked={mailTargetType==='checked-in'} onChange={()=>setMailTargetType('checked-in')} className="accent-emerald-500 w-5 h-5"/>
+       <div><div className="text-sm font-bold text-white">受付済のみに送る</div><div className="text-xs text-slate-400">来場した人のみ ({participants.filter(p=>p.checkedIn).length}名)</div></div>
+     </label>
+   </div>
+)}
+{/* ▲ 置き換えここまで ▲ */}
                </div>
                <div>
                  <label className="block text-xs text-slate-500 mb-2">件名</label>
@@ -1092,96 +1628,226 @@ useEffect(() => {
              <div className="flex justify-between mb-4 border-b border-slate-800 pb-3"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={22}/> 設定</h2><button onClick={()=>setIsSettingsOpen(false)}><X/></button></div>
              <div className="space-y-6 overflow-y-auto pr-1">
                
-               {/* 1. 署名設定（全員共通） */}
-               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                 <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2"><Building2 size={16}/> 署名・表示名設定</h3>
-                 <p className="text-xs text-slate-500 mb-2">メールの署名などに使われます。</p>
-                 <div className="flex gap-2">
-                   <input type="text" value={editingOrgName} onChange={(e)=>setEditingOrgName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="組織名" />
-                   <button onClick={handleSaveOrgName} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">保存</button>
-                 </div>
-               </div>
-               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-4">
-                 <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2">
-                   <CreditCard size={16}/> 決済機能連携
-                 </h3>
-                 <StripeConnectButton 
-                   tenantId={currentUserTenant}
-                   isConnected={(tenantList.find(t => t.id === currentUserTenant) as any)?.stripeConnectEnabled || false}
-                 />
-               </div>
+               {/* 1. テナント・法人基本設定（特商法対応） */}
+<div className="space-y-6">
+{/* A. 表の顔：ブランド設定 */}
+  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+    <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
+      <Sparkles size={16} className="text-yellow-400"/> ブランド・SNS設定
+    </h3>
+    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名、SNSアイコンのリンク先に反映されるぞい。</p>
+    
+    <div className="space-y-4">
+      {/* 組織名・ブランド名 */}
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">主催者・表示名</label>
+        <input 
+          type="text" 
+          value={editingOrgName} 
+          onChange={(e)=>setEditingOrgName(e.target.value)} 
+          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-indigo-500 outline-none transition-all" 
+          placeholder="例：CARE DESIGN WORKS" 
+        />
+      </div>
 
-{/* 2. スタッフ招待（全ユーザーに開放 ※ただし自分のテナント限定） */}
+      {/* ✨ ここからSNSのURL入力欄だっぺ！ */}
+      <div className="space-y-2">
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">SNS連携（広報誌メールに表示）</label>
+        
+        {/* Instagram */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-pink-500/50 transition-all">
+          <Instagram size={14} className="text-pink-500" />
+          <input 
+            type="text" 
+            value={instagramUrl} 
+            onChange={(e)=>setInstagramUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="Instagram URL" 
+          />
+        </div>
+
+        {/* LINE (MessageCircleアイコンを使用) */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-green-500/50 transition-all">
+          <MessageCircle size={14} className="text-green-500" />
+          <input 
+            type="text" 
+            value={lineUrl} 
+            onChange={(e)=>setLineUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="LINE公式アカウント URL" 
+          />
+        </div>
+
+        {/* Facebook */}
+        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-blue-500/50 transition-all">
+          <Facebook size={14} className="text-blue-500" />
+          <input 
+            type="text" 
+            value={facebookUrl} 
+            onChange={(e)=>setFacebookUrl(e.target.value)} 
+            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
+            placeholder="Facebook URL" 
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* B. 裏の顔：法人・特商法情報 */}
+  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+    <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
+      <Shield size={16}/> 法人・特商法情報（決済審査用）
+    </h3>
+    <p className="text-[10px] text-slate-500 mb-4">Stripeの審査や、自動生成される「特商法ページ」に使われる正式な情報だぞい。</p>
+    
+    <div className="space-y-3">
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">正式な会社名・事業者名</label>
+        <input type="text" value={legalCompanyName} onChange={(e)=>setLegalCompanyName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="例：株式会社はなひろ" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">代表者名</label>
+          <input type="text" value={representative} onChange={(e)=>setRepresentative(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="塙 浩之" />
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">電話番号</label>
+          <input type="text" value={legalPhone} onChange={(e)=>setLegalPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="0248-xx-xxxx" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">所在地</label>
+        <input type="text" value={legalAddress} onChange={(e)=>setLegalAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="福島県須賀川市..." />
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">ホームページURL</label>
+        <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="https://hana-hiro.com" />
+      </div>
+    </div>
+
+    <button 
+      onClick={handleSaveTenantSettings} 
+      className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+    >
+      <Check size={18}/> 設定をすべて保存する
+    </button>
+  </div>
+  {/* 💳 C. 決済連携設定（Stripe Connect） */}
+  <div className="bg-slate-900 p-5 rounded-2xl border border-blue-900/50 mt-6">
+    <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+      <CreditCard size={16}/> 決済システム連携
+    </h3>
+    <p className="text-[10px] text-slate-500 mb-4">
+      有料セミナーを開催する場合、ここからStripeアカウントを連携してください。<br />
+      参加費はあなたの口座へ直接振り込まれるようになります。
+    </p>
+
+    {/* 🏆 ここにインポートしたボタンを置くぞい！！ */}
+    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-center">
+      <StripeConnectButton 
+    tenantId={currentUserTenant} 
+    isConnected={!!(currentTenantData as any)?.stripeConnected} 
+  />
+    </div>
+
+    <p className="text-[8px] text-slate-600 mt-3 text-center">
+      ※連携にはStripeアカウント（無料）が必要です。
+    </p>
+  </div>
+</div>
+{/* 設定モーダルの「保存ボタン」のすぐ下 */}
+<div className="mt-4 pt-4 border-t border-slate-800">
+  <p className="text-[10px] text-slate-500 mb-2 font-bold uppercase">Stripe提出用URL</p>
+  <div className="flex gap-2">
+    <input 
+      readOnly 
+      value={`${window.location.origin}/${currentUserTenant}/legal`} 
+      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400 font-mono"
+    />
+    <button 
+      onClick={() => window.open(`/${currentUserTenant}/legal`, '_blank')}
+      className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] px-3 py-1 rounded font-bold transition-all"
+    >
+      ページを確認
+    </button>
+  </div>
+</div>
+
+{/* 2. スタッフ招待（全ユーザーに開放：価値ある機能として提供） */}
                <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
                  <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
                     <UserPlus size={16}/> スタッフ・管理者招待
                  </h3>
                  
-                 {/* ▼▼▼ 条件分岐 ▼▼▼ */}
-                 {!isSuperAdminMode && isFreePlan ? (
-                    /* フリープランの場合：ロック画面を表示 */
-                    <div className="text-center py-4 bg-slate-950/50 rounded-lg border border-slate-800 border-dashed">
-                      <p className="text-xs text-slate-400 mb-2">
-                        フリープランではスタッフを追加できません。<br/>
-                        チームで管理するにはプロプランへのアップグレードが必要です。
-                      </p>
-                      <Link href="/dashboard" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline">
-                        プランを確認する &rarr;
-                      </Link>
-                    </div>
+                 {/* プラン制限を撤廃し、常に適切なフォームを表示します */}
+                 {isSuperAdminMode ? (
+                    // スーパー管理者の場合：全テナントから選べる
+                    <form onSubmit={handleAddAdmin} className="space-y-2">
+                      <p className="text-xs text-orange-400 mb-1">※スーパー管理者権限で操作中</p>
+                      <input 
+                        value={newAdminEmail} 
+                        onChange={e=>setNewAdminEmail(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+                        placeholder="追加するメールアドレス" 
+                        required 
+                      />
+                      <select 
+                         value={`${newAdminTenantId}::${newAdminBranch}`} 
+                         onChange={handleAdminBranchChange} 
+                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                       >
+                        <option value="::">（所属を選択してください）</option>
+                        {tenantList.map((tenant) => (
+                          <optgroup key={tenant.id} label={tenant.name}>
+                            {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b:any) => typeof b === 'string' ? b : []).map((branch:any) => (
+                              <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>{branch}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <div className="flex justify-end">
+                        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                          権限付与して招待
+                        </button>
+                      </div>
+                    </form>
                  ) : (
-                    /* 有料プラン または スーパー管理者の場合 */
-                    isSuperAdminMode ? (
-                       // スーパー管理者の場合：全テナントから選べる
-                       <form onSubmit={handleAddAdmin} className="space-y-2">
-                         <p className="text-xs text-orange-400 mb-1">※スーパー管理者権限で操作中</p>
-                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="追加するメールアドレス" required />
-                         <select 
-                            value={`${newAdminTenantId}::${newAdminBranch}`} 
-                            onChange={handleAdminBranchChange} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                          >
-                           <option value="::">（所属を選択してください）</option>
-                           {tenantList.map((tenant) => (
-                             <optgroup key={tenant.id} label={tenant.name}>
-                               {(Array.isArray(tenant.branches) ? tenant.branches : ["本部"]).flatMap((b:any) => typeof b === 'string' ? b : []).map((branch:any) => (
-                                 <option key={`${tenant.id}-${branch}`} value={`${tenant.id}::${branch}`}>{branch}</option>
-                               ))}
-                             </optgroup>
-                           ))}
-                         </select>
-                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">権限付与して招待</button></div>
-                       </form>
-                    ) : (
-                       // 一般ユーザー（有料プラン）の場合：自分のテナントの支部しか選べない
-                       <form onSubmit={async (e) => {
-                          e.preventDefault();
-                          if(!newAdminEmail || !newAdminBranch) return alert("入力してください");
-                          if(!confirm(`${newAdminEmail} を招待しますか？`)) return;
-                          try {
-                            const res = await fetch('/api/admin/add', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ email: newAdminEmail, branchId: newAdminBranch, tenantId: currentUserTenant }),
-                            });
-                            if(res.ok) { alert("招待しました！"); setNewAdminEmail(""); }
-                            else { alert("エラーが発生しました"); }
-                          } catch(err) { alert("通信エラー"); }
-                       }} className="space-y-2">
-                         <input value={newAdminEmail} onChange={e=>setNewAdminEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" placeholder="招待するスタッフのメール" required />
-                         <select 
-                            value={newAdminBranch} 
-                            onChange={e=>setNewAdminBranch(e.target.value)} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
-                          >
-                           <option value="">（所属部門・教室を選択）</option>
-                           {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
-                              typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
-                           ))}
-                         </select>
-                         <div className="flex justify-end"><button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm">招待する</button></div>
-                       </form>
-                    )
+
+<form onSubmit={(e) => handleInviteStaff(e, newAdminEmail, newAdminName, currentUserTenant, newAdminBranch)} className="space-y-2">
+  {/* ✨ 名前入力欄を追加！ */}
+  <input 
+    value={newAdminName} 
+    onChange={e=>setNewAdminName(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+    placeholder="スタッフのお名前（例：塙 太郎）" 
+    required 
+  />
+  <input 
+    value={newAdminEmail} 
+    onChange={e=>setNewAdminEmail(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
+    placeholder="招待するスタッフのメール" 
+    required 
+  />
+  <select 
+    value={newAdminBranch} 
+    onChange={e=>setNewAdminBranch(e.target.value)} 
+    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+  >
+    <option value="">（所属部門・教室を選択）</option>
+    {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
+      typeof b === 'string' && <option key={b} value={b}>{formatBranchName(b)}</option>
+    ))}
+  </select>
+  <div className="flex justify-end">
+    <button 
+      disabled={inviting}
+      className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+    >
+      {inviting ? "送信中だっぺ..." : "スタッフを招待する"}
+    </button>
+  </div>
+</form>
                  )}
                </div>
 
@@ -1238,6 +1904,153 @@ useEffect(() => {
            </div>
         </div>
       )}
+        {/* ★★★ 絆太郎：おもてなしウェルカムモーダル（完全版） ★★★ */}
+      {isWelcomeModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* 背景の強力ぼかし（すりガラス） */}
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-700"></div>
+
+          {/* モーダル本体（あの気に入ってくれたデザインを維持！） */}
+          <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden animate-in zoom-in duration-500">
+            
+            {/* 華やかな装飾の光 */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl"></div>
+
+            <div className="relative p-8 md:p-12 text-center">
+              {/* 共通ロゴ */}
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-3xl shadow-xl mb-8 border border-slate-100">
+                <img src="/icon.webp" alt="絆太郎" className="w-14 h-14 object-contain" />
+              </div>
+
+              {/* === ▼▼▼ ここからスライド切り替え ▼▼▼ === */}
+              {modalStep === 1 ? (
+                /* 1枚目：歓迎スライド（標準語） */
+                <div className="animate-in fade-in">
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">
+                    絆太郎へようこそ！
+                  </h2>
+                  <p className="text-slate-600 font-medium mb-10 leading-relaxed text-lg">
+                    今日からあなたのセミナー運営が、<br className="hidden md:inline" />
+                    もっと楽しく、もっと「絆」が深まるものに変わります。
+                  </p>
+
+                  {/* 3つの特徴（あのデザインを維持） */}
+                  <div className="grid gap-4 text-left mb-12">
+                    {[
+                      { title: "セミナーの案内", desc: "文字を入れるだけで、想いが伝わるページが完成", color: "text-blue-600", bg: "bg-blue-50" },
+                      { title: "スマートな受付", desc: "当日はスマホをかざすだけ。笑顔で迎える準備を", color: "text-indigo-600", bg: "bg-indigo-50" },
+                      { title: "絆を深めるファン作り", desc: "一度きりで終わらせない、次のご縁を大切に", color: "text-emerald-600", bg: "bg-emerald-50" },
+                    ].map((item, idx) => (
+                      <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm`}>
+                        <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color}`}>
+                          <Check size={18} strokeWidth={3} />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-900">{item.title}</h4>
+                          <p className="text-xs text-slate-500 font-bold mt-0.5">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 2枚目へ進むボタン */}
+                  <button
+                    onClick={() => setModalStep(2)}
+                    className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-300 flex items-center justify-center gap-2 group text-xl"
+                  >
+                    具体的な使い方を見る
+                    <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              ) : (
+                /* 2枚目：使い方ガイド（デザイン統一＆標準語） */
+                <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-4 tracking-tight">
+                    活用までの3ステップ
+                  </h2>
+                  <p className="text-slate-600 font-medium mb-10 leading-relaxed">
+                    まずはこの流れで、最初のイベントを開催してみましょう。
+                  </p>
+
+                  {/* 3つのステップ（1枚目と同じデザインで統一！） */}
+                  <div className="grid gap-4 text-left mb-12">
+                    {[
+                      { step: "01", title: "イベントを作成", desc: "「新規イベント」から、タイトルや日時を入力して募集ページを準備します。", color: "text-blue-600", bg: "bg-blue-50", icon: <Plus size={18} strokeWidth={3}/> },
+                      { step: "02", title: "QRコードで受付", desc: "イベント当日は「QR表示」でコードを掲示。参加者が読み取るだけで受付完了です。", color: "text-indigo-600", bg: "bg-indigo-50", icon: <QrCode size={18} strokeWidth={3}/> },
+                      { step: "03", title: "御礼メールを送信", desc: "終了後は「参加者リスト」から感謝のメールを一斉送信。次につなげます。", color: "text-emerald-600", bg: "bg-emerald-50", icon: <Mail size={18} strokeWidth={3}/> },
+                    ].map((item, idx) => (
+                      <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm`}>
+                        <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color} flex items-center justify-center font-black`}>
+                          {/* アイコンを表示 */}
+                          {item.icon}
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-900 flex items-center gap-2">
+                            <span className="text-xs bg-white px-2 py-0.5 rounded-full shadow-sm border border-slate-100">{item.step}</span>
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 完了ボタン（閉じる） */}
+                  <button
+                    onClick={closeWelcomeModal}
+                    className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group text-xl"
+                  >
+                    利用を開始する
+                  </button>
+                </div>
+              )}
+              {/* === ▲▲▲ 切り替えここまで ▲▲▲ === */}
+              
+              <p className="mt-6 text-slate-400 text-xs font-bold">
+                ※右上の「Information」からいつでも使い方を確認できます
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 📂 ファイルの一番下（モーダル類が集まっている場所）に追加 */}
+{isUpgradeModalOpen && (
+  <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[300]">
+    <div className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-md w-full text-center shadow-2xl animate-in zoom-in duration-300">
+      <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+        <Shield size={40} />
+      </div>
+      
+      {/* ★ タイトルを修正：両方のプラン名を並べるぞい！ */}
+      <h3 className="text-2xl font-black text-slate-900 mb-4">
+        スタンダードプラン・スポット利用 限定機能
+      </h3>
+      
+      {/* ★ 説明文もより丁寧に修正っぺ */}
+      <p className="text-slate-600 font-bold mb-8 leading-relaxed">
+        データ出力や分析機能は、<br />
+        <span className="text-indigo-600">スタンダードプラン</span>のお客様、または<br />
+        <span className="text-orange-600">スポット利用（単発決済）</span>のお客様専用です。
+      </p>
+      
+      <div className="flex flex-col gap-3">
+        <button 
+          onClick={() => router.push("/dashboard")} 
+          className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+        >
+          プランを確認・お支払い
+        </button>
+        <button 
+          onClick={() => setIsUpgradeModalOpen(false)} 
+          className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-all"
+        >
+          今は閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

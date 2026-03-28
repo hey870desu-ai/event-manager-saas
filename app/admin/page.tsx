@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -179,6 +179,46 @@ export default function AdminDashboard() {
   // 両方の判定を持っておくのがコツだばい！
   const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
   const isStandard = currentTenantData?.plan?.toUpperCase() === 'STANDARD';
+  // ❌ 参加者のキャンセル処理（名簿更新 ＋ 通知メール）
+  const handleCancelParticipant = async (p: ReservationData) => {
+    if (!currentEventForList) return;
+    
+    // 最終確認だっぺ！
+    if (!confirm(`${p.name} 様の申し込みをキャンセルし、本人へ通知メールを送信してもいいべか？\n（※この操作は取り消せません）`)) return;
+
+    try {
+      // 1. Firestoreのステータスを「cancelled」に更新するぞい
+      const resRef = doc(db, "events", currentEventForList.id, "reservations", p.id);
+      await updateDoc(resRef, {
+        status: 'cancelled',
+        checkedIn: false,
+        cancelledAt: serverTimestamp() // いつキャンセルしたか記録しとくべ
+      });
+
+      // 2. さっき作ったAPIを使って「キャンセル通知メール」を飛ばすっぺ！
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'cancellation_notice',
+          name: p.name,
+          email: p.email,
+          eventTitle: currentEventForList.title,
+          eventDate: currentEventForList.date,
+          eventTime: (currentEventForList as any).time || "14:00 - 16:00",
+          contactName: currentEventForList.contactName || orgName,
+          contactEmail: currentEventForList.contactEmail || "",
+          contactPhone: currentEventForList.contactPhone || "",
+          tenantName: orgName,
+        }),
+      });
+
+      alert("キャンセル完了！本人に通知メールも飛ばしたぞい！！");
+    } catch (error) {
+      console.error("Cancel Error:", error);
+      alert("キャンセル処理に失敗したっぺ。通信状況を確認してくんちぇ。");
+    }
+  };
 
  // 📂 app/admin/page.tsx 147行目付近
 
@@ -1244,15 +1284,27 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
         </span>
       </td>
 
-      {/* 6. 個別メールボタン */}
-      <td className="p-2 md:p-4 text-center">
-        <button
-          onClick={() => openMailModal(p)}
-          className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-colors"
-          title="個別にメール"
-        >
-          <Mail size={16} />
-        </button>
+      {/* 6. 個別メールボタン（ここを見つけて、下のコードに貼り替えるぞい！） */}
+      <td className="p-2 md:p-4 text-center align-middle">
+        <div className="flex items-center justify-center gap-2">
+          {/* ❌ キャンセルボタン（新登場！） */}
+          <button
+            onClick={() => handleCancelParticipant(p)}
+            className="p-2 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded transition-all active:scale-90"
+            title="申し込みをキャンセルして通知を送る"
+          >
+            <UserX size={16} />
+          </button>
+
+          {/* ✉️ 個別メールボタン（もともとあったやつだばい） */}
+          <button
+            onClick={() => openMailModal(p)}
+            className="p-2 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded transition-all active:scale-90"
+            title="個別にメール"
+          >
+            <Mail size={16} />
+          </button>
+        </div>
       </td>
     </tr>
   ))}
