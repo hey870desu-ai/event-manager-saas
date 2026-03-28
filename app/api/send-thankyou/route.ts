@@ -131,6 +131,24 @@ export async function POST(request: Request) {
 
       await new Promise(resolve => setTimeout(resolve, 700));
     }
+
+    if (contactEmail) {
+      await resend.emails.send({
+        from: `"【絆太郎】申し込み通知" <info@event-manager.app>`,
+        to: contactEmail, // 👈 塙さんがEventFormで設定した「問い合わせメール」に届くっぺ！
+        subject: `【新規申込】${eventTitle} に新しい参加者だぞい！`,
+        html: `
+          <div style="font-family: sans-serif; color: #333;">
+            <h2 style="color: #3b82f6;">🚀 新しいお申し込みが入ったぞい！</h2>
+            <p><strong>イベント名:</strong> ${eventTitle}</p>
+            <p><strong>参加者数:</strong> ${recipients.length} 名</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p>管理画面で詳細を確認してくんちぇ！！</p>
+          </div>
+        `,
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Email Send Error:', error);
