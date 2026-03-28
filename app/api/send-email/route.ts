@@ -100,6 +100,29 @@ export async function POST(request: Request) {
           引き続き、よろしくお願いいたします。
         </p>
       `;
+      } else if (type === 'cancellation_notice') {
+      // ❌ 【新機能】キャンセル完了通知メール
+      subject = `【重要】${eventTitle} キャンセル完了のお知らせ`;
+      const formattedDate = formatToJapaneseDate(eventDate);
+      
+      mainHtml = `
+        <p style="${styles.greeting}">
+          <strong>${name} 様</strong><br><br>
+          「${eventTitle}」のお申し込みキャンセルを承りました。<br>
+          お手続きが完了しましたので、お知らせいたします。
+        </p>
+        <div style="${styles.card}">
+          <div style="${styles.cardAccent}"></div>
+          <div style="${styles.label}">キャンセル対象イベント</div>
+          <div style="${styles.value}">${eventTitle}</div>
+          <div style="${styles.label}">開催日時</div>
+          <div style="${styles.value}">${formattedDate} ${eventTime}</div>
+        </div>
+        <p style="${styles.greeting}">
+          またの機会のご参加を、心よりお待ちしております。<br>
+          ${contactName || senderName} 事務局
+        </p>
+      `;
     } else {
       // 🎟️ 2. イベント受講票メール（既存ロジック）
       subject = customSubject || `【受講票】${eventTitle} 受付完了のお知らせ`;
@@ -135,6 +158,7 @@ export async function POST(request: Request) {
             ${reservationId ? `<img src="${qrCodeUrl}" width="160" height="160" style="display: block; margin: 15px auto;">` : ''}
           </div>`;
       }
+      
 
       mainHtml = `
         <p style="${styles.greeting}">
@@ -166,6 +190,7 @@ export async function POST(request: Request) {
                     
           ${accessInfoHtml}
         </div>`;
+        
     }
 
     const finalHtml = `
