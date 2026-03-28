@@ -198,6 +198,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               meetingId: event.meetingId,
               zoomPasscode: event.zoomPasscode,
               reservationId: docRef.id,
+              eventId: safeEventId,
               tenantName: safeTenant?.orgName || safeTenant?.name,
               themeColor: themeColor,
               replyTo: event.contactEmail || safeTenant?.ownerEmail || "",
