@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard,ExternalLink,CheckCircle2 } from "lucide-react"; 
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp,query, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 
@@ -46,55 +46,61 @@ export default function ReservationForm({
   onSuccess, 
   tenant 
 }: Props) {
+  // --- 🏆 【1段目】まずは「材料」を揃えるっぺ（一番上に持ってくる！） ---
+  const params = useParams();
+  const safeTenant = (tenantData || tenant) as any;
+  const safeEventId = eventId || event?.id || (params?.event as string);
+  const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
+  const themeColor = safeTenant?.themeColor || "#f97316";
+  const customFields: CustomField[] = event.customFields || [];
+
+  // --- 🏆 【2段目】次に「状態（State）」を準備するぞい ---
+  const [currentCount, setCurrentCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
+  const [agreed, setAgreed] = useState(false);
+  const [newReservationId, setNewReservationId] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  // --- 🏆 【3段目】「動き（Effect）」をつけるっぺ ---
+  // マウント確認
+  useEffect(() => { setMounted(true); }, []);
+
+  // リアルタイム人数集計（safeEventIdが上で定義されてるからもう赤くならないぞい！）
+  useEffect(() => {
+    if (!safeEventId) return;
+    const q = query(collection(db, "events", safeEventId, "reservations"));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const activePeople = snap.docs.filter(d => d.data().status !== 'cancelled').length;
+      setCurrentCount(activePeople);
+    });
+    return () => unsubscribe();
+  }, [safeEventId]);
+
+  // --- 🏆 【4段目】「判定」を下すぞい ---
+  const isFull = event.capacity && currentCount >= event.capacity;
+
+  // チケット関係の計算
   const tickets = (event.tickets && event.tickets.length > 0) 
     ? event.tickets 
     : [{ id: "legacy", name: "通常参加", price: event.price === "無料" ? 0 : parseInt(event.price) || 0 }];
-
   const [selectedTicketId, setSelectedTicketId] = useState(tickets[0]?.id || "");
   const selectedTicket = tickets.find((t: any) => t.id === selectedTicketId) || tickets[0];
-
-  // 判定用：選んだチケットが有料かどうか
   const isPaid = selectedTicket && selectedTicket.price > 0;
   const priceAmount = isPaid ? selectedTicket.price : 0;
-  const [agreed, setAgreed] = useState(false);
-  const [newReservationId, setNewReservationId] = useState("");
- // ✅ 修正後のコード（データのフラグを直接使う）
-// event.hasOffline や event.hasOnline がデータ内にあるので、それを使います
-const hasVenue = event.hasOffline === true; 
-const hasOnline = event.hasOnline === true;
-const isHybrid = hasVenue && hasOnline;
-console.log("🔍 イベントデータ判定:", { venue: event.venueName, hasVenue, online: event.zoomUrl, hasOnline });
 
-  // 初回表示時に適切な方をデフォルトにする
+  // 開催形式の判定
+  const hasVenue = event.hasOffline === true; 
+  const hasOnline = event.hasOnline === true;
+  
   useEffect(() => {
-    if (hasOnline && !hasVenue) {
-      setParticipationType("online");
-    } else {
-      setParticipationType("offline");
-    }
+    if (hasOnline && !hasVenue) setParticipationType("online");
+    else setParticipationType("offline");
   }, [hasOnline, hasVenue]);
-  // ▲▲▲ ここまで ▲▲▲
-  
-  // 1. フックとパラメータ
-  const params = useParams();
 
-  // 2. safeTenant を最初に定義！ (これがないと下でエラーになります)
-  const safeTenant = (tenantData || tenant) as any;
-  
-  // 3. IDの定義 (重複していたのを1つにまとめました)
-  const safeEventId = eventId || event?.id || (params?.event as string);
-  const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
-  const isReady = !!safeEventId && !!safeTenantId;
-
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  const themeColor = safeTenant?.themeColor || "#f97316";
-  const customFields: CustomField[] = event.customFields || [];
+  // ...ここから下に handleSubmit 関数が続くっぺ
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -126,6 +132,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     try {
       // 🚨 IDチェック
       if (!safeEventId) throw new Error("イベントIDが見つかりません。再読み込みしてくんちぇ。");
+
+      // 🏆 【追加！】最新の参加人数をチェックして、定員オーバーなら弾くっぺ！
+      // ※ event.capacity が設定されている場合のみチェックするぞい
+      if (event.capacity) {
+        const activeReservationsCount = currentCount || 0;
+        if (activeReservationsCount >= event.capacity) {
+          throw new Error("【満員御礼】申し訳ございません。たった今、定員に達しました。");
+        }
+      }
 
       const isStripeReady = !!safeTenant?.stripeConnectId;
 
@@ -504,12 +519,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     <div className="pt-8 border-t border-slate-800 mt-8">
   <button 
     type="submit" 
-    disabled={status === "loading" || !agreed} 
-    style={{ background: agreed ? themeColor : '#334155' }} 
+    // 🏆 満員(isFull)ならボタンを無効化（disabled）するぞい！
+    disabled={status === "loading" || !agreed || isFull} 
+    style={{ background: isFull ? "#64748b" : (agreed ? themeColor : '#334155') }} 
     className="w-full flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
   >
     {status === "loading" ? (
       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+    ) : isFull ? (
+      // 🏆 満員なら文字を変えるっぺ！
+      <>満員御礼（受付終了しました） <AlertCircle size={18} /></>
     ) : (
       isPaid ? (
         <>{priceAmount.toLocaleString()}円で申し込む <CreditCard size={18} /></>

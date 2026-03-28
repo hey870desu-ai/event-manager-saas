@@ -383,7 +383,9 @@ useEffect(() => {
     if (events.length === 0) return;
     const unsubs = events.map(ev => {
        return onSnapshot(collection(db, "events", ev.id, "reservations"), (snap) => {
-          setCounts(prev => ({...prev, [ev.id]: snap.size}));
+          // 🏆 【修正！】全件数（snap.size）ではなく、キャンセル以外を数えるぞい！
+          const activeCount = snap.docs.filter(doc => doc.data().status !== 'cancelled').length;
+          setCounts(prev => ({...prev, [ev.id]: activeCount}));
        });
     });
     return () => unsubs.forEach(u => u());
