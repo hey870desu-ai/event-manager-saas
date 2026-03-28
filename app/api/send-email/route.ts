@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       name, email, company, type, eventTitle, 
       eventDate, eventTime, venueName, 
       zoomUrl, zoomPasscode, meetingId,
-      reservationId, planName,
+      reservationId,eventId, planName,
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
       contactName, contactEmail, contactPhone, eventPrice,
       inviteUrl,
@@ -191,17 +191,19 @@ export async function POST(request: Request) {
           ${accessInfoHtml}
         </div>`;
 
-        // 🏆 キャンセル用URLを生成（自分のドメインに合わせて調整してくんちぇ！）
+        // 🏆 【修正版】eventId を直接使うようにするぞい！
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com";
-const cancelUrl = `${baseUrl}/cancel?rid=${reservationId}&eid=${body.eventId || ''}`;
 
-// 🏆 mainHtml の最後（contactBox の下あたり）にリンクを追加
+// body.eventId ではなく、分割代入した eventId を使うんだっぺ！
+const cancelUrl = `${baseUrl}/cancel?rid=${reservationId || ''}&eid=${eventId || ''}`;
+
+// 🏆 mainHtml への合体（デザインも少し絆太郎風に！）
 mainHtml += `
-  <div style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
-    <p style="font-size: 12px; color: #94a3b8;">
-      ※万が一キャンセルされる場合は、以下のリンクよりお手続きをお願いいたします。
+  <div style="margin-top: 30px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+    <p style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
+      ※万が一キャンセルされる場合は、以下のリンクよりお手続きください。
     </p>
-    <a href="${cancelUrl}" style="font-size: 12px; color: #ef4444; text-decoration: underline;">
+    <a href="${cancelUrl}" style="font-size: 12px; color: #ef4444; font-weight: bold; text-decoration: underline;">
       お申し込みをキャンセルする
     </a>
   </div>
