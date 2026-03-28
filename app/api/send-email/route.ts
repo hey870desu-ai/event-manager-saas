@@ -204,6 +204,26 @@ export async function POST(request: Request) {
       html: finalHtml,
     });
 
+    // 🏆 【追加】主催者（テナントさん）への「絆太郎通知」だばい！
+    if (contactEmail && type !== 'upgrade_confirmation') {
+      await resend.emails.send({
+        from: `"絆太郎通知" <info@event-manager.app>`,
+        to: contactEmail, // 👈 塙さんが設定した「問い合わせ先メール」に届くっぺ！
+        subject: `【絆太郎】申し込み通知：${eventTitle}`,
+        html: `
+          <div style="font-family: sans-serif; color: #333; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #0ea5e9; margin-top: 0;">🚀 新しいお申し込みだぞい！</h2>
+            <p style="font-size: 16px;"><strong>イベント名:</strong> ${eventTitle}</p>
+            <p><strong>参加者氏名:</strong> ${name} 様</p>
+            <p><strong>メールアドレス:</strong> ${email}</p>
+            ${company ? `<p><strong>会社名:</strong> ${company}</p>` : ''}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #64748b;">※このメールは絆太郎システムから自動送信されています。</p>
+          </div>
+        `,
+      });
+    }
+
     if (error) {
       console.error('Resend Error:', error);
       return NextResponse.json({ success: false, error }, { status: 500 });
