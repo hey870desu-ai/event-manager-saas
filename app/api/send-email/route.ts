@@ -190,6 +190,22 @@ export async function POST(request: Request) {
                     
           ${accessInfoHtml}
         </div>`;
+
+        // 🏆 キャンセル用URLを生成（自分のドメインに合わせて調整してくんちぇ！）
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com";
+const cancelUrl = `${baseUrl}/cancel?rid=${reservationId}&eid=${body.eventId || ''}`;
+
+// 🏆 mainHtml の最後（contactBox の下あたり）にリンクを追加
+mainHtml += `
+  <div style="margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+    <p style="font-size: 12px; color: #94a3b8;">
+      ※万が一キャンセルされる場合は、以下のリンクよりお手続きをお願いいたします。
+    </p>
+    <a href="${cancelUrl}" style="font-size: 12px; color: #ef4444; text-decoration: underline;">
+      お申し込みをキャンセルする
+    </a>
+  </div>
+`;
         
     }
 
