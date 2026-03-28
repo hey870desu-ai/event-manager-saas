@@ -392,15 +392,20 @@ useEffect(() => {
   useEffect(() => {
     if (!isParticipantsOpen || !currentEventForList) { setParticipants([]); return; }
     const q = query(collection(db, "events", currentEventForList.id, "reservations"), orderBy("createdAt", "asc"));
+    
     return onSnapshot(q, (s) => {
-      const loadedData = s.docs.map(d => {
-        const data = d.data();
-        return { 
-           id: d.id, 
-           ...data,
-           checkedIn: data.status === 'attended' || data.checkedIn === true
-        };
-      }) as ReservationData[];
+      const loadedData = s.docs
+        .map(d => {
+          const data = d.data();
+          return { 
+             id: d.id, 
+             ...data,
+             checkedIn: data.status === 'attended' || data.checkedIn === true
+          };
+        })
+        // 🏆 【ここが追加ポイント！】ステータスが 'cancelled' 以外の人だけを残すぞい！
+        .filter((p: any) => p.status !== 'cancelled') as ReservationData[];
+        
       setParticipants(loadedData);
     });
   }, [isParticipantsOpen, currentEventForList]);
