@@ -11,22 +11,31 @@ import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowRight } from "lucide-rea
 function VerifyLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "input" | "success" | "error">("loading");
+  
+  // 🏆 最初は「loading」ではなく、まず状態をチェックするぞい
+  const [status, setStatus] = useState<"checking" | "input" | "loading" | "success" | "error">("checking");
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const confirmSignIn = async () => {
+    const checkLink = async () => {
+      // 1. 裏の背番号（tenantId）をセット
       const tid = searchParams.get("tenantId");
       if (tid) {
         auth.tenantId = tid;
       }
 
+      // 2. メールリンクかどうかチェック
       if (isSignInWithEmailLink(auth, window.location.href)) {
-        let savedEmail = window.localStorage.getItem("emailForSignIn");
-        if (savedEmail) {
+        
+        // 🏆 ここが修正ポイント！ localStorageを厳しくチェックするっぺ
+        const savedEmail = window.localStorage.getItem("emailForSignIn");
+        
+        // メアドが「ちゃんとメアドの形」で保存されてる時だけ自動で進む
+        if (savedEmail && savedEmail.includes("@")) {
           handleSignIn(savedEmail);
         } else {
+          // 🏆 それ以外は、絶対に「入力画面（input）」を出すぞい！
           setStatus("input");
         }
       } else {
@@ -34,12 +43,16 @@ function VerifyLogic() {
         setStatus("error");
       }
     };
-    confirmSignIn();
+
+    checkLink();
   }, [searchParams]);
 
   const handleSignIn = async (targetEmail: string) => {
-    // 🏆 ガード！メアドが空っぽや形式がおかしい時は何もしないぞい
-    if (!targetEmail || !targetEmail.includes("@")) return;
+    // 🏆 空っぽや変な文字の時は絶対に処理させないぞい！
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setStatus("input");
+      return;
+    }
 
     setStatus("loading");
     try {
@@ -48,12 +61,9 @@ function VerifyLogic() {
       setStatus("success");
       setTimeout(() => router.push("/admin"), 2000);
     } catch (error: any) {
-      console.error(error);
-      if (error.code === 'auth/invalid-email') {
-        setErrorMessage("メールアドレスの形式がおかしいぞい。正しく入力してくんちぇ！");
-      } else {
-        setErrorMessage("ログインに失敗したっぺ。招待されたメアドと同じか確認してくんちぇ。");
-      }
+      console.error("Firebase Auth Error:", error);
+      // エラーが出たら、勝手にエラー画面に行かずに「もう一回入れて」に戻すっぺ
+      setErrorMessage("ログインに失敗したっぺ。正しいメアドか確認してくんちぇ。");
       setStatus("error");
     }
   };
@@ -64,10 +74,11 @@ function VerifyLogic() {
         <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
           <img src="/icon.webp" alt="絆太郎" className="w-12 h-12" />
         </div>
-        <h2 className="text-2xl font-black tracking-tight text-white">絆太郎・入室ゲート</h2>
+        <h2 className="text-2xl font-black tracking-tight">絆太郎・入室ゲート</h2>
       </div>
 
-      {status === "loading" && (
+      {/* 状態別の表示 */}
+      {(status === "checking" || status === "loading") && (
         <div className="space-y-4 animate-in fade-in">
           <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mx-auto" />
           <p className="text-slate-400 font-bold">本人確認中だばい...</p>
@@ -85,22 +96,22 @@ function VerifyLogic() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="example@gmail.com"
             className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-4 text-white focus:border-indigo-500 outline-none transition-all text-center text-lg"
+            autoFocus
           />
           <button
             onClick={() => handleSignIn(email)}
-            // 🏆 修正ポイント：メアドが入るまでボタンを無効化するっぺ！
             disabled={!email || !email.includes("@")}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
           >
-            入室を完了する <ArrowRight size={20} className="inline ml-2" />
+            入室を完了する <ArrowRight size={20} />
           </button>
         </div>
       )}
 
       {status === "success" && (
-        <div className="space-y-4 animate-in zoom-in-95 text-white">
+        <div className="space-y-4 animate-in zoom-in-95">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
-          <h3 className="text-xl font-bold">認証成功だばい！！</h3>
+          <h3 className="text-xl font-bold text-white">認証成功だばい！！</h3>
           <p className="text-slate-400">管理画面へ案内するぞい。</p>
         </div>
       )}
@@ -111,9 +122,11 @@ function VerifyLogic() {
           <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-400 font-bold text-sm">
             {errorMessage}
           </div>
-          {/* 🏆 修正ポイント：エラーが出ても、入力画面に戻れるようにしたぞい！ */}
-          <button onClick={() => setStatus("input")} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">
-            もう一度入力する
+          <button 
+            onClick={() => setStatus("input")} 
+            className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold"
+          >
+            メアド入力をやり直す
           </button>
         </div>
       )}
@@ -124,7 +137,7 @@ function VerifyLogic() {
 export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-[#0f111a] flex items-center justify-center p-4">
-      <Suspense fallback={<div className="text-white">Loading...</div>}>
+      <Suspense fallback={<div className="text-white">読み込み中だばい...</div>}>
         <VerifyLogic />
       </Suspense>
     </div>
