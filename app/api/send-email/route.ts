@@ -268,7 +268,7 @@ mainHtml += `
           html: `
             <div style="font-family: sans-serif; color: #333; padding: 20px; border: 1px solid #0ea5e9; border-radius: 12px; background-color: #f0f9ff;">
               <h2 style="color: #0ea5e9; margin-top: 0;">🚀 絆太郎からのお知らせだぞい！</h2>
-              <p style="font-size: 16px;"><strong>新しいお申し込みがありましたっぺ！</strong></p>
+              <p style="font-size: 16px;"><strong>新しいお申し込みがありました！</strong></p>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
               <p><strong>イベント名:</strong> ${eventTitle}</p>
               <p><strong>参加者氏名:</strong> ${name} 様</p>
