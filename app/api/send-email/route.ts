@@ -1,6 +1,7 @@
 // 📂 app/api/send-email/route.ts (完全統合版)
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend'; // 👈 nodemailerを消してこれに変更
+import { adminDb } from '@/lib/firebase-admin'; 
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { 
-      name, email, company, type, eventTitle, 
+      name, email, company, tenantId,type, eventTitle, 
       eventDate, eventTime, venueName, 
       zoomUrl, zoomPasscode, meetingId,
       reservationId,eventId, planName,
@@ -247,24 +248,38 @@ mainHtml += `
       html: finalHtml,
     });
 
-    // 🏆 【追加】主催者（テナントさん）への「絆太郎通知」だばい！
-    if (contactEmail && type !== 'upgrade_confirmation') {
-      await resend.emails.send({
-        from: `"絆太郎通知" <info@event-manager.app>`,
-        to: contactEmail, // 👈 塙さんが設定した「問い合わせ先メール」に届くっぺ！
-        subject: `【絆太郎】申し込み通知：${eventTitle}`,
-        html: `
-          <div style="font-family: sans-serif; color: #333; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-            <h2 style="color: #0ea5e9; margin-top: 0;">🚀 新しいお申し込みだぞい！</h2>
-            <p style="font-size: 16px;"><strong>イベント名:</strong> ${eventTitle}</p>
-            <p><strong>参加者氏名:</strong> ${name} 様</p>
-            <p><strong>メールアドレス:</strong> ${email}</p>
-            ${company ? `<p><strong>会社名:</strong> ${company}</p>` : ''}
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #64748b;">※このメールは絆太郎システムから自動送信されています。</p>
-          </div>
-        `,
-      });
+    // 🏆 【修正版】オーナーのメアドをFirestoreから探して、連名で送るぞい！
+    if (type !== 'upgrade_confirmation') {
+      let ownerEmail = "";
+      if (tenantId) {
+        const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+        ownerEmail = tenantSnap.data()?.email || ""; // 塙さんのデータに合わせて .email を取得
+      }
+
+      const adminRecipients: string[] = [];
+      if (contactEmail) adminRecipients.push(contactEmail); // 事務局
+      if (ownerEmail && ownerEmail !== contactEmail) adminRecipients.push(ownerEmail); // 🏆 オーナーを追加！
+
+      if (adminRecipients.length > 0) {
+        await resend.emails.send({
+          from: `"絆太郎通知" <info@event-manager.app>`,
+          to: adminRecipients, // 👈 🏆 配列で渡せば全員に届くっぺ！
+          subject: `🚀 新規申し込み通知：${eventTitle}`,
+          html: `
+            <div style="font-family: sans-serif; color: #333; padding: 20px; border: 1px solid #0ea5e9; border-radius: 12px; background-color: #f0f9ff;">
+              <h2 style="color: #0ea5e9; margin-top: 0;">🚀 絆太郎からのお知らせだぞい！</h2>
+              <p style="font-size: 16px;"><strong>新しいお申し込みがありましたっぺ！</strong></p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
+              <p><strong>イベント名:</strong> ${eventTitle}</p>
+              <p><strong>参加者氏名:</strong> ${name} 様</p>
+              <p><strong>メールアドレス:</strong> ${email}</p>
+              ${company ? `<p><strong>会社名:</strong> ${company}</p>` : ''}
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
+              <p style="font-size: 11px; color: #64748b;">※この通知は事務局およびテナントオーナーに自動送信されています。</p>
+            </div>
+          `,
+        });
+      }
     }
 
     if (error) {
