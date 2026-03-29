@@ -214,6 +214,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               zoomPasscode: event.zoomPasscode,
               reservationId: docRef.id,
               eventId: safeEventId,
+              tenantId: safeTenantId,
               tenantName: safeTenant?.orgName || safeTenant?.name,
               themeColor: themeColor,
               replyTo: event.contactEmail || safeTenant?.ownerEmail || "",
