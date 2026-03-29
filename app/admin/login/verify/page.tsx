@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react"; // 👈 Suspense を追加
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, Suspense } from "react";
 import { auth } from "@/lib/firebase";
 import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle2, AlertCircle, Mail, ArrowRight } from "lucide-react";
 
-// 🏆 1. 実際の認証ロジックを別コンポーネントに切り出すのが鉄則だばい！
 function VerifyLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,7 +17,6 @@ function VerifyLogic() {
 
   useEffect(() => {
     const confirmSignIn = async () => {
-      // URLから裏の背番号（tenantId）をセット
       const tid = searchParams.get("tenantId");
       if (tid) {
         auth.tenantId = tid;
@@ -38,7 +38,9 @@ function VerifyLogic() {
   }, [searchParams]);
 
   const handleSignIn = async (targetEmail: string) => {
-    if (!targetEmail) return;
+    // 🏆 ガード！メアドが空っぽや形式がおかしい時は何もしないぞい
+    if (!targetEmail || !targetEmail.includes("@")) return;
+
     setStatus("loading");
     try {
       await signInWithEmailLink(auth, targetEmail, window.location.href);
@@ -47,7 +49,11 @@ function VerifyLogic() {
       setTimeout(() => router.push("/admin"), 2000);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage("ログインに失敗したっぺ。正しいメアドか確認してくんちぇ。");
+      if (error.code === 'auth/invalid-email') {
+        setErrorMessage("メールアドレスの形式がおかしいぞい。正しく入力してくんちぇ！");
+      } else {
+        setErrorMessage("ログインに失敗したっぺ。招待されたメアドと同じか確認してくんちぇ。");
+      }
       setStatus("error");
     }
   };
@@ -58,7 +64,7 @@ function VerifyLogic() {
         <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
           <img src="/icon.webp" alt="絆太郎" className="w-12 h-12" />
         </div>
-        <h2 className="text-2xl font-black tracking-tight">絆太郎・入室ゲート</h2>
+        <h2 className="text-2xl font-black tracking-tight text-white">絆太郎・入室ゲート</h2>
       </div>
 
       {status === "loading" && (
@@ -70,8 +76,8 @@ function VerifyLogic() {
 
       {status === "input" && (
         <div className="space-y-6 animate-in zoom-in-95 duration-300">
-          <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl text-left text-indigo-300 font-bold">
-            <Mail className="inline mr-2" size={16} />招待されたメールアドレスを入力してくんちぇ！
+          <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl text-left text-indigo-300 font-bold text-sm">
+            <Mail className="inline mr-2" size={16} /> 招待メールが届いた「自分のメアド」を入力してくんちぇ！
           </div>
           <input
             type="email"
@@ -82,9 +88,11 @@ function VerifyLogic() {
           />
           <button
             onClick={() => handleSignIn(email)}
-            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+            // 🏆 修正ポイント：メアドが入るまでボタンを無効化するっぺ！
+            disabled={!email || !email.includes("@")}
+            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
           >
-            入室を完了する <ArrowRight size={20} />
+            入室を完了する <ArrowRight size={20} className="inline ml-2" />
           </button>
         </div>
       )}
@@ -100,11 +108,12 @@ function VerifyLogic() {
       {status === "error" && (
         <div className="space-y-6 animate-in shake">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-400 font-bold">
+          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-400 font-bold text-sm">
             {errorMessage}
           </div>
-          <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">
-            もう一度試す
+          {/* 🏆 修正ポイント：エラーが出ても、入力画面に戻れるようにしたぞい！ */}
+          <button onClick={() => setStatus("input")} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">
+            もう一度入力する
           </button>
         </div>
       )}
@@ -112,16 +121,10 @@ function VerifyLogic() {
   );
 }
 
-// 🏆 2. これがビルドを通すための「Suspenseの箱」だばい！！
 export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-[#0f111a] flex items-center justify-center p-4">
-      <Suspense fallback={
-        <div className="flex flex-col items-center gap-4 text-white">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
-          <p className="font-bold">Loading...</p>
-        </div>
-      }>
+      <Suspense fallback={<div className="text-white">Loading...</div>}>
         <VerifyLogic />
       </Suspense>
     </div>
