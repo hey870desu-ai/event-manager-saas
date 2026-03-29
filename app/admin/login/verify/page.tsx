@@ -48,7 +48,7 @@ function VerifyLogic() {
         }
       } else {
         // リンク自体が壊れている時だけエラーを表示
-        setErrorMessage("このリンクは無効だばい。もう一度招待メールを確認してくんちぇ。");
+        setErrorMessage("このリンクは無効です。もう一度招待メールを確認してください。");
         setStatus("error");
       }
     };
@@ -77,7 +77,7 @@ function VerifyLogic() {
     } catch (error: any) {
       console.error("Auth Error:", error);
       // 🏆 実際にログインに失敗した時だけ、赤いエラーを出すっぺ
-      setErrorMessage("ログインに失敗したっぺ。招待されたメアドと同じか確認してくんちぇ。");
+      setErrorMessage("ログインに失敗しました。招待されたメールアドレスと同じか確認してください。");
       setStatus("error");
     }
   };
@@ -106,7 +106,7 @@ function VerifyLogic() {
           <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl text-left">
             <p className="text-sm text-indigo-300 font-bold leading-relaxed">
               <Mail className="inline mr-2" size={16} /> 
-              確認のため、招待メールが届いた「ご自身のメアド」を入力してくんちぇ！
+              確認のため、招待メールが届いた「メールアドレス」を入力してください。
             </p>
           </div>
           <input
