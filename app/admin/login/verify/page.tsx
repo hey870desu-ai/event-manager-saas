@@ -1,5 +1,6 @@
 "use client";
 
+// 🏆 ビルド時に「勝手にページを作って壊れるな」と教える魔法
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, Suspense } from "react";
@@ -12,43 +13,51 @@ function VerifyLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // 🏆 最初は「loading」ではなく、まず状態をチェックするぞい
+  /**
+   * status管理
+   * checking: 初期チェック中
+   * input   : メアド入力待ち（招待された人はここに来るっぺ）
+   * loading : 認証処理実行中
+   * success : 認証成功
+   * error   : 本当のエラー（失敗時のみ表示）
+   */
   const [status, setStatus] = useState<"checking" | "input" | "loading" | "success" | "error">("checking");
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const checkLink = async () => {
-      // 1. 裏の背番号（tenantId）をセット
+    const checkLinkAndEmail = async () => {
+      // 1. URLからテナントID（裏の背番号）をセット
       const tid = searchParams.get("tenantId");
       if (tid) {
         auth.tenantId = tid;
       }
 
-      // 2. メールリンクかどうかチェック
+      // 2. このURLが有効なメールリンクかチェック
       if (isSignInWithEmailLink(auth, window.location.href)) {
         
-        // 🏆 ここが修正ポイント！ localStorageを厳しくチェックするっぺ
+        // 3. ブラウザ（localStorage）にメアドが残っているか確認
         const savedEmail = window.localStorage.getItem("emailForSignIn");
         
-        // メアドが「ちゃんとメアドの形」で保存されてる時だけ自動で進む
         if (savedEmail && savedEmail.includes("@")) {
+          // 保存されていれば、そのまま自動でログイン処理へ！
           handleSignIn(savedEmail);
         } else {
-          // 🏆 それ以外は、絶対に「入力画面（input）」を出すぞい！
+          // 🏆 【ここが重要！】保存されてなければ、エラーを出さずに「入力画面」を出すぞい！
           setStatus("input");
         }
       } else {
-        setErrorMessage("無効なリンクだばい。もう一度招待メールを確認してくんちぇ。");
+        // リンク自体が壊れている時だけエラーを表示
+        setErrorMessage("このリンクは無効だばい。もう一度招待メールを確認してくんちぇ。");
         setStatus("error");
       }
     };
 
-    checkLink();
+    checkLinkAndEmail();
   }, [searchParams]);
 
   const handleSignIn = async (targetEmail: string) => {
-    // 🏆 空っぽや変な文字の時は絶対に処理させないぞい！
+    // 形式チェック
     if (!targetEmail || !targetEmail.includes("@")) {
       setStatus("input");
       return;
@@ -56,28 +65,34 @@ function VerifyLogic() {
 
     setStatus("loading");
     try {
+      // Firebaseでログイン確定！
       await signInWithEmailLink(auth, targetEmail, window.location.href);
       window.localStorage.removeItem("emailForSignIn");
       setStatus("success");
-      setTimeout(() => router.push("/admin"), 2000);
+      
+      // 2秒後に管理画面へ案内
+      setTimeout(() => {
+        router.push("/admin");
+      }, 2000);
     } catch (error: any) {
-      console.error("Firebase Auth Error:", error);
-      // エラーが出たら、勝手にエラー画面に行かずに「もう一回入れて」に戻すっぺ
-      setErrorMessage("ログインに失敗したっぺ。正しいメアドか確認してくんちぇ。");
+      console.error("Auth Error:", error);
+      // 🏆 実際にログインに失敗した時だけ、赤いエラーを出すっぺ
+      setErrorMessage("ログインに失敗したっぺ。招待されたメアドと同じか確認してくんちぇ。");
       setStatus("error");
     }
   };
 
   return (
     <div className="max-w-md w-full bg-slate-900/50 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl shadow-2xl text-center text-white">
+      {/* 共通ヘッダー */}
       <div className="mb-8">
         <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
           <img src="/icon.webp" alt="絆太郎" className="w-12 h-12" />
         </div>
-        <h2 className="text-2xl font-black tracking-tight">絆太郎・入室ゲート</h2>
+        <h2 className="text-2xl font-black tracking-tight text-white">絆太郎・入室ゲート</h2>
       </div>
 
-      {/* 状態別の表示 */}
+      {/* 1. チェック中 & 認証実行中 */}
       {(status === "checking" || status === "loading") && (
         <div className="space-y-4 animate-in fade-in">
           <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mx-auto" />
@@ -85,10 +100,14 @@ function VerifyLogic() {
         </div>
       )}
 
+      {/* 2. メアド入力画面（おもてなしモード） */}
       {status === "input" && (
         <div className="space-y-6 animate-in zoom-in-95 duration-300">
-          <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl text-left text-indigo-300 font-bold text-sm">
-            <Mail className="inline mr-2" size={16} /> 招待メールが届いた「自分のメアド」を入力してくんちぇ！
+          <div className="bg-indigo-500/10 border border-indigo-500/30 p-4 rounded-xl text-left">
+            <p className="text-sm text-indigo-300 font-bold leading-relaxed">
+              <Mail className="inline mr-2" size={16} /> 
+              確認のため、招待メールが届いた「ご自身のメアド」を入力してくんちぇ！
+            </p>
           </div>
           <input
             type="email"
@@ -108,6 +127,7 @@ function VerifyLogic() {
         </div>
       )}
 
+      {/* 3. 成功画面 */}
       {status === "success" && (
         <div className="space-y-4 animate-in zoom-in-95">
           <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
@@ -116,6 +136,7 @@ function VerifyLogic() {
         </div>
       )}
 
+      {/* 4. エラー画面 */}
       {status === "error" && (
         <div className="space-y-6 animate-in shake">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
@@ -134,6 +155,7 @@ function VerifyLogic() {
   );
 }
 
+// 🏆 Next.jsのお作法「Suspenseの箱」
 export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-[#0f111a] flex items-center justify-center p-4">
