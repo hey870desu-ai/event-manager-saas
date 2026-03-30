@@ -19,6 +19,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [tenantData, setTenantData] = useState<Tenant | null>(null);
   const [branchFilter, setBranchFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -75,13 +76,21 @@ export default function AnalyticsPage() {
     ? tenantData.branches.flatMap((b: any) => typeof b === 'string' ? b : [])
     : [];
 
-  const filteredEvents = branchFilter === "all"
+  const branchFilteredEvents = branchFilter === "all"
     ? events
     : events.filter(e => e.branchTag === branchFilter);
+
+  const filteredEvents = eventFilter === "all"
+    ? branchFilteredEvents
+    : branchFilteredEvents.filter(e => e.id === eventFilter);
 
   const filteredEventIds = new Set(filteredEvents.map(e => e.id));
 
   const filteredReservations = reservations.filter(r => filteredEventIds.has(r.eventId));
+
+  const selectedEventName = eventFilter !== "all"
+    ? events.find(e => e.id === eventFilter)?.title || ""
+    : "";
 
   // --- 精度の高い集計（キャンセル除外） ---
   const activeReservations = filteredReservations.filter(r => r.status !== 'cancelled');
@@ -212,15 +221,45 @@ export default function AnalyticsPage() {
             <p className="text-slate-400 text-sm">集客・収益・顧客データから次の戦略を見つける</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
-          <Filter size={16} className="text-slate-400"/>
-          <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
-            className="bg-transparent text-white outline-none text-sm cursor-pointer min-w-[150px]">
-            <option value="all">すべての部署・支部</option>
-            {safeBranches.map((b: string) => <option key={b} value={b}>{b}</option>)}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* イベント選択 */}
+          <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <Calendar size={16} className="text-indigo-400"/>
+            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}
+              className="bg-transparent text-white outline-none text-sm cursor-pointer min-w-[160px]">
+              <option value="all">すべてのイベント</option>
+              {[...events].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(e => (
+                <option key={e.id} value={e.id}>{e.title.length > 20 ? e.title.slice(0, 20) + '…' : e.title}</option>
+              ))}
+            </select>
+          </div>
+          {/* 支部フィルタ */}
+          <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <Filter size={16} className="text-slate-400"/>
+            <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
+              className="bg-transparent text-white outline-none text-sm cursor-pointer min-w-[150px]">
+              <option value="all">すべての部署・支部</option>
+              {safeBranches.map((b: string) => <option key={b} value={b}>{b}</option>)}
           </select>
+          </div>
         </div>
       </div>
+
+      {/* イベント単体表示時のヘッダー */}
+      {eventFilter !== "all" && (
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Calendar size={18} className="text-indigo-400"/>
+            <div>
+              <p className="text-white font-bold">{selectedEventName}</p>
+              <p className="text-xs text-slate-400">{filteredEvents[0]?.date || ''}</p>
+            </div>
+          </div>
+          <button onClick={() => setEventFilter("all")} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold bg-slate-800 px-3 py-1.5 rounded-lg transition-colors">
+            全体に戻す
+          </button>
+        </div>
+      )}
 
       {/* KPIカード: 1段目 - コア指標 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
