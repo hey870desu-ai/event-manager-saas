@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, addDoc, deleteDoc } from "firebase/firestore";
 import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2 } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
@@ -154,11 +154,13 @@ export default function MarketingPage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  // ★追加: 予約日時を入れる箱
   const [scheduledTime, setScheduledTime] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
 
-  const [searchQuery, setSearchQuery] = useState(""); // 検索ワード用
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set()); // チェックしたメアドを覚える箱
+  // 予約配信一覧
+  const [scheduledList, setScheduledList] = useState<any[]>([]);
+  const [previewScheduled, setPreviewScheduled] = useState<any | null>(null);
   
 
 useEffect(() => {
@@ -199,6 +201,12 @@ useEffect(() => {
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             
           setEvents(list);
+
+          // 予約配信一覧を取得
+          const schedSnap = await getDocs(
+            query(collection(db, "tenants", currentId, "scheduled_emails"), orderBy("scheduledAt", "desc"))
+          );
+          setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
         } catch (e) {
           console.error("Load Error:", e);
@@ -610,6 +618,33 @@ const handleSaveMemo = async (email: string, memo: string) => {
 
   if (finalRecipients.length === 0) return alert("宛先がありません。");
     
+    // 予約配信の場合
+    if (!isTest && scheduledTime) {
+      if (!confirm(`【予約配信の確認】\n\n宛先数: ${finalRecipients.length} 名\n件名: ${subject}\n配信日時: ${new Date(scheduledTime).toLocaleString('ja-JP')}\n\n予約しますか？`)) return;
+      setSending(true);
+      try {
+        await addDoc(collection(db, "tenants", tenantData!.id, "scheduled_emails"), {
+          subject,
+          body: body,
+          recipients: finalRecipients,
+          recipientCount: finalRecipients.length,
+          senderName: tenantData?.name || "絆太郎",
+          replyTo: user?.email,
+          themeColor: tenantData?.themeColor,
+          scheduledAt: scheduledTime,
+          status: 'scheduled',
+          createdAt: new Date().toISOString(),
+        });
+        alert(`${new Date(scheduledTime).toLocaleString('ja-JP')} に ${finalRecipients.length}名への配信を予約しました。`);
+        setSubject(""); setBody(""); setScheduledTime(""); setExtracted(false); setRecipients([]);
+        // 一覧を再取得
+        const schedSnap = await getDocs(query(collection(db, "tenants", tenantData!.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
+        setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) { console.error(e); alert("予約に失敗しました"); }
+      finally { setSending(false); }
+      return;
+    }
+
     if (!isTest) {
       if (!confirm(`【最終確認】\n\n宛先数: ${finalRecipients.length} 名\n件名: ${subject}\n\n本当に一斉送信しますか？`)) return;
     }
@@ -692,8 +727,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
   </Link>
   <div>
     <h1 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
-      {/* Mail から Heart に変更だっぺ！ */}
-      <Heart className="text-rose-500" fill="currentColor" size={28}/> 絆リスト
+      <Users className="text-indigo-400" size={28}/> 絆リスト
     </h1>
     <p className="text-slate-400 text-sm font-medium">これまでに出会った大切な方々へ、感謝とご縁を届ける</p>
   </div>
@@ -904,7 +938,108 @@ const handleSaveMemo = async (email: string, memo: string) => {
               </div>
            </div>
         </div>
+
+        {/* 予約配信一覧 */}
+        {scheduledList.length > 0 && (
+          <div className="lg:col-span-3 mt-2">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <h2 className="text-white font-bold flex items-center gap-2 mb-4">
+                <Clock size={18} className="text-emerald-400"/> 予約配信一覧
+              </h2>
+              <div className="space-y-3">
+                {scheduledList.map((item) => (
+                  <div key={item.id} className="bg-slate-950/50 border border-slate-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          item.status === 'scheduled' ? 'bg-emerald-500/20 text-emerald-400' :
+                          item.status === 'sent' ? 'bg-indigo-500/20 text-indigo-400' :
+                          'bg-slate-700 text-slate-400'
+                        }`}>
+                          {item.status === 'scheduled' ? '予約中' : item.status === 'sent' ? '送信済み' : item.status}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {new Date(item.scheduledAt).toLocaleString('ja-JP')}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-white truncate">{item.subject}</p>
+                      <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPreviewScheduled(item)}
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
+                      >
+                        <Eye size={12}/> 内容確認
+                      </button>
+                      {item.status === 'scheduled' && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('この予約を取り消しますか？')) return;
+                            await deleteDoc(doc(db, "tenants", tenantData!.id, "scheduled_emails", item.id));
+                            setScheduledList(prev => prev.filter(s => s.id !== item.id));
+                          }}
+                          className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
+                        >
+                          <X size={12}/> 取消
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* 予約配信プレビューモーダル */}
+      {previewScheduled && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white">予約配信の内容</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  配信予定: {new Date(previewScheduled.scheduledAt).toLocaleString('ja-JP')} / {previewScheduled.recipientCount || previewScheduled.recipients?.length || 0}名宛
+                </p>
+              </div>
+              <button onClick={() => setPreviewScheduled(null)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-6 space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">件名</p>
+                <p className="text-white font-bold">{previewScheduled.subject}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">本文</p>
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                  {previewScheduled.body}
+                </div>
+              </div>
+              {previewScheduled.recipients && (
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">宛先（{previewScheduled.recipients.length}名）</p>
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
+                    {previewScheduled.recipients.slice(0, 30).map((r: any, idx: number) => (
+                      <div key={idx} className="text-xs text-slate-400 flex gap-2">
+                        <span className="text-slate-300 font-medium">{r.name}</span>
+                        <span className="text-slate-600">{r.email}</span>
+                      </div>
+                    ))}
+                    {previewScheduled.recipients.length > 30 && (
+                      <p className="text-[10px] text-slate-600 mt-1">他 {previewScheduled.recipients.length - 30}名</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* インポートプレビューモーダル */}
       {importPreview && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
