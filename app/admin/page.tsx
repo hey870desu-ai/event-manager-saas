@@ -180,44 +180,40 @@ export default function AdminDashboard() {
   // 両方の判定を持っておくのがコツだばい！
   const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
   const isStandard = currentTenantData?.plan?.toUpperCase() === 'STANDARD';
-  // ❌ 参加者のキャンセル処理（名簿更新 ＋ 通知メール）
+  // ❌ 参加者のキャンセル処理（返金対応・通知メール統合版）
   const handleCancelParticipant = async (p: ReservationData) => {
     if (!currentEventForList) return;
-    
-    // 最終確認だっぺ！
-    if (!confirm(`${p.name} 様の申し込みをキャンセルし、本人へ通知メールを送信してもいいべか？\n（※この操作は取り消せません）`)) return;
+
+    const isPaid = (p as any).paymentStatus === 'paid';
+    const confirmMsg = isPaid
+      ? `${p.name} 様の申し込みをキャンセルし、参加費を返金しますか？\n（※キャンセルと返金処理が行われ、本人に通知メールが届きます）`
+      : `${p.name} 様の申し込みをキャンセルし、本人へ通知メールを送信しますか？\n（※この操作は取り消せません）`;
+
+    if (!confirm(confirmMsg)) return;
 
     try {
-      // 1. Firestoreのステータスを「cancelled」に更新するぞい
-      const resRef = doc(db, "events", currentEventForList.id, "reservations", p.id);
-      await updateDoc(resRef, {
-        status: 'cancelled',
-        checkedIn: false,
-        cancelledAt: serverTimestamp() // いつキャンセルしたか記録しとくべ
-      });
-
-      // 2. さっき作ったAPIを使って「キャンセル通知メール」を飛ばすっぺ！
-      await fetch('/api/send-email', {
+      const res = await fetch('/api/cancel-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'cancellation_notice',
-          name: p.name,
-          email: p.email,
-          eventTitle: currentEventForList.title,
-          eventDate: currentEventForList.date,
-          eventTime: (currentEventForList as any).time || "14:00 - 16:00",
-          contactName: currentEventForList.contactName || orgName,
-          contactEmail: currentEventForList.contactEmail || "",
-          contactPhone: currentEventForList.contactPhone || "",
-          tenantName: orgName,
+          reservationId: p.id,
+          eventId: currentEventForList.id,
         }),
       });
 
-      alert("キャンセル完了！本人に通知メールも飛ばしたぞい！！");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (isPaid && data.refunded) {
+        alert("キャンセル完了！参加費の返金処理も完了しました。本人に通知メールを送信済みです。");
+      } else if (isPaid && !data.refunded) {
+        alert("キャンセルは完了しましたが、返金処理に失敗しました。Stripeダッシュボードから手動で返金してください。");
+      } else {
+        alert("キャンセル完了！本人に通知メールを送信しました。");
+      }
     } catch (error) {
       console.error("Cancel Error:", error);
-      alert("キャンセル処理に失敗したっぺ。通信状況を確認してくんちぇ。");
+      alert("キャンセル処理に失敗しました。通信状況を確認してください。");
     }
   };
 
