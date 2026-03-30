@@ -2,15 +2,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, ExternalLink, CreditCard, FileText, Building2, Landmark, Shield, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, ExternalLink, CreditCard, FileText, Building2, Landmark, Shield, Copy, Check, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+
+type LegalInfo = {
+  companyName?: string;
+  representative?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+};
 
 type Props = {
   tenantId: string;
   isConnected?: boolean;
   legalPageUrl?: string;
+  legalInfo?: LegalInfo;
 };
 
-export default function StripeConnectButton({ tenantId, isConnected, legalPageUrl }: Props) {
+const REQUIRED_FIELDS = [
+  { key: 'companyName' as const, label: '事業者名' },
+  { key: 'representative' as const, label: '代表者名' },
+  { key: 'address' as const, label: '所在地' },
+  { key: 'phone' as const, label: '電話番号' },
+  { key: 'email' as const, label: 'メールアドレス' },
+];
+
+export default function StripeConnectButton({ tenantId, isConnected, legalPageUrl, legalInfo }: Props) {
   const [showGuide, setShowGuide] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -25,6 +42,10 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // 必須項目の入力チェック
+  const missingFields = REQUIRED_FIELDS.filter(f => !legalInfo?.[f.key]?.trim());
+  const isReady = missingFields.length === 0;
 
   if (isConnected) {
     return (
@@ -42,19 +63,62 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
 
   return (
     <div className="space-y-4">
+      {/* 未入力項目がある場合の警告 */}
+      {!isReady && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <div className="flex items-start gap-2.5 mb-2">
+            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5"/>
+            <p className="text-xs font-bold text-amber-300">Stripe連携の前に、特商法情報を入力してください</p>
+          </div>
+          <div className="ml-6 space-y-1">
+            {missingFields.map((f, idx) => (
+              <p key={idx} className="text-[10px] text-amber-400/80 flex items-center gap-1.5">
+                <span className="w-1 h-1 bg-amber-400 rounded-full"></span>
+                {f.label}が未入力です
+              </p>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2 ml-6">
+            上の「法人・特商法情報」セクションで入力し、保存してください。
+          </p>
+        </div>
+      )}
+
       {/* メインボタン */}
       <button
         onClick={handleConnect}
-        className="w-full bg-[#635BFF] hover:bg-[#5851df] text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-[#635BFF]/20 flex items-center justify-center gap-2 active:scale-95"
+        disabled={!isReady}
+        className={`w-full font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
+          isReady
+            ? 'bg-[#635BFF] hover:bg-[#5851df] text-white shadow-[#635BFF]/20 active:scale-95'
+            : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+        }`}
       >
         <CreditCard size={18}/>
         Stripeアカウントを連携する
-        <ExternalLink size={14} className="opacity-60"/>
+        {isReady && <ExternalLink size={14} className="opacity-60"/>}
       </button>
 
-      <p className="text-[10px] text-slate-500 text-center">
-        Stripeの画面に移動します（約5〜10分で完了）
-      </p>
+      {isReady && (
+        <p className="text-[10px] text-slate-500 text-center">
+          Stripeの画面に移動します（約5〜10分で完了）
+        </p>
+      )}
+
+      {/* 入力済みチェックリスト */}
+      <div className="flex flex-wrap gap-2 justify-center">
+        {REQUIRED_FIELDS.map((f, idx) => {
+          const filled = !!legalInfo?.[f.key]?.trim();
+          return (
+            <span key={idx} className={`text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 ${
+              filled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'
+            }`}>
+              {filled ? <Check size={10}/> : <span className="w-2.5 h-2.5 rounded-full border border-slate-600"></span>}
+              {f.label}
+            </span>
+          );
+        })}
+      </div>
 
       {/* 準備ガイド */}
       <button

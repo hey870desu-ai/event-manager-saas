@@ -1861,6 +1861,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       tenantId={currentUserTenant}
       isConnected={!!(currentTenantData as any)?.stripeConnectId}
       legalPageUrl={typeof window !== 'undefined' ? `${window.location.origin}/${currentUserTenant}/legal` : ''}
+      legalInfo={{
+        companyName: legalCompanyName,
+        representative: representative,
+        address: legalAddress,
+        phone: legalPhone,
+        email: legalEmail,
+      }}
     />
   </div>
 </div>
