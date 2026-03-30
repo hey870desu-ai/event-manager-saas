@@ -909,7 +909,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                     </div>
                     {scheduledTime && (
                        <div className="mt-4 pl-7 animate-in fade-in slide-in-from-top-2">
-                          <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500" />
+                          <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]" />
                           <p className="mt-2 text-xs text-amber-500 flex items-center gap-1"><Clock size={12}/> 設定した日時に自動送信します</p>
                        </div>
                     )}
