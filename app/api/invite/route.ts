@@ -10,12 +10,35 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, name, tenantId, tenantName } = body;
 
-    // 1. Firestore から、ハッピーチョイスの「本物の背番号 (-lz9yq)」を呼んでくるっぺ
+    // 1. Firestore から、テナントの「本物の背番号」を呼んでくるっぺ
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
-    
-    // authTenantId があればそれを使う。なければ元の tenantId を使う
-    const realAuthId = tenantData?.authTenantId || tenantId;
+
+    // authTenantId の取得 or 自動作成（既存テナントの補完対応）
+    let realAuthId = tenantData?.authTenantId;
+
+    // authTenantId がある場合でも、Firebase Auth 側に実在するか検証する
+    if (realAuthId) {
+      try {
+        await adminAuth.tenantManager().getTenant(realAuthId);
+      } catch {
+        console.log(`⚠️ authTenantId "${realAuthId}" が Firebase Auth に存在しない。再作成するぞい！`);
+        realAuthId = null; // 下の作成フローに回す
+      }
+    }
+
+    // authTenantId が無い or 無効なら Firebase Auth テナントを新規作成
+    if (!realAuthId) {
+      console.log(`⚠️ テナント ${tenantId} の Auth テナントを自動作成するぞい！`);
+      const newTenant = await adminAuth.tenantManager().createTenant({
+        displayName: tenantName || tenantData?.name || tenantId,
+        allowPasswordSignIn: true,
+        enableEmailLinkSignIn: true,
+      });
+      realAuthId = newTenant.tenantId;
+      await adminDb.collection('tenants').doc(tenantId).update({ authTenantId: realAuthId });
+      console.log(`✅ authTenantId を保存したっぺ: ${realAuthId}`);
+    }
 
     console.log(`🚀 招待パトロール中: ${email} をテナント ${realAuthId} に招待するぞい！`);
 

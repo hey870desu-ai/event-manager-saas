@@ -64,15 +64,23 @@ export default function OnboardingPage() {
         return;
       }
 
-      // 2. テナント作成（まずはFreeプランで）
+      // 2. Firebase Auth テナント作成 + Firestore 保存を一括で行う
+      const setupRes = await fetch('/api/admin/setup-tenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, name }),
+      });
+      const setupData = await setupRes.json();
+      if (!setupRes.ok) {
+        throw new Error(setupData.error || "テナント作成に失敗しました");
+      }
+
+      // setup-tenant が作った doc に追加フィールドを書き込む
       await setDoc(docRef, {
-        name: name,
-        plan: "free", 
-        createdAt: serverTimestamp(),
-        status: "active",
+        plan: "free",
         branches: ["本部"],
         ownerEmail: user.email,
-      });
+      }, { merge: true });
 
       // 3. 自分を管理者に設定
       await setDoc(doc(db, "admin_users", user.email), {
