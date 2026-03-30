@@ -271,6 +271,7 @@ const fetchTargets = async () => {
           name: d.name,
           company: d.company || "",
           phone: d.phone || "",
+          role: d.role || "",
         });
       });
 
@@ -395,10 +396,30 @@ const handleSaveMemo = async (email: string, memo: string) => {
     link.click();
   };
 
-// 🚀 CSV/Excelインポートの「文字化け絶対許さない」版だばい！
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+// CSV/Excelインポート（列名自動検出強化・バッチ書き込み・プレビュー付き）
+  const [importPreview, setImportPreview] = useState<any[] | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+
+  // 列名マッチ用辞書（大文字小文字無視で比較）
+  const matchKey = (keys: string[], columnName: string) => {
+    const col = columnName.trim().toLowerCase();
+    return keys.some(k => col === k || col.includes(k));
+  };
+  const emailPatterns = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先', 'address', 'mail'];
+  const namePatterns = ['氏名', '名前', 'name', '姓名', 'ユーザー', 'ユーザー名', '顧客名', '担当者', 'お名前', 'フルネーム'];
+  const companyPatterns = ['会社名', '会社', '組織', 'チーム', '社名', '企業名', '法人名', '勤務先', '所属', 'company', '団体名'];
+  const phonePatterns = ['電話番号', '電話', 'tel', 'phone', '連絡先', '携帯', '携帯電話', 'mobile'];
+  const rolePatterns = ['役職', '肩書き', '肩書', '部署', 'title', 'role', 'position', '職位', '部門'];
+
+  const findKey = (row: any, patterns: string[]) => {
+    return Object.keys(row).find(key => matchKey(patterns, key));
+  };
+
+  // Step 1: ファイル読み込み → プレビュー表示
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !tenantData) return;
+    setImportFile(file);
 
     const XLSX = await import("xlsx");
     const reader = new FileReader();
@@ -407,79 +428,108 @@ const handleSaveMemo = async (email: string, memo: string) => {
       try {
         const arrayBuffer = evt.target?.result as ArrayBuffer;
         const uint8Array = new Uint8Array(arrayBuffer);
-
         let workbook;
-        
-        // 🎯 CSVファイルの場合の文字化け対策だばい！
+
         if (file.name.toLowerCase().endsWith('.csv')) {
-          // 1. まずは日本のExcelで多い「Shift-JIS」として解読してみるぞい
           const sjisDecoder = new TextDecoder('shift-jis');
           const sjisText = sjisDecoder.decode(uint8Array);
-          
-          // 2. もし「」という変な記号が多ければ「UTF-8」として読み直す賢い仕組みだっぺ！
-          if (sjisText.includes('')) {
+          if (sjisText.includes('\ufffd')) {
             const utf8Decoder = new TextDecoder('utf-8');
             workbook = XLSX.read(utf8Decoder.decode(uint8Array), { type: 'string' });
           } else {
             workbook = XLSX.read(sjisText, { type: 'string' });
           }
         } else {
-          // 3. Excelファイル(.xlsx)ならそのまま読み込んでOKだばい
           workbook = XLSX.read(uint8Array, { type: 'array' });
         }
 
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData: any[] = XLSX.utils.sheet_to_json(ws);
 
-        if (jsonData.length === 0) return alert("中身が空っぽだっぺ！");
+        if (jsonData.length === 0) { alert("中身が空です"); return; }
 
-        setLoadingTargets(true);
-        let importCount = 0;
+        // プレビュー用に整形
+        const parsed = jsonData.map(row => {
+          const emailKey = findKey(row, emailPatterns) || Object.keys(row).find(key => String(row[key]).includes('@'));
+          const nameKey = findKey(row, namePatterns) || Object.keys(row).find(key => key !== emailKey && String(row[key]).length > 0);
+          const companyKey = findKey(row, companyPatterns);
+          const phoneKey = findKey(row, phonePatterns);
+          const roleKey = findKey(row, rolePatterns);
 
-        // 🎯 探し出すキーワード（ユーザー・メアド対応！）
-        const emailKeys = ['メールアドレス', 'email', 'メアド', 'e-mail', 'メール', '宛先', 'address'];
-        const nameKeys = ['氏名', '名前', 'name', '姓名', 'ユーザー', 'ユーザー名', '顧客名', '担当者'];
+          const email = emailKey ? String(row[emailKey]).trim() : '';
+          return {
+            email,
+            name: nameKey ? String(row[nameKey]).trim() : '名前なし',
+            company: companyKey ? String(row[companyKey]).trim() : '',
+            phone: phoneKey ? String(row[phoneKey]).trim() : '',
+            role: roleKey ? String(row[roleKey]).trim() : '',
+            valid: email.includes('@'),
+          };
+        }).filter(r => r.valid);
 
-        for (const row of jsonData) {
-          // 列名を特定するぞい
-          let foundEmailKey = Object.keys(row).find(key => emailKeys.includes(key.trim().toLowerCase()));
-          let foundNameKey = Object.keys(row).find(key => nameKeys.includes(key.trim().toLowerCase()));
+        setImportPreview(parsed);
+      } catch (err) {
+        console.error("Import Parse Error:", err);
+        alert("ファイルの読み込みに失敗しました");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
 
-          // 【予備策】キーワードがなければ、中身で判断！
-          if (!foundEmailKey) foundEmailKey = Object.keys(row).find(key => String(row[key]).includes('@'));
-          if (!foundNameKey) foundNameKey = Object.keys(row).find(key => key !== foundEmailKey && String(row[key]).length > 0);
+  // Step 2: プレビュー確認後に保存
+  const handleConfirmImport = async () => {
+    if (!importPreview || !tenantData) return;
+    setLoadingTargets(true);
 
-          const email = foundEmailKey ? String(row[foundEmailKey]).trim() : null;
-          const name = foundNameKey ? String(row[foundNameKey]).trim() : '名前なし';
+    try {
+      const { writeBatch } = await import("firebase/firestore");
+      let importCount = 0;
+      let updateCount = 0;
 
-          if (email && email.includes('@')) {
-            const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
-            await setDoc(contactRef, {
-              email: email,
-              name: name,
-              company: row['会社名'] || row['組織'] || row['チーム'] || "",
-              phone: row['電話番号'] || "",
-              source: 'csv_import',
-              importedAt: new Date()
-            }, { merge: true });
+      // 既存データをチェック
+      const existingSnap = await getDocs(collection(db, "tenants", tenantData.id, "manual_contacts"));
+      const existingEmails = new Set(existingSnap.docs.map(d => d.id));
+
+      // Firestoreバッチ書き込み（500件ずつ）
+      const BATCH_LIMIT = 500;
+      for (let i = 0; i < importPreview.length; i += BATCH_LIMIT) {
+        const chunk = importPreview.slice(i, i + BATCH_LIMIT);
+        const batch = writeBatch(db);
+
+        for (const row of chunk) {
+          const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", row.email);
+          batch.set(contactRef, {
+            email: row.email,
+            name: row.name,
+            company: row.company,
+            phone: row.phone,
+            role: row.role,
+            source: 'csv_import',
+            importedAt: new Date()
+          }, { merge: true });
+
+          if (existingEmails.has(row.email)) {
+            updateCount++;
+          } else {
             importCount++;
           }
         }
 
-        alert(`${importCount} 名の絆を読み込んだぞい！文字化けしてねぇか確認してくんちぇ！！`);
-        fetchTargets(); 
-
-      } catch (err) {
-        console.error("Import Error:", err);
-        alert("読み込みエラーだっぺ...");
-      } finally {
-        setLoadingTargets(false);
-        e.target.value = ""; 
+        await batch.commit();
       }
-    };
-    
-    // 🎯 どんな形式でも対応できるように「ArrayBuffer」で読み込むのがコツだばい！
-    reader.readAsArrayBuffer(file);
+
+      alert(`インポート完了！\n新規: ${importCount}件\n更新: ${updateCount}件`);
+      setImportPreview(null);
+      setImportFile(null);
+      fetchTargets();
+
+    } catch (err) {
+      console.error("Import Save Error:", err);
+      alert("保存中にエラーが発生しました");
+    } finally {
+      setLoadingTargets(false);
+    }
   };
 
   // 🧹 文字化けしたインポートデータを一気に消し去る魔法だばい！
@@ -641,7 +691,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
     </button>
                 <label className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/20 transition-all whitespace-nowrap">
                   <FileText size={12} /> Excelインポート
-                  <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleExcelImport} />
+                  <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileSelect} />
                 </label>
               </div>
               </div>
@@ -800,6 +850,68 @@ const handleSaveMemo = async (email: string, memo: string) => {
            </div>
         </div>
       </main>
+      {/* インポートプレビューモーダル */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-white">インポートプレビュー</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  {importPreview.length}件のデータが見つかりました。内容を確認してください。
+                </p>
+              </div>
+              <button onClick={() => { setImportPreview(null); setImportFile(null); }} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="overflow-auto flex-1 p-4">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-900 text-slate-400 uppercase sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2">#</th>
+                    <th className="px-3 py-2">名前</th>
+                    <th className="px-3 py-2">メール</th>
+                    <th className="px-3 py-2">会社名</th>
+                    <th className="px-3 py-2">役職</th>
+                    <th className="px-3 py-2">電話番号</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {importPreview.slice(0, 50).map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/50">
+                      <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
+                      <td className="px-3 py-2 text-white font-medium">{row.name}</td>
+                      <td className="px-3 py-2 text-slate-300 font-mono">{row.email}</td>
+                      <td className="px-3 py-2 text-slate-400">{row.company || '-'}</td>
+                      <td className="px-3 py-2 text-slate-400">{row.role || '-'}</td>
+                      <td className="px-3 py-2 text-slate-400">{row.phone || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {importPreview.length > 50 && (
+                <p className="text-xs text-slate-500 text-center mt-3">他 {importPreview.length - 50}件（全{importPreview.length}件）</p>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-800 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">文字化けがないか確認してください</p>
+              <div className="flex gap-3">
+                <button onClick={() => { setImportPreview(null); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-colors">
+                  キャンセル
+                </button>
+                <button onClick={handleConfirmImport} disabled={loadingTargets}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2">
+                  {loadingTargets ? <RefreshCw size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+                  {importPreview.length}件をインポート
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 {/* ▼▼▼ 追加: メールプレビューモーダル ▼▼▼ */}
       {showPreview && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
