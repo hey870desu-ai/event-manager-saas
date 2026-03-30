@@ -11,8 +11,10 @@ export async function POST(req: Request) {
     const { email, name, tenantId, tenantName } = body;
 
     // 1. Firestore から、テナントの「本物の背番号」を呼んでくるっぺ
+    console.log(`[INVITE-DEBUG] Step1: tenantId="${tenantId}", email="${email}"`);
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
+    console.log(`[INVITE-DEBUG] Step2: tenantDoc.exists=${tenantDoc.exists}, authTenantId="${tenantData?.authTenantId}"`);
 
     // authTenantId の取得 or 自動作成（既存テナントの補完対応）
     let realAuthId = tenantData?.authTenantId;
@@ -21,15 +23,16 @@ export async function POST(req: Request) {
     if (realAuthId) {
       try {
         await adminAuth.tenantManager().getTenant(realAuthId);
-      } catch {
-        console.log(`⚠️ authTenantId "${realAuthId}" が Firebase Auth に存在しない。再作成するぞい！`);
-        realAuthId = null; // 下の作成フローに回す
+        console.log(`[INVITE-DEBUG] Step3: getTenant OK for "${realAuthId}"`);
+      } catch (e: any) {
+        console.log(`[INVITE-DEBUG] Step3: getTenant FAILED for "${realAuthId}": ${e.message}`);
+        realAuthId = null;
       }
     }
 
     // authTenantId が無い or 無効なら Firebase Auth テナントを新規作成
     if (!realAuthId) {
-      console.log(`⚠️ テナント ${tenantId} の Auth テナントを自動作成するぞい！`);
+      console.log(`[INVITE-DEBUG] Step4: creating new Auth tenant...`);
       const newTenant = await adminAuth.tenantManager().createTenant({
         displayName: tenantName || tenantData?.name || tenantId,
         allowPasswordSignIn: true,
@@ -37,20 +40,20 @@ export async function POST(req: Request) {
       });
       realAuthId = newTenant.tenantId;
       await adminDb.collection('tenants').doc(tenantId).update({ authTenantId: realAuthId });
-      console.log(`✅ authTenantId を保存したっぺ: ${realAuthId}`);
+      console.log(`[INVITE-DEBUG] Step4: created & saved authTenantId="${realAuthId}"`);
     }
 
-    console.log(`🚀 招待パトロール中: ${email} をテナント ${realAuthId} に招待するぞい！`);
+    console.log(`[INVITE-DEBUG] Step5: generating sign-in link with realAuthId="${realAuthId}"`);
 
     // 2. ログイン用のアクションリンクを生成するっぺ
     const actionCodeSettings = {
-      // 🏆 検証用URLに realAuthId をしっかり乗せるのが勝利の鍵だばい！
       url: `${process.env.NEXT_PUBLIC_BASE_URL}/admin/login/verify?tenantId=${realAuthId}`,
       handleCodeInApp: true,
     };
 
-    const tenantAuth = adminAuth.tenantManager().authForTenant(realAuthId); 
+    const tenantAuth = adminAuth.tenantManager().authForTenant(realAuthId);
     const loginLink = await tenantAuth.generateSignInWithEmailLink(email, actionCodeSettings);
+    console.log(`[INVITE-DEBUG] Step6: sign-in link generated OK`);
 
     // 3. メール送信（From の表示名を "" で囲むのが、不着を防ぐコツだっぺ！）
     const { error } = await resend.emails.send({
