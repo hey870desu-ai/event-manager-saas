@@ -1966,108 +1966,85 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
         {/* ★★★ 絆太郎：おもてなしウェルカムモーダル（完全版） ★★★ */}
       {isWelcomeModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          {/* 背景の強力ぼかし（すりガラス） */}
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-700"></div>
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xl animate-in fade-in duration-700"></div>
 
-          {/* モーダル本体（あの気に入ってくれたデザインを維持！） */}
-          <div className="relative w-full max-w-2xl bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden animate-in zoom-in duration-500">
-            
-            {/* 華やかな装飾の光 */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl"></div>
+          <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in duration-500 max-h-[90vh] overflow-y-auto">
 
-            <div className="relative p-8 md:p-12 text-center">
-              {/* 共通ロゴ */}
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-3xl shadow-xl mb-8 border border-slate-100">
-                <img src="/icon.webp" alt="絆太郎" className="w-14 h-14 object-contain" />
+            {/* ヘッダー：ロゴ＋ウェルカムメッセージ */}
+            <div className="relative bg-gradient-to-b from-slate-50 to-white px-8 pt-10 pb-6 text-center border-b border-slate-100">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-lg mb-6 border border-slate-100">
+                <img src="/icon.webp" alt="絆太郎" className="w-12 h-12 object-contain" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                絆太郎へようこそ！
+              </h2>
+              <p className="text-slate-500 font-medium mt-3 leading-relaxed">
+                セミナー運営をもっと楽しく、もっと「絆」が深まるものに。
+              </p>
+            </div>
+
+            <div className="px-8 md:px-10 py-8">
+
+              {/* 絆太郎でできること */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">絆太郎でできること</span>
+                </div>
+                <div className="grid gap-3">
+                  {[
+                    { title: "プロ品質のイベントページ", desc: "テーマを選んで情報を入力するだけ。デザイナー不要で美しい告知ページが完成します。", bg: "bg-blue-50", color: "text-blue-600" },
+                    { title: "申し込み・参加者管理", desc: "フォーム作成からリアルタイムの参加者リスト、キャンセル管理まで一元化。Excelでの手作業から解放されます。", bg: "bg-violet-50", color: "text-violet-600" },
+                    { title: "QRコードでスマート受付", desc: "当日はQRコードを表示するだけ。参加者がスマホで読み取って、スムーズにチェックイン。", bg: "bg-indigo-50", color: "text-indigo-600" },
+                    { title: "メール配信・ファン作り", desc: "リマインド・お礼・ニュースレターを簡単送信。参加者との絆を深めてリピーターを増やします。", bg: "bg-emerald-50", color: "text-emerald-600" },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`flex items-start gap-3 p-4 ${item.bg} rounded-xl`}>
+                      <div className={`mt-0.5 p-1 rounded-full bg-white shadow-sm ${item.color} flex-shrink-0`}>
+                        <Check size={14} strokeWidth={3} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* === ▼▼▼ ここからスライド切り替え ▼▼▼ === */}
-              {modalStep === 1 ? (
-                /* 1枚目：歓迎スライド（標準語） */
-                <div className="animate-in fade-in">
-                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4 tracking-tight">
-                    絆太郎へようこそ！
-                  </h2>
-                  <p className="text-slate-600 font-medium mb-10 leading-relaxed text-lg">
-                    今日からあなたのセミナー運営が、<br className="hidden md:inline" />
-                    もっと楽しく、もっと「絆」が深まるものに変わります。
-                  </p>
-
-                  {/* 3つの特徴（あのデザインを維持） */}
-                  <div className="grid gap-4 text-left mb-12">
-                    {[
-                      { title: "セミナーの案内", desc: "文字を入れるだけで、想いが伝わるページが完成", color: "text-blue-600", bg: "bg-blue-50" },
-                      { title: "スマートな受付", desc: "当日はスマホをかざすだけ。笑顔で迎える準備を", color: "text-indigo-600", bg: "bg-indigo-50" },
-                      { title: "絆を深めるファン作り", desc: "一度きりで終わらせない、次のご縁を大切に", color: "text-emerald-600", bg: "bg-emerald-50" },
-                    ].map((item, idx) => (
-                      <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm`}>
-                        <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color}`}>
-                          <Check size={18} strokeWidth={3} />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-900">{item.title}</h4>
-                          <p className="text-xs text-slate-500 font-bold mt-0.5">{item.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 2枚目へ進むボタン */}
-                  <button
-                    onClick={() => setModalStep(2)}
-                    className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-300 flex items-center justify-center gap-2 group text-xl"
-                  >
-                    具体的な使い方を見る
-                    <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                  </button>
+              {/* はじめの3ステップ */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="inline-block bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full border border-slate-200">はじめの3ステップ</span>
                 </div>
-              ) : (
-                /* 2枚目：使い方ガイド（デザイン統一＆標準語） */
-                <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-4 tracking-tight">
-                    活用までの3ステップ
-                  </h2>
-                  <p className="text-slate-600 font-medium mb-10 leading-relaxed">
-                    まずはこの流れで、最初のイベントを開催してみましょう。
-                  </p>
-
-                  {/* 3つのステップ（1枚目と同じデザインで統一！） */}
-                  <div className="grid gap-4 text-left mb-12">
-                    {[
-                      { step: "01", title: "イベントを作成", desc: "「新規イベント」から、タイトルや日時を入力して募集ページを準備します。", color: "text-blue-600", bg: "bg-blue-50", icon: <Plus size={18} strokeWidth={3}/> },
-                      { step: "02", title: "QRコードで受付", desc: "イベント当日は「QR表示」でコードを掲示。参加者が読み取るだけで受付完了です。", color: "text-indigo-600", bg: "bg-indigo-50", icon: <QrCode size={18} strokeWidth={3}/> },
-                      { step: "03", title: "御礼メールを送信", desc: "終了後は「参加者リスト」から感謝のメールを一斉送信。次につなげます。", color: "text-emerald-600", bg: "bg-emerald-50", icon: <Mail size={18} strokeWidth={3}/> },
-                    ].map((item, idx) => (
-                      <div key={idx} className={`flex items-start gap-4 p-5 ${item.bg} rounded-2xl border border-white/50 shadow-sm`}>
-                        <div className={`mt-1 p-1.5 rounded-full bg-white shadow-sm ${item.color} flex items-center justify-center font-black`}>
-                          {/* アイコンを表示 */}
-                          {item.icon}
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-900 flex items-center gap-2">
-                            <span className="text-xs bg-white px-2 py-0.5 rounded-full shadow-sm border border-slate-100">{item.step}</span>
-                            {item.title}
-                          </h4>
-                          <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">{item.desc}</p>
-                        </div>
+                <div className="grid gap-3">
+                  {[
+                    { step: "1", title: "イベントを作成する", desc: "左上の「新規イベント」から、タイトル・日時・場所を入力。5つのテーマから好みのデザインを選べます。", color: "text-blue-600", icon: <Plus size={15} strokeWidth={3}/> },
+                    { step: "2", title: "当日はQRコードで受付", desc: "イベント一覧の「QR」ボタンを押すと受付用コードが表示されます。プロジェクターやタブレットに映すだけ。", color: "text-indigo-600", icon: <QrCode size={15} strokeWidth={3}/> },
+                    { step: "3", title: "参加者にお礼メールを送る", desc: "イベントをクリック →「参加者リスト」→ テンプレートを選んで一斉送信。次回の案内も一緒に送れます。", color: "text-emerald-600", icon: <Mail size={15} strokeWidth={3}/> },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+                      <div className={`mt-0.5 w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-xs font-black">{item.step}</span>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* 完了ボタン（閉じる） */}
-                  <button
-                    onClick={closeWelcomeModal}
-                    className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group text-xl"
-                  >
-                    利用を開始する
-                  </button>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {/* === ▲▲▲ 切り替えここまで ▲▲▲ === */}
-              
-              <p className="mt-6 text-slate-400 text-xs font-bold">
-                ※右上の「Information」からいつでも使い方を確認できます
+              </div>
+
+              {/* 開始ボタン */}
+              <button
+                onClick={closeWelcomeModal}
+                className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 group text-lg"
+              >
+                さっそく始める
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              <p className="mt-4 text-slate-400 text-[11px] font-medium text-center">
+                ※ この案内は右上の「Information」からいつでも確認できます
               </p>
             </div>
           </div>
