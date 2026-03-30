@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       
       // 成功した時とキャンセルした時の戻り先URL
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/admin/marketing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/admin/marketing/scan`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
       
       // 💡 Webhookが「絆太郎の決済だ！」と判別するための目印だっぺ！
       metadata: {
