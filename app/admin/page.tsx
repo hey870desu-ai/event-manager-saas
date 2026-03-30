@@ -128,6 +128,7 @@ export default function AdminDashboard() {
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [showGuideTooltip, setShowGuideTooltip] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   // ▼ ここから貼り付ける ▼
   const [mailTargetType, setMailTargetType] = useState<'checked-in' | 'all' | 'individual' | 'selected'>('checked-in');
@@ -334,6 +335,8 @@ export default function AdminDashboard() {
       localStorage.setItem(`bantaro_visited_${user.email}`, 'true');
     }
     setIsWelcomeModalOpen(false);
+    // ウェルカムモーダルを閉じた後、新規イベントボタンへのガイドを表示
+    setTimeout(() => setShowGuideTooltip(true), 500);
   };
 
 useEffect(() => {
@@ -939,20 +942,43 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
         {/* ▼▼▼ 修正：ボタンを水色グラデーションに変更 ▼▼▼ */}
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-2xl font-bold text-slate-800">Events</h2>
-          <button 
-  onClick={() => { 
+          <div className="relative">
+            <button
+  onClick={() => {
+    setShowGuideTooltip(false);
     // ★ スタンダードじゃない（＝フリーの人）は1件制限だっぺ！
     if (!isStandard && events.length >= 1) {
       alert("【作成制限】現在、管理できるイベントは1件までとなっております。別のイベントを作成するには、現在のイベントを削除するか、スタンダードプランをご検討ください。");
       return;
     }
-    setSelectedEvent(null); 
-    setIsEventModalOpen(true); 
-  }} 
-  className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center"
+    setSelectedEvent(null);
+    setIsEventModalOpen(true);
+  }}
+  className={`px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold flex gap-2 shadow-lg shadow-cyan-500/20 transition-all active:scale-95 items-center ${showGuideTooltip ? 'ring-4 ring-cyan-300 ring-offset-2 animate-pulse' : ''}`}
 >
   <Plus size={20} strokeWidth={3}/> 新規イベント
 </button>
+
+            {/* 初回ガイドツールチップ */}
+            {showGuideTooltip && (
+              <div className="absolute top-full right-0 mt-3 z-50 animate-in fade-in slide-in-from-top-2 duration-500">
+                {/* 吹き出しの三角 */}
+                <div className="absolute -top-2 right-8 w-4 h-4 bg-slate-900 rotate-45 rounded-sm"></div>
+                <div className="bg-slate-900 text-white rounded-2xl px-5 py-4 shadow-2xl w-72">
+                  <p className="font-bold text-sm mb-1">まずはここから！</p>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    「新規イベント」を押して、最初のイベントを作ってみましょう。タイトルと日時を入れるだけで、すぐに告知ページが完成します。
+                  </p>
+                  <button
+                    onClick={() => setShowGuideTooltip(false)}
+                    className="mt-3 text-[11px] text-cyan-400 hover:text-cyan-300 font-bold transition-colors"
+                  >
+                    OK、わかりました
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* グリッドをやめて、縦積みのリストにする (max-w-6xl で幅広に) */}
