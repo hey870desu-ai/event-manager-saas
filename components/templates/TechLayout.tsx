@@ -171,7 +171,7 @@ if (submitted) {
               {event.lecturer ? `${event.lecturer} ${event.lecturerSuffix || ""}` : "講師調整中"}
             </h3>
                       <p className="text-xs font-medium mb-3 tracking-wider" style={{ color: themeColor }}>{event.lecturerTitle}</p>
-                      <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-wrap hidden md:block">{event.lecturerProfile}</p>
+                      <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-wrap">{event.lecturerProfile}</p>
                     </div>
                 </div>
               </div>
