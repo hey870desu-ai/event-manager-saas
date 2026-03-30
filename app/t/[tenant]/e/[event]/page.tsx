@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // デフォルト（読み込み失敗時用）
   const defaultMetadata = {
-    title: "イベント詳細 | Event Manager",
+    title: "イベント詳細 | イベントシステム絆太郎",
     description: "イベントの詳細・お申し込みはこちらからご確認ください。",
   };
 

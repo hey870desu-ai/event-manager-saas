@@ -13,31 +13,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  // ▼ 新ドメインを設定（これ重要！）
   metadataBase: new URL("https://event-manager.app"),
 
   title: {
-    template: '%s | Event Manager', 
-    default: 'Event Manager SaaS',
+    template: '%s | イベントシステム絆太郎（ばんたろう）',
+    default: 'イベントシステム絆太郎（ばんたろう）| セミナー・イベント管理',
   },
-  description: "イベント管理の「面倒」をゼロにする。スマホで完結する申し込み・管理システム。",
-  
+  description: "イベントシステム絆太郎（ばんたろう）は、セミナー・イベントのLP作成からフォーム作成・名簿管理・メール配信までスマホで完結する管理システムです。",
+
   icons: {
-    icon: '/icon.webp', // ブラウザタブ用
+    icon: '/icon.webp',
   },
 
   openGraph: {
-    title: "Event Manager SaaS",
-    description: "スマホで完結！イベント申し込み・管理システム。",
-    siteName: "Event Manager SaaS",
+    title: "イベントシステム絆太郎（ばんたろう）",
+    description: "セミナー・イベントのLP作成からフォーム作成・名簿管理・メール配信までスマホで完結。イベントシステム絆太郎（ばんたろう）。",
+    siteName: "イベントシステム絆太郎",
     url: "https://event-manager.app",
     images: [
       {
-        // ▼ ここを実際のファイル名に変更しました！
-        url: "/icon.webp", 
+        url: "/icon.webp",
         width: 256,
         height: 256,
-        alt: "Event Manager Logo",
+        alt: "イベントシステム絆太郎ロゴ",
       },
     ],
     locale: "ja_JP",
@@ -46,9 +44,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary",
-    title: "Event Manager SaaS",
-    description: "スマホで完結！イベント申し込み・管理システム。",
-    // ▼ ここも変更！
+    title: "イベントシステム絆太郎（ばんたろう）",
+    description: "セミナー・イベントのLP作成からフォーム作成・名簿管理・メール配信までスマホで完結。",
     images: ["/icon.webp"],
   },
 };
