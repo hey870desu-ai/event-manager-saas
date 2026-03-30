@@ -1851,24 +1851,17 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
   {/* 💳 C. 決済連携設定（Stripe Connect） */}
   <div className="bg-slate-900 p-5 rounded-2xl border border-blue-900/50 mt-6">
     <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
-      <CreditCard size={16}/> 決済システム連携
+      <CreditCard size={16}/> 有料イベントの決済設定
     </h3>
     <p className="text-[10px] text-slate-500 mb-4">
-      有料セミナーを開催する場合、ここからStripeアカウントを連携してください。<br />
-      参加費はあなたの口座へ直接振り込まれるようになります。
+      有料セミナーを開催するには、Stripeアカウントとの連携が必要です。<br />
+      参加者が支払った参加費は、手数料（2%）を除きあなたの銀行口座に直接振り込まれます。
     </p>
-
-    {/* 🏆 ここにインポートしたボタンを置くぞい！！ */}
-    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-center">
-      <StripeConnectButton 
-    tenantId={currentUserTenant} 
-    isConnected={!!(currentTenantData as any)?.stripeConnected} 
-  />
-    </div>
-
-    <p className="text-[8px] text-slate-600 mt-3 text-center">
-      ※連携にはStripeアカウント（無料）が必要です。
-    </p>
+    <StripeConnectButton
+      tenantId={currentUserTenant}
+      isConnected={!!(currentTenantData as any)?.stripeConnectId}
+      legalPageUrl={typeof window !== 'undefined' ? `${window.location.origin}/${currentUserTenant}/legal` : ''}
+    />
   </div>
 </div>
 {/* 設定モーダルの「保存ボタン」のすぐ下 */}
