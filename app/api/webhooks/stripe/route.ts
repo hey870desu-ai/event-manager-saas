@@ -2,6 +2,58 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// オーナーへのアップグレード通知
+async function notifyOwnerUpgrade(tenantId: string, planName: string, customerEmail: string | null) {
+  try {
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantName = tenantSnap.data()?.name || tenantId;
+
+    await resend.emails.send({
+      from: `"絆太郎 通知" <info@event-manager.app>`,
+      to: ['hey870desu@gmail.com'],
+      subject: `【絆太郎】有料プランアップグレード: ${tenantName}`,
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #334155; padding: 20px; background-color: #f8fafc;">
+          <div style="max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 24px; text-align: center;">
+              <span style="color: #fff; font-size: 18px; font-weight: bold;">有料プランアップグレード通知</span>
+            </div>
+            <div style="padding: 28px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 10px 0; color: #94a3b8; width: 110px;">組織名</td>
+                  <td style="padding: 10px 0; font-weight: bold; color: #0f172a;">${tenantName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #94a3b8; border-top: 1px solid #f1f5f9;">テナントID</td>
+                  <td style="padding: 10px 0; font-weight: bold; color: #0f172a; font-family: monospace;">${tenantId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #94a3b8; border-top: 1px solid #f1f5f9;">プラン</td>
+                  <td style="padding: 10px 0; font-weight: bold; color: #4f46e5;">${planName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #94a3b8; border-top: 1px solid #f1f5f9;">顧客メール</td>
+                  <td style="padding: 10px 0; color: #64748b; border-top: 1px solid #f1f5f9;">${customerEmail || '不明'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #94a3b8; border-top: 1px solid #f1f5f9;">日時</td>
+                  <td style="padding: 10px 0; color: #64748b; border-top: 1px solid #f1f5f9;">${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      `
+    });
+  } catch (e) {
+    console.warn("オーナー通知メール送信失敗:", e);
+  }
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -59,6 +111,9 @@ export async function POST(req: Request) {
             });
             
             console.log(`✨ [KizunaTaro] Tenant ${tenantId} updated to ${planName}`);
+
+            // オーナーに通知
+            await notifyOwnerUpgrade(tenantId, planName === 'standard' ? 'スタンダードプラン' : 'スポット5500円プラン', session.customer_details?.email || null);
           } catch (e) {
             console.error('❌ KizunaTaro Update Error:', e);
           }
@@ -99,6 +154,8 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
         
         console.log("✅ Plan updated and Confirmation email sent.");
 
+        // オーナーに通知
+        await notifyOwnerUpgrade(tenantId, planType === 'standard' ? 'スタンダードプラン' : 'プロプラン', session.customer_details?.email || session.metadata?.email || null);
       } catch (e) {
         console.error('Update or Email failed:', e);
       }
