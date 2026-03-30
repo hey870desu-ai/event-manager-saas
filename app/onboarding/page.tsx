@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase"; 
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { Building2, ArrowRight, Loader2, Sparkles } from "lucide-react";
 
@@ -17,11 +17,31 @@ export default function OnboardingPage() {
   const [tenantId, setTenantId] = useState("");
   const [name, setName] = useState("");
 
-  // ログイン確認 & 会員チェック
+  // メールリンクからの認証完了 & ログイン確認
   useEffect(() => {
+    // メールリンク経由で来た場合、先にサインインを完了させる
+    const completeEmailLinkSignIn = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        const savedEmail = window.localStorage.getItem('emailForSignIn');
+        if (savedEmail) {
+          try {
+            await signInWithEmailLink(auth, savedEmail, window.location.href);
+            window.localStorage.removeItem('emailForSignIn');
+          } catch (e) {
+            console.error("メールリンク認証に失敗:", e);
+          }
+        }
+      }
+    };
+    completeEmailLinkSignIn();
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        router.push("/"); // ログインしてなければTOPへ
+        // メールリンク認証の処理中かもしれないので少し待つ
+        if (isSignInWithEmailLink(auth, window.location.href)) {
+          return; // 認証完了を待つ
+        }
+        router.push("/");
       } else {
         setUser(currentUser);
         
