@@ -280,10 +280,10 @@ export default function AdminScanPage() {
       {/* メインコンテンツ */}
       {selectedEventId && (
         <div className="flex-1 overflow-hidden max-w-7xl mx-auto px-4 py-4 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full min-h-0">
 
             {/* 左側: スキャンエリア */}
-            <div className="lg:col-span-1 space-y-4">
+            <div className="lg:col-span-1 space-y-4 overflow-y-auto">
 
               {/* スキャン入力 */}
               <div className="bg-[#151926] p-5 rounded-2xl border border-slate-800">
@@ -358,7 +358,7 @@ export default function AdminScanPage() {
             </div>
 
             {/* 右側: 参加者名簿 */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 min-h-0">
               <div className="bg-[#151926] rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-full">
                 {/* 名簿ヘッダー */}
                 <div className="p-4 border-b border-slate-800 flex items-center gap-3">
