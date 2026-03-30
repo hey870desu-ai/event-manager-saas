@@ -196,7 +196,8 @@ export async function POST(request: Request) {
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com";
 
 // body.eventId ではなく、分割代入した eventId を使うんだっぺ！
-const cancelUrl = `${baseUrl}/cancel?rid=${reservationId || ''}&eid=${eventId || ''}`;
+const isPaidEvent = eventPrice && !eventPrice.includes('無料');
+const cancelUrl = `${baseUrl}/cancel?rid=${reservationId || ''}&eid=${eventId || ''}${isPaidEvent ? '&paid=1' : ''}`;
 
 // 🏆 mainHtml への合体（デザインも少し絆太郎風に！）
 mainHtml += `
