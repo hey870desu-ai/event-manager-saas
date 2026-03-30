@@ -196,26 +196,26 @@ export default function AnalyticsPage() {
   });
   const monthlyTrend = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400">読み込み中...</div>;
+  if (loading) return <div className="min-h-screen bg-[#0f111a] flex items-center justify-center text-slate-500">読み込み中...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 space-y-6 animate-in fade-in">
+    <div className="min-h-screen bg-[#0f111a] text-slate-300 p-4 md:p-8 space-y-6 animate-in fade-in">
 
       {/* ヘッダー */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="p-2 bg-white hover:bg-slate-100 rounded-lg text-slate-600 transition-colors border border-slate-200">
+          <Link href="/admin" className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition-colors">
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">マーケティング分析</h1>
-            <p className="text-slate-500 text-sm">集客・収益・顧客データから次の戦略を見つける</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white">マーケティング分析</h1>
+            <p className="text-slate-400 text-sm">集客・収益・顧客データから次の戦略を見つける</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
           <Filter size={16} className="text-slate-400"/>
           <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}
-            className="bg-transparent text-slate-900 outline-none text-sm cursor-pointer min-w-[150px]">
+            className="bg-transparent text-white outline-none text-sm cursor-pointer min-w-[150px]">
             <option value="all">すべての部署・支部</option>
             {safeBranches.map((b: string) => <option key={b} value={b}>{b}</option>)}
           </select>
@@ -230,12 +230,12 @@ export default function AnalyticsPage() {
           { label: "申込率 (CVR)", value: `${overallCVR}%`, icon: <Target size={20}/>, color: "emerald" },
           { label: "売上", value: `¥${totalRevenue.toLocaleString()}`, icon: <DollarSign size={20}/>, color: "amber" },
         ].map((kpi, idx) => (
-          <div key={idx} className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow`}>
+          <div key={idx} className={`bg-slate-900/50 p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-colors`}>
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">{kpi.label}</p>
-                <h3 className="text-2xl md:text-3xl font-black text-slate-900 mt-1">{kpi.value}</h3>
-                {kpi.sub && <p className="text-[10px] text-slate-400 mt-0.5">{kpi.sub}</p>}
+                <h3 className="text-2xl md:text-3xl font-black text-white mt-1">{kpi.value}</h3>
+                {kpi.sub && <p className="text-[10px] text-slate-500 mt-0.5">{kpi.sub}</p>}
               </div>
               <div className={`p-2.5 bg-${kpi.color}-50 rounded-xl text-${kpi.color}-500`}>{kpi.icon}</div>
             </div>
@@ -251,14 +251,14 @@ export default function AnalyticsPage() {
           { label: "リピーター率", value: `${repeatRate}%`, icon: <Repeat size={20}/>, color: "violet", sub: `${repeatEmails.length}/${uniqueEmails.length}人` },
           { label: "参加者単価", value: `¥${revenuePerPerson.toLocaleString()}`, icon: <TrendingUp size={20}/>, color: "cyan" },
         ].map((kpi, idx) => (
-          <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+          <div key={idx} className="bg-slate-900/50 p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-colors">
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">{kpi.label}</p>
-                <h3 className="text-2xl md:text-3xl font-black text-slate-900 mt-1">{kpi.value}</h3>
-                {kpi.sub && <p className="text-[10px] text-slate-400 mt-0.5">{kpi.sub}</p>}
+                <h3 className="text-2xl md:text-3xl font-black text-white mt-1">{kpi.value}</h3>
+                {kpi.sub && <p className="text-[10px] text-slate-500 mt-0.5">{kpi.sub}</p>}
               </div>
-              <div className={`p-2.5 rounded-xl bg-slate-50 text-slate-400`}>{kpi.icon}</div>
+              <div className={`p-2.5 rounded-xl bg-slate-800 text-slate-400`}>{kpi.icon}</div>
             </div>
           </div>
         ))}
@@ -267,38 +267,38 @@ export default function AnalyticsPage() {
       {/* グラフ: 1段目 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* イベント別集客 */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">イベント別 集客数（直近6件）</h3>
+        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-sm font-bold text-white mb-4">イベント別 集客数（直近6件）</h3>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dataByEvent}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}/>
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}/>
-                <Tooltip contentStyle={{backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px'}}/>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false}/>
+                <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false}/>
+                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false}/>
+                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#fff'}}/>
                 <Bar dataKey="参加者" stackId="a" fill="#6366f1" radius={[0, 0, 0, 0]} barSize={32}/>
-                <Bar dataKey="キャンセル" stackId="a" fill="#fecaca" radius={[4, 4, 0, 0]} barSize={32}/>
+                <Bar dataKey="キャンセル" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={32}/>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* 月別推移 */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">月別 参加者推移</h3>
+        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-sm font-bold text-white mb-4">月別 参加者推移</h3>
           <div className="h-[280px] w-full">
             {monthlyTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}/>
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}/>
-                  <Tooltip contentStyle={{backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px'}}/>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false}/>
+                  <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false}/>
+                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false}/>
+                  <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#fff'}}/>
                   <Line type="monotone" dataKey="参加者" stroke="#6366f1" strokeWidth={2.5} dot={{ fill: '#6366f1', r: 4 }}/>
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">データが蓄積されると推移グラフが表示されます</div>
+              <div className="h-full flex items-center justify-center text-slate-600 text-sm">データが蓄積されると推移グラフが表示されます</div>
             )}
           </div>
         </div>
@@ -307,8 +307,8 @@ export default function AnalyticsPage() {
       {/* グラフ: 2段目 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* リピーター分析 */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">新規 vs リピーター</h3>
+        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-sm font-bold text-white mb-4">新規 vs リピーター</h3>
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -316,7 +316,7 @@ export default function AnalyticsPage() {
                   <Cell fill="#6366f1" />
                   <Cell fill="#f59e0b" />
                 </Pie>
-                <Tooltip contentStyle={{backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px'}}/>
+                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#fff'}}/>
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -327,8 +327,8 @@ export default function AnalyticsPage() {
         </div>
 
         {/* 参加形式 */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900 mb-4">参加形式の内訳</h3>
+        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-sm font-bold text-white mb-4">参加形式の内訳</h3>
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -336,7 +336,7 @@ export default function AnalyticsPage() {
                   <Cell fill="#10b981" />
                   <Cell fill="#ec4899" />
                 </Pie>
-                <Tooltip contentStyle={{backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px'}}/>
+                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '12px', color: '#fff'}}/>
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -347,36 +347,36 @@ export default function AnalyticsPage() {
         </div>
 
         {/* 戦略ヒント */}
-        <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-6 rounded-2xl border border-indigo-100 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2"><CheckCircle2 size={16} className="text-indigo-500"/> 戦略ヒント</h3>
-          <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+        <div className="bg-gradient-to-br from-indigo-900/30 to-violet-900/30 p-6 rounded-2xl border border-indigo-500/20">
+          <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><CheckCircle2 size={16} className="text-indigo-400"/> 戦略ヒント</h3>
+          <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
             {Number(overallCVR) < 5 && totalPV > 0 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                 CVRが <strong className="text-indigo-600">{overallCVR}%</strong> です。イベントページの内容やCTAボタンの改善で申込率を上げられる可能性があります。
               </p>
             )}
             {Number(cancelRate) > 15 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                 キャンセル率が <strong className="text-red-500">{cancelRate}%</strong> と高めです。リマインドメールの送信タイミングを見直してみましょう。
               </p>
             )}
             {Number(repeatRate) < 10 && uniqueEmails.length > 5 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                 リピーター率が <strong className="text-violet-600">{repeatRate}%</strong> です。イベント後のフォローアップやニュースレターでリピート率を高めましょう。
               </p>
             )}
             {Number(repeatRate) >= 20 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                 リピーター率 <strong className="text-emerald-600">{repeatRate}%</strong> は素晴らしい数値です！ファンが着実に育っています。
               </p>
             )}
             {Number(attendanceRate) < 70 && activeReservations.length > 0 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
                 出席率が <strong className="text-amber-600">{attendanceRate}%</strong> です。前日リマインドメールを活用してNo-Showを減らしましょう。
               </p>
             )}
             {activeReservations.length === 0 && (
-              <p className="bg-white p-3 rounded-lg border border-slate-200 text-slate-400">
+              <p className="bg-slate-900/50 p-3 rounded-lg border border-slate-700 text-slate-400">
                 イベントを開催してデータが蓄積されると、ここに戦略のヒントが自動で表示されます。
               </p>
             )}
@@ -385,13 +385,13 @@ export default function AnalyticsPage() {
       </div>
 
       {/* イベント別パフォーマンス詳細テーブル */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-900">イベント別パフォーマンス</h3>
+      <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden">
+        <div className="p-6 border-b border-slate-800">
+          <h3 className="text-sm font-bold text-white">イベント別パフォーマンス</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <thead className="bg-slate-900/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               <tr>
                 <th className="px-4 py-3">イベント名</th>
                 <th className="px-4 py-3">開催日</th>
@@ -403,17 +403,17 @@ export default function AnalyticsPage() {
                 <th className="px-4 py-3 text-right">売上</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-800">
               {detailedEventStats.map((ev) => (
-                <tr key={ev.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate">{ev.title}</td>
+                <tr key={ev.id} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-white max-w-[200px] truncate">{ev.title}</td>
                   <td className="px-4 py-3 text-slate-500">{ev.date}</td>
                   <td className="px-4 py-3 text-center text-slate-600">{ev.pv}</td>
                   <td className="px-4 py-3 text-center font-bold text-indigo-600">{ev.cvr}{ev.cvr !== '-' && '%'}</td>
-                  <td className="px-4 py-3 text-center font-bold text-slate-900">{ev.total}</td>
+                  <td className="px-4 py-3 text-center font-bold text-white">{ev.total}</td>
                   <td className="px-4 py-3 text-center text-emerald-600">{ev.attendRate}{ev.attendRate !== '-' && '%'}</td>
                   <td className="px-4 py-3 text-center text-red-400">{ev.cancelled > 0 ? ev.cancelled : '-'}</td>
-                  <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{ev.revenue > 0 ? `¥${ev.revenue.toLocaleString()}` : '-'}</td>
+                  <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">{ev.revenue > 0 ? `¥${ev.revenue.toLocaleString()}` : '-'}</td>
                 </tr>
               ))}
             </tbody>
