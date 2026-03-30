@@ -28,24 +28,26 @@ export async function POST(req: Request) {
       subject: "【絆太郎】アカウント登録を完了してください",
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #334155; padding: 20px; background-color: #f8fafc;">
-          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%); padding: 40px 30px; text-align: center;">
-              <span style="color: #fff; font-size: 28px; font-weight: bold; letter-spacing: 2px;">絆太郎</span>
-              <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin-top: 8px; letter-spacing: 1px;">EVENT MANAGER</p>
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+            <div style="background: #fff; padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+              <span style="color: #0f172a; font-size: 28px; font-weight: 900; letter-spacing: 1px;">絆太郎</span>
+              <span style="color: #94a3b8; font-size: 14px; font-weight: 500; margin-left: 8px;">Event Manager</span>
             </div>
             <div style="padding: 40px 30px;">
-              <p style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">アカウント登録のご案内</p>
-              <p style="line-height: 1.8; font-size: 15px; color: #475569;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <span style="display: inline-block; background: #eef2ff; color: #4f46e5; font-size: 12px; font-weight: 700; padding: 6px 16px; border-radius: 20px; letter-spacing: 0.5px;">アカウント登録</span>
+              </div>
+              <p style="line-height: 1.8; font-size: 15px; color: #475569; text-align: center;">
                 絆太郎 Event Manager へようこそ！<br>
-                下のボタンをクリックして、アカウント登録を完了してください。
+                下のボタンをクリックして、登録を完了してください。
               </p>
               <div style="text-align: center; margin: 35px 0;">
-                <a href="${signInLink}" style="display: inline-block; background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%); color: #fff; padding: 18px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.35);">
+                <a href="${signInLink}" style="display: inline-block; background: #0f172a; color: #fff; padding: 18px 44px; border-radius: 14px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);">
                   アカウント登録を完了する
                 </a>
               </div>
-              <div style="background: #f5f3ff; padding: 16px; border-radius: 10px; margin-top: 20px;">
-                <p style="font-size: 12px; color: #7c3aed; margin: 0; line-height: 1.7;">
+              <div style="background: #f8fafc; padding: 16px; border-radius: 10px; margin-top: 24px; border: 1px solid #e2e8f0;">
+                <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.7;">
                   ※ このリンクの有効期限は30分です。<br>
                   ※ お心当たりのない場合は、このメールを無視してください。
                 </p>
