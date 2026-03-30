@@ -59,7 +59,24 @@ export async function POST(request: Request) {
     if (isPaid) {
       // キャンセルポリシーから返金率を計算
       const eventDate = eventData?.date; // "YYYY-MM-DD"
-      const policy = eventData?.cancelPolicy || { fullRefundDays: 2, halfRefundDays: 1 };
+      const rawPolicy = eventData?.cancelPolicy;
+
+      // 新形式（配列）と旧形式（オブジェクト）の両方に対応
+      let policyTiers: { days: number, rate: number }[] = [];
+      if (Array.isArray(rawPolicy)) {
+        policyTiers = rawPolicy;
+      } else if (rawPolicy) {
+        // 旧形式: { fullRefundDays, halfRefundDays } → 配列に変換
+        policyTiers = [
+          { days: rawPolicy.fullRefundDays ?? 2, rate: 100 },
+          { days: rawPolicy.halfRefundDays ?? 1, rate: 50 },
+        ];
+      } else {
+        // デフォルト
+        policyTiers = [{ days: 2, rate: 100 }, { days: 1, rate: 50 }];
+      }
+      // 日数の大きい順にソート
+      policyTiers.sort((a, b) => b.days - a.days);
 
       if (eventDate) {
         const eventDay = new Date(eventDate + "T00:00:00+09:00"); // JST
@@ -67,12 +84,12 @@ export async function POST(request: Request) {
         const diffMs = eventDay.getTime() - now.getTime();
         const daysUntilEvent = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        if (daysUntilEvent >= policy.fullRefundDays) {
-          refundRate = 100;
-        } else if (daysUntilEvent >= policy.halfRefundDays) {
-          refundRate = 50;
-        } else {
-          refundRate = 0;
+        // 日数の大きい段階から順にマッチング
+        for (const tier of policyTiers) {
+          if (daysUntilEvent >= tier.days) {
+            refundRate = tier.rate;
+            break;
+          }
         }
         console.log(`📅 イベントまで${daysUntilEvent}日 → 返金率: ${refundRate}%`);
       } else {

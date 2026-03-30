@@ -131,11 +131,11 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
   });
 
   // キャンセルポリシー設定
-  const [cancelPolicy, setCancelPolicy] = useState({
-    fullRefundDays: 2,   // X日前まで全額返金
-    halfRefundDays: 1,   // X日前まで50%返金
-    // それ以降は返金なし
-  });
+  // キャンセルポリシー: [{days: N日前, rate: 返金率%}, ...] を日数の大きい順で管理
+  const [cancelPolicy, setCancelPolicy] = useState<{days: number, rate: number}[]>([
+    { days: 2, rate: 100 },
+    { days: 1, rate: 50 },
+  ]);
 
   // ★追加：複数講師の管理
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
@@ -298,10 +298,16 @@ useEffect(() => {
 
       // キャンセルポリシーの読み込み
       if (event.cancelPolicy) {
-        setCancelPolicy({
-          fullRefundDays: event.cancelPolicy.fullRefundDays ?? 2,
-          halfRefundDays: event.cancelPolicy.halfRefundDays ?? 1,
-        });
+        if (Array.isArray(event.cancelPolicy)) {
+          // 新形式: 配列
+          setCancelPolicy(event.cancelPolicy);
+        } else {
+          // 旧形式: { fullRefundDays, halfRefundDays } → 配列に変換
+          setCancelPolicy([
+            { days: event.cancelPolicy.fullRefundDays ?? 2, rate: 100 },
+            { days: event.cancelPolicy.halfRefundDays ?? 1, rate: 50 },
+          ]);
+        }
       }
 
       if (event.tickets && Array.isArray(event.tickets)) {
@@ -818,43 +824,50 @@ useEffect(() => {
   <label className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-3">
     <RefreshCcw size={14} className="text-indigo-400"/> キャンセル・返金ポリシー
   </label>
-  <div className="bg-slate-950 p-4 rounded-xl border border-slate-700/50 space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="text-[10px] text-slate-500 block mb-1">全額返金（100%）の期限</label>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">開催日の</span>
-          <input
-            type="number"
-            min="1"
-            max="30"
-            value={cancelPolicy.fullRefundDays}
-            onChange={(e) => setCancelPolicy(prev => ({ ...prev, fullRefundDays: parseInt(e.target.value) || 2 }))}
-            className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
-          />
-          <span className="text-xs text-slate-400">日前まで</span>
-        </div>
+  <div className="bg-slate-950 p-4 rounded-xl border border-slate-700/50 space-y-3">
+    {cancelPolicy.map((tier, idx) => (
+      <div key={idx} className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-400">開催日の</span>
+        <input
+          type="number" min="0" max="60"
+          value={tier.days}
+          onChange={(e) => {
+            const updated = [...cancelPolicy];
+            updated[idx] = { ...tier, days: parseInt(e.target.value) || 0 };
+            setCancelPolicy(updated);
+          }}
+          className="w-14 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
+        />
+        <span className="text-xs text-slate-400">日前まで</span>
+        <input
+          type="number" min="0" max="100"
+          value={tier.rate}
+          onChange={(e) => {
+            const updated = [...cancelPolicy];
+            updated[idx] = { ...tier, rate: parseInt(e.target.value) || 0 };
+            setCancelPolicy(updated);
+          }}
+          className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
+        />
+        <span className="text-xs text-slate-400">% 返金</span>
+        {cancelPolicy.length > 1 && (
+          <button type="button" onClick={() => setCancelPolicy(cancelPolicy.filter((_, i) => i !== idx))}
+            className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
+            <Trash2 size={14}/>
+          </button>
+        )}
       </div>
-      <div>
-        <label className="text-[10px] text-slate-500 block mb-1">半額返金（50%）の期限</label>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">開催日の</span>
-          <input
-            type="number"
-            min="0"
-            max="29"
-            value={cancelPolicy.halfRefundDays}
-            onChange={(e) => setCancelPolicy(prev => ({ ...prev, halfRefundDays: parseInt(e.target.value) || 1 }))}
-            className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
-          />
-          <span className="text-xs text-slate-400">日前まで</span>
-        </div>
-      </div>
-    </div>
+    ))}
+    <button type="button"
+      onClick={() => setCancelPolicy([...cancelPolicy, { days: 0, rate: 0 }])}
+      className="w-full py-2 border border-dashed border-slate-800 hover:border-indigo-500/50 rounded-lg text-slate-500 hover:text-indigo-400 text-xs font-bold flex items-center justify-center gap-1 transition-all">
+      <Plus size={14}/> 段階を追加
+    </button>
     <div className="bg-slate-900/50 rounded-lg p-3 text-[11px] text-slate-400 leading-relaxed">
       <p className="font-bold text-slate-300 mb-1">適用される返金ルール：</p>
-      <p>・開催日の <strong className="text-indigo-400">{cancelPolicy.fullRefundDays}日前</strong> まで → <strong className="text-emerald-400">全額返金（100%）</strong></p>
-      <p>・開催日の <strong className="text-indigo-400">{cancelPolicy.halfRefundDays}日前</strong> まで → <strong className="text-yellow-400">半額返金（50%）</strong></p>
+      {[...cancelPolicy].sort((a, b) => b.days - a.days).map((tier, idx) => (
+        <p key={idx}>・開催日の <strong className="text-indigo-400">{tier.days}日前</strong> まで → <strong className={tier.rate >= 80 ? "text-emerald-400" : tier.rate >= 30 ? "text-yellow-400" : "text-red-400"}>{tier.rate}% 返金</strong></p>
+      ))}
       <p>・それ以降（当日含む）→ <strong className="text-red-400">返金なし（0%）</strong></p>
     </div>
   </div>
