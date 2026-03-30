@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithPopup, GoogleAuthProvider, sendSignInLinkToEmail } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -51,17 +51,20 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      auth.languageCode = 'ja';
-      const actionCodeSettings = {
-        url: `${window.location.origin}/onboarding`,
-        handleCodeInApp: true,
-      };
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      const res = await fetch('/api/send-register-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "メール送信に失敗しました");
+      }
       window.localStorage.setItem('emailForSignIn', email);
       setMailSent(true);
     } catch (err: any) {
       console.error(err);
-      setError("メール送信に失敗しました。メールアドレスを確認してください。");
+      setError(err.message || "メール送信に失敗しました。メールアドレスを確認してください。");
     } finally {
       setLoading(false);
     }
