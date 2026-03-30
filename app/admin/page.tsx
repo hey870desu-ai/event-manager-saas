@@ -1735,123 +1735,101 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 
       {/* 設定モーダル */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
-             <div className="flex justify-between mb-4 border-b border-slate-800 pb-3"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={22}/> 設定</h2><button onClick={()=>setIsSettingsOpen(false)}><X/></button></div>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh] shadow-2xl">
+             <div className="flex justify-between mb-4 border-b border-slate-200 pb-3">
+               <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2"><Settings size={22} className="text-indigo-500"/> 設定</h2>
+               <button onClick={()=>setIsSettingsOpen(false)} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><X/></button>
+             </div>
              <div className="space-y-6 overflow-y-auto pr-1">
-               
-               {/* 1. テナント・法人基本設定（特商法対応） */}
+
+               {/* 1. テナント・法人基本設定 */}
 <div className="space-y-6">
-{/* A. 表の顔：ブランド設定 */}
-  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-    <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
-      <Sparkles size={16} className="text-yellow-400"/> ブランド・SNS設定
+{/* A. ブランド設定 */}
+  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+    <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+      <Sparkles size={16} className="text-yellow-500"/> ブランド・SNS設定
     </h3>
-    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名、SNSアイコンのリンク先に反映されるぞい。</p>
-    
+    <p className="text-[10px] text-slate-500 mb-3">LPやメールの署名、SNSアイコンのリンク先に反映されます。</p>
+
     <div className="space-y-4">
-      {/* 組織名・ブランド名 */}
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">主催者・表示名</label>
-        <input 
-          type="text" 
-          value={editingOrgName} 
-          onChange={(e)=>setEditingOrgName(e.target.value)} 
-          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:border-indigo-500 outline-none transition-all" 
-          placeholder="例：CARE DESIGN WORKS" 
+        <input
+          type="text"
+          value={editingOrgName}
+          onChange={(e)=>setEditingOrgName(e.target.value)}
+          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+          placeholder="例：CARE DESIGN WORKS"
         />
       </div>
 
-      {/* ✨ ここからSNSのURL入力欄だっぺ！ */}
       <div className="space-y-2">
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase tracking-wider">SNS連携（広報誌メールに表示）</label>
-        
-        {/* Instagram */}
-        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-pink-500/50 transition-all">
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 focus-within:border-pink-500 transition-all">
           <Instagram size={14} className="text-pink-500" />
-          <input 
-            type="text" 
-            value={instagramUrl} 
-            onChange={(e)=>setInstagramUrl(e.target.value)} 
-            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
-            placeholder="Instagram URL" 
-          />
+          <input type="text" value={instagramUrl} onChange={(e)=>setInstagramUrl(e.target.value)} className="bg-transparent text-[10px] text-slate-900 outline-none flex-1 font-mono" placeholder="Instagram URL" />
         </div>
-
-        {/* LINE (MessageCircleアイコンを使用) */}
-        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-green-500/50 transition-all">
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 focus-within:border-green-500 transition-all">
           <MessageCircle size={14} className="text-green-500" />
-          <input 
-            type="text" 
-            value={lineUrl} 
-            onChange={(e)=>setLineUrl(e.target.value)} 
-            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
-            placeholder="LINE公式アカウント URL" 
-          />
+          <input type="text" value={lineUrl} onChange={(e)=>setLineUrl(e.target.value)} className="bg-transparent text-[10px] text-slate-900 outline-none flex-1 font-mono" placeholder="LINE公式アカウント URL" />
         </div>
-
-        {/* Facebook */}
-        <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800 focus-within:border-blue-500/50 transition-all">
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 focus-within:border-blue-500 transition-all">
           <Facebook size={14} className="text-blue-500" />
-          <input 
-            type="text" 
-            value={facebookUrl} 
-            onChange={(e)=>setFacebookUrl(e.target.value)} 
-            className="bg-transparent text-[10px] text-white outline-none flex-1 font-mono" 
-            placeholder="Facebook URL" 
-          />
+          <input type="text" value={facebookUrl} onChange={(e)=>setFacebookUrl(e.target.value)} className="bg-transparent text-[10px] text-slate-900 outline-none flex-1 font-mono" placeholder="Facebook URL" />
         </div>
       </div>
     </div>
   </div>
 
-  {/* B. 裏の顔：法人・特商法情報 */}
-  <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-    <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
-      <Shield size={16}/> 法人・特商法情報（決済審査用）
+  {/* B. 法人・特商法情報 */}
+  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+    <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+      <Shield size={16} className="text-emerald-500"/> 法人・特商法情報（決済審査用）
     </h3>
-    <p className="text-[10px] text-slate-500 mb-4">Stripeの審査や、自動生成される「特商法ページ」に使われる正式な情報だぞい。</p>
-    
+    <p className="text-[10px] text-slate-500 mb-4">Stripeの審査や、自動生成される「特商法ページ」に使われる正式な情報です。</p>
+
     <div className="space-y-3">
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">正式な会社名・事業者名</label>
-        <input type="text" value={legalCompanyName} onChange={(e)=>setLegalCompanyName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="例：株式会社はなひろ" />
+        <input type="text" value={legalCompanyName} onChange={(e)=>setLegalCompanyName(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="例：株式会社はなひろ" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">代表者名</label>
-          <input type="text" value={representative} onChange={(e)=>setRepresentative(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="塙 浩之" />
+          <input type="text" value={representative} onChange={(e)=>setRepresentative(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="塙 浩之" />
         </div>
         <div>
           <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">電話番号</label>
-          <input type="text" value={legalPhone} onChange={(e)=>setLegalPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="0248-xx-xxxx" />
+          <input type="text" value={legalPhone} onChange={(e)=>setLegalPhone(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="0248-xx-xxxx" />
         </div>
       </div>
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">メールアドレス（特商法ページに表示）</label>
-        <input type="email" value={legalEmail} onChange={(e)=>setLegalEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="info@example.com" />
+        <input type="email" value={legalEmail} onChange={(e)=>setLegalEmail(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="info@example.com" />
       </div>
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">所在地</label>
-        <input type="text" value={legalAddress} onChange={(e)=>setLegalAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="福島県須賀川市..." />
+        <input type="text" value={legalAddress} onChange={(e)=>setLegalAddress(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="福島県須賀川市..." />
       </div>
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">ホームページURL</label>
-        <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="https://hana-hiro.com" />
+        <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="https://hana-hiro.com" />
       </div>
     </div>
 
-    <button 
-      onClick={handleSaveTenantSettings} 
-      className="w-full mt-6 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-900/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+    <button
+      onClick={handleSaveTenantSettings}
+      className="w-full mt-6 bg-slate-900 hover:bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
     >
       <Check size={18}/> 設定をすべて保存する
     </button>
   </div>
-  {/* 💳 C. 決済連携設定（Stripe Connect） */}
-  <div className="bg-slate-900 p-5 rounded-2xl border border-blue-900/50 mt-6">
-    <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
-      <CreditCard size={16}/> 有料イベントの決済設定
+
+  {/* C. 決済連携設定 */}
+  <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200">
+    <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+      <CreditCard size={16} className="text-indigo-500"/> 有料イベントの決済設定
     </h3>
     <p className="text-[10px] text-slate-500 mb-4">
       有料セミナーを開催するには、Stripeアカウントとの連携が必要です。<br />
@@ -1871,28 +1849,29 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     />
   </div>
 </div>
-{/* 設定モーダルの「保存ボタン」のすぐ下 */}
-<div className="mt-4 pt-4 border-t border-slate-800">
-  <p className="text-[10px] text-slate-500 mb-2 font-bold uppercase">Stripe提出用URL</p>
+
+{/* 特商法ページURL */}
+<div className="mt-4 pt-4 border-t border-slate-200">
+  <p className="text-[10px] text-slate-500 mb-2 font-bold uppercase">特商法ページURL</p>
   <div className="flex gap-2">
-    <input 
-      readOnly 
-      value={`${window.location.origin}/${currentUserTenant}/legal`} 
-      className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-400 font-mono"
+    <input
+      readOnly
+      value={`${window.location.origin}/${currentUserTenant}/legal`}
+      className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] text-slate-600 font-mono"
     />
-    <button 
+    <button
       onClick={() => window.open(`/${currentUserTenant}/legal`, '_blank')}
-      className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] px-3 py-1 rounded font-bold transition-all"
+      className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] px-3 py-1 rounded font-bold transition-all"
     >
       ページを確認
     </button>
   </div>
 </div>
 
-{/* 2. スタッフ招待（全ユーザーに開放：価値ある機能として提供） */}
-               <div className="bg-slate-900 p-4 rounded-xl border border-indigo-900/50">
-                 <h3 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
-                    <UserPlus size={16}/> スタッフ・管理者招待
+{/* 2. スタッフ招待 */}
+               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                 <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                    <UserPlus size={16} className="text-indigo-500"/> スタッフ・管理者招待
                  </h3>
                  
                  {/* プラン制限を撤廃し、常に適切なフォームを表示します */}
@@ -1934,21 +1913,21 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
   <input 
     value={newAdminName} 
     onChange={e=>setNewAdminName(e.target.value)} 
-    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
-    placeholder="スタッフのお名前（例：塙 太郎）" 
-    required 
+    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:border-indigo-500 outline-none"
+    placeholder="スタッフのお名前（例：塙 太郎）"
+    required
   />
-  <input 
-    value={newAdminEmail} 
-    onChange={e=>setNewAdminEmail(e.target.value)} 
-    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" 
-    placeholder="招待するスタッフのメール" 
-    required 
+  <input
+    value={newAdminEmail}
+    onChange={e=>setNewAdminEmail(e.target.value)}
+    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:border-indigo-500 outline-none"
+    placeholder="招待するスタッフのメールアドレス"
+    required
   />
-  <select 
-    value={newAdminBranch} 
-    onChange={e=>setNewAdminBranch(e.target.value)} 
-    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+  <select
+    value={newAdminBranch}
+    onChange={e=>setNewAdminBranch(e.target.value)}
+    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:border-indigo-500 outline-none"
   >
     <option value="">（所属部門・教室を選択）</option>
     {tenantList.find(t => t.id === currentUserTenant)?.branches?.map((b: any) => (
@@ -1960,7 +1939,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       disabled={inviting}
       className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-indigo-500/20 disabled:opacity-50"
     >
-      {inviting ? "送信中だっぺ..." : "スタッフを招待する"}
+      {inviting ? "送信中..." : "スタッフを招待する"}
     </button>
   </div>
 </form>
@@ -1969,13 +1948,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 
                {/* 3. 管理者リスト表示（自分のテナントの仲間だけ見える） */}
                <div>
-                 <h3 className="text-sm font-bold text-slate-400 mb-2">登録済みスタッフ一覧</h3>
+                 <h3 className="text-sm font-bold text-slate-700 mb-2">登録済みスタッフ一覧</h3>
                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                    {adminUsers
-                     .filter(u => isSuperAdminMode || u.tenantId === currentUserTenant) // 自分の会社の仲間だけフィルタリング
+                     .filter(u => isSuperAdminMode || u.tenantId === currentUserTenant)
                      .map(u=>(
-                      <div key={u.email} className="flex justify-between items-center p-3 bg-slate-900 rounded-lg border border-slate-800">
-                        <div><div className="text-sm">{u.email}</div><div className="text-xs text-indigo-400">{formatBranchName(safeStr(u.branchId))}</div></div>
+                      <div key={u.email} className="flex justify-between items-center p-3 bg-white rounded-lg border border-slate-200">
+                        <div><div className="text-sm text-slate-900">{u.email}</div><div className="text-xs text-indigo-500">{formatBranchName(safeStr(u.branchId))}</div></div>
                         {(isSuperAdminMode || (u.email !== user?.email && u.role !== 'owner')) && ( 
                           <button onClick={()=>handleRemoveAdmin(u.email)} className="text-slate-500 hover:text-red-400"><Trash2 size={16}/></button> 
                         )}
@@ -1986,10 +1965,10 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 
                {/* 4. 拠点・プラン情報（ユーザーは見るだけ） */}
                {!isSuperAdminMode && (
-                 <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800 mt-4">
+                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-4">
                     <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase">現在のプラン・拠点</h3>
-                    <div className="text-sm text-white mb-2">
-                      プラン: <span className="font-bold text-emerald-400 uppercase">{tenantList.find(t=>t.id===currentUserTenant)?.plan || "Free"}</span>
+                    <div className="text-sm text-slate-900 mb-2">
+                      プラン: <span className="font-bold text-indigo-600 uppercase">{tenantList.find(t=>t.id===currentUserTenant)?.plan || "Free"}</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {tenantList.find(t=>t.id===currentUserTenant)?.branches?.map((b:any) => {
@@ -2002,7 +1981,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 
   return (
     typeof b === 'string' && (
-      <span key={b} className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
+      <span key={b} className="text-xs bg-white px-2 py-1 rounded border border-slate-200 text-slate-700">
         {displayName}
       </span>
     )
@@ -2010,7 +1989,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 })}
 
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-3 pt-2 border-t border-slate-800/50">
+                    <p className="text-[10px] text-slate-500 mt-3 pt-2 border-t border-slate-200">
                       ※拠点（教室）の追加やプラン変更をご希望の場合は、本部へお問い合わせください。
                     </p>
                  </div>
