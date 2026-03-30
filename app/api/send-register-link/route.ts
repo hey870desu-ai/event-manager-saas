@@ -29,9 +29,9 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #334155; padding: 20px; background-color: #f8fafc;">
           <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 40px 30px; text-align: center;">
+            <div style="background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%); padding: 40px 30px; text-align: center;">
               <span style="color: #fff; font-size: 28px; font-weight: bold; letter-spacing: 2px;">絆太郎</span>
-              <p style="color: rgba(255,255,255,0.8); font-size: 13px; margin-top: 8px; letter-spacing: 1px;">EVENT MANAGER</p>
+              <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin-top: 8px; letter-spacing: 1px;">EVENT MANAGER</p>
             </div>
             <div style="padding: 40px 30px;">
               <p style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">アカウント登録のご案内</p>
@@ -40,12 +40,12 @@ export async function POST(req: Request) {
                 下のボタンをクリックして、アカウント登録を完了してください。
               </p>
               <div style="text-align: center; margin: 35px 0;">
-                <a href="${signInLink}" style="display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #fff; padding: 18px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);">
+                <a href="${signInLink}" style="display: inline-block; background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%); color: #fff; padding: 18px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.35);">
                   アカウント登録を完了する
                 </a>
               </div>
-              <div style="background: #f1f5f9; padding: 16px; border-radius: 10px; margin-top: 20px;">
-                <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.7;">
+              <div style="background: #f5f3ff; padding: 16px; border-radius: 10px; margin-top: 20px;">
+                <p style="font-size: 12px; color: #7c3aed; margin: 0; line-height: 1.7;">
                   ※ このリンクの有効期限は30分です。<br>
                   ※ お心当たりのない場合は、このメールを無視してください。
                 </p>
