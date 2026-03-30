@@ -1487,7 +1487,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                   </div>
 
                   {/* 無料プランの場合、ここから先はロック */}
-                  {isFreePlan && (
+                  {isFreePlan ? (
                     <div className="relative">
                       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0f111a]/80 to-[#0f111a] z-10 flex flex-col items-center justify-center pt-20">
                         <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-8 text-center max-w-md shadow-2xl">
@@ -1505,10 +1505,17 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                           </button>
                         </div>
                       </div>
-                      {/* ぼかした背景としてグラフをチラ見せ */}
                       <div className="filter blur-md opacity-40 pointer-events-none select-none" aria-hidden="true">
-                  </div>
-                  )}
+                        <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-xl mb-6">
+                          <div className="h-32 bg-slate-800/50 rounded-lg"></div>
+                        </div>
+                        <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-xl">
+                          <div className="h-48 bg-slate-800/50 rounded-lg"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
 
                   {/* 2. 満足度分布グラフ */}
                   <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-xl">
@@ -1638,12 +1645,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                     </div>
                   </div>
 
-                  {/* 無料プランのぼかし＆ロックUIの閉じタグ */}
-                  {isFreePlan && (
-                    <>
-                      </div>{/* blur div close */}
-                    </div>{/* relative div close */}
-                    </>
+                  </>
                   )}
 
                 </div>
