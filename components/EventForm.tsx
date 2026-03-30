@@ -494,30 +494,6 @@ useEffect(() => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🔒【修正】無料プランでも、このイベント専用の「スポット決済」が済んでいれば公開OKにするぞい！
-  // 🔒 無料プランのユーザーが「公開」しようとした時のゲートキーパーだばい
-  if (formData.status === 'published' && isFreePlan && !event?.isSpotPaid) {
-    // ★ 文言をより「スポット利用」を意識したものに変更したっぺ！
-    const message = `
-【イベント公開の確認】
-
-現在「フリープラン」のため、このイベントを一般公開するには以下のいずれかが必要です：
-
-① スポット利用料のお支払い（5,500円）
-② スタンダードプラン（月額3,300円）への加入
-
-※決済完了後、このイベントの日付は固定されます。
-お支払い画面へ移動しますか？
-    `.trim();
-
-  if (confirm(message)) {
-      // ここでStripeの決済ページや、プラン選択ページへ飛ばすっぺ！
-      // 後のために eventId をクエリパラメータで渡しておくのがコツだぞい
-      window.location.href = `/dashboard/billing?eventId=${currentEventId}&type=spot`;
-    }
-    return; // 決済しないなら保存を中断するっぺ
-  }
-
     if (!formData.tenantId || formData.tenantId === "demo") {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
     return;
@@ -694,7 +670,7 @@ useEffect(() => {
            <label className="block text-xs text-slate-400 font-bold mb-2">公開ステータス</label>
            <select name="status" value={formData.status} onChange={handleChange} className={`w-full border border-slate-700 rounded-lg p-3 font-bold outline-none cursor-pointer transition-colors ${formData.status === 'published' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50' : 'bg-slate-950 text-slate-400'}`}>
              <option value="draft">下書き (準備中)</option>
-             <option value="published">{isFreePlan ? "🔒 公開する (アップグレードが必要)" : "🚀 公開する"}</option>
+             <option value="published">🚀 公開する</option>
            </select>
         </div>
       </div>

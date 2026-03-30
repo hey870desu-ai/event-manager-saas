@@ -824,7 +824,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
   <ScanLine size={16} /> <span>名刺スキャン（近日公開）</span>
 </button>
       {/* 2. 絆リスト */}
-      <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+      <button onClick={() => router.push("/admin/marketing")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
         <Mail size={16}/> <span>絆リスト</span>
       </button>
       {/* 3. 分析 */}
@@ -883,7 +883,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 
         <div className="grid grid-cols-1 gap-2 mt-1">
           {/* 2. 絆リスト */}
-          <button onClick={() => { setIsMobileMenuOpen(false); isFreePlan ? setIsUpgradeModalOpen(true) : router.push("/admin/marketing"); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+          <button onClick={() => { setIsMobileMenuOpen(false); router.push("/admin/marketing"); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
             <Mail size={22} className="text-orange-500" /> <span className="text-base">絆リスト</span>
           </button>
           
@@ -1107,16 +1107,11 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
                    
                    {/* 共通スタイル：border-slate-300, text-slate-600 に変更 */}
-                   <button 
-                     onClick={(e) => { 
+                   <button
+                     onClick={(e) => {
   e.stopPropagation();
-  // ★ ここに制限を移動！スポット未払いのフリーユーザーはお断りだばい
-    if (isFreePlan && !ev.isSpotPaid) {
-      setIsUpgradeModalOpen(true);
-      return;
-    } 
-  setQrEvent(ev); 
-  setIsQrModalOpen(true); 
+  setQrEvent(ev);
+  setIsQrModalOpen(true);
 }}
                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
@@ -1124,16 +1119,11 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                        <span className="hidden lg:inline">QR表示</span>
                    </button>
 
-                   <button 
-                     onClick={(e) => { 
+                   <button
+                     onClick={(e) => {
   e.stopPropagation();
-  // ★ ここに追加！
-    if (isFreePlan) {
-      setIsUpgradeModalOpen(true);
-      return;
-    } 
-  setCurrentEventForList(ev); 
-  setIsFeedbackOpen(true); 
+  setCurrentEventForList(ev);
+  setIsFeedbackOpen(true);
 }}
                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
                    >
@@ -1215,7 +1205,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
-               <button onClick={() => isFreePlan ? setIsUpgradeModalOpen(true) : openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
+               <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
   <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
 </button>
             </div>
@@ -1427,12 +1417,14 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                 <p className="text-xs text-slate-400 mt-1">{currentEventForList.title}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                {!isFreePlan && (
+                <button
                    onClick={downloadFeedbackCSV}
                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition-colors"
                  >
                    <FileText size={16}/> <span className="hidden sm:inline">CSV出力</span>
                  </button>
+                )}
                 <button onClick={() => setIsFeedbackOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                   <X size={24}/>
                 </button>
@@ -1493,6 +1485,30 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                       </div>
                     </div>
                   </div>
+
+                  {/* 無料プランの場合、ここから先はロック */}
+                  {isFreePlan && (
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0f111a]/80 to-[#0f111a] z-10 flex flex-col items-center justify-center pt-20">
+                        <div className="bg-slate-900 border border-indigo-500/30 rounded-2xl p-8 text-center max-w-md shadow-2xl">
+                          <Lock size={32} className="text-indigo-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-black text-white mb-2">アンケート結果の詳細を見る</h3>
+                          <p className="text-sm text-slate-400 mb-1">
+                            <strong className="text-indigo-400">{feedbacks.length}件</strong> の回答が届いています
+                          </p>
+                          <p className="text-xs text-slate-500 mb-6">満足度の内訳・質問別レポート・CSV出力は有料プランでご利用いただけます。</p>
+                          <button
+                            onClick={() => { setIsFeedbackOpen(false); setIsUpgradeModalOpen(true); }}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                          >
+                            プランをアップグレード
+                          </button>
+                        </div>
+                      </div>
+                      {/* ぼかした背景としてグラフをチラ見せ */}
+                      <div className="filter blur-md opacity-40 pointer-events-none select-none" aria-hidden="true">
+                  </div>
+                  )}
 
                   {/* 2. 満足度分布グラフ */}
                   <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-xl">
@@ -1621,6 +1637,14 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                       ))}
                     </div>
                   </div>
+
+                  {/* 無料プランのぼかし＆ロックUIの閉じタグ */}
+                  {isFreePlan && (
+                    <>
+                      </div>{/* blur div close */}
+                    </div>{/* relative div close */}
+                    </>
+                  )}
 
                 </div>
               )}
