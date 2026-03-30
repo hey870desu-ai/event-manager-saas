@@ -50,37 +50,64 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. 有料イベントの場合、Stripe返金処理
+    // 2. 有料イベントの場合、キャンセルポリシーに基づくStripe返金処理
     let refunded = false;
     let refundAmount = 0;
+    let refundRate = 0; // 0, 50, 100
     const isPaid = resData?.paymentStatus === 'paid' && resData?.stripeSessionId;
 
     if (isPaid) {
-      try {
-        // Checkoutセッションからpayment_intentを取得
-        const isEmergencyMode = (tenantId === "caredesignworks");
-        const sessionOptions = isEmergencyMode ? undefined : { stripeAccount: stripeConnectId };
+      // キャンセルポリシーから返金率を計算
+      const eventDate = eventData?.date; // "YYYY-MM-DD"
+      const policy = eventData?.cancelPolicy || { fullRefundDays: 2, halfRefundDays: 1 };
 
-        const checkoutSession = await stripe.checkout.sessions.retrieve(
-          resData.stripeSessionId,
-          sessionOptions ? sessionOptions : undefined
-        );
+      if (eventDate) {
+        const eventDay = new Date(eventDate + "T00:00:00+09:00"); // JST
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+        const diffMs = eventDay.getTime() - now.getTime();
+        const daysUntilEvent = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        const paymentIntentId = checkoutSession.payment_intent as string;
+        if (daysUntilEvent >= policy.fullRefundDays) {
+          refundRate = 100;
+        } else if (daysUntilEvent >= policy.halfRefundDays) {
+          refundRate = 50;
+        } else {
+          refundRate = 0;
+        }
+        console.log(`📅 イベントまで${daysUntilEvent}日 → 返金率: ${refundRate}%`);
+      } else {
+        // 日付不明の場合は全額返金
+        refundRate = 100;
+      }
 
-        if (paymentIntentId) {
-          // 全額返金
-          const refund = await stripe.refunds.create(
-            { payment_intent: paymentIntentId },
+      if (refundRate > 0) {
+        try {
+          const isEmergencyMode = (tenantId === "caredesignworks");
+          const sessionOptions = isEmergencyMode ? undefined : { stripeAccount: stripeConnectId };
+
+          const checkoutSession = await stripe.checkout.sessions.retrieve(
+            resData.stripeSessionId,
             sessionOptions ? sessionOptions : undefined
           );
-          refunded = true;
-          refundAmount = (refund.amount || 0);
-          console.log(`💰 返金完了: ¥${refundAmount} (PaymentIntent: ${paymentIntentId})`);
+
+          const paymentIntentId = checkoutSession.payment_intent as string;
+          const paidTotal = checkoutSession.amount_total || 0;
+          const refundTarget = refundRate === 100 ? paidTotal : Math.floor(paidTotal * refundRate / 100);
+
+          if (paymentIntentId && refundTarget > 0) {
+            const refund = await stripe.refunds.create(
+              { payment_intent: paymentIntentId, amount: refundTarget },
+              sessionOptions ? sessionOptions : undefined
+            );
+            refunded = true;
+            refundAmount = refund.amount || 0;
+            console.log(`💰 返金完了: ¥${refundAmount} (${refundRate}%, PaymentIntent: ${paymentIntentId})`);
+          }
+        } catch (refundErr: any) {
+          console.error("❌ Stripe返金処理エラー:", refundErr.message);
         }
-      } catch (refundErr: any) {
-        console.error("❌ Stripe返金処理エラー:", refundErr.message);
-        // 返金失敗してもキャンセル自体は続行する（手動返金対応のため）
+      } else {
+        console.log("🚫 キャンセルポリシーにより返金なし（当日/期限切れ）");
       }
     }
 
@@ -91,7 +118,7 @@ export async function POST(request: Request) {
       selfCancelledAt: new Date(),
     };
     if (isPaid) {
-      updateData.paymentStatus = refunded ? 'refunded' : 'refund_failed';
+      updateData.paymentStatus = refunded ? 'refunded' : (refundRate === 0 ? 'no_refund' : 'refund_failed');
       updateData.refundedAt = refunded ? new Date() : null;
       updateData.refundAmount = refundAmount;
     }
@@ -103,11 +130,16 @@ export async function POST(request: Request) {
 
     // 4. 参加者本人にキャンセル完了メール
     if (participantEmail) {
-      const refundMessage = refunded
-        ? `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-weight: bold;">お支払い済みの参加費 ¥${refundAmount.toLocaleString()} は、ご利用のカードへ返金処理を行いました。反映まで数日かかる場合がございます。</p>`
-        : isPaid && !refunded
-          ? `<p style="background: #fef9c3; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; color: #854d0e;">返金処理に問題が発生しました。事務局より別途ご連絡いたします。</p>`
-          : '';
+      let refundMessage = '';
+      if (isPaid) {
+        if (refunded) {
+          refundMessage = `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-weight: bold;">お支払い済みの参加費のうち ¥${refundAmount.toLocaleString()}（${refundRate}%）を、ご利用のカードへ返金処理いたしました。反映まで数日かかる場合がございます。</p>`;
+        } else if (refundRate === 0) {
+          refundMessage = `<p style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; color: #991b1b;">キャンセルポリシーに基づき、返金対象外となります。ご了承ください。</p>`;
+        } else {
+          refundMessage = `<p style="background: #fef9c3; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; color: #854d0e;">返金処理に問題が発生しました。事務局より別途ご連絡いたします。</p>`;
+        }
+      }
 
       try {
         await resend.emails.send({
@@ -135,9 +167,16 @@ export async function POST(request: Request) {
     if (ownerEmail && ownerEmail !== contactEmail) adminRecipients.push(ownerEmail);
 
     if (adminRecipients.length > 0) {
-      const refundInfo = isPaid
-        ? `<p><strong>決済状況:</strong> ${refunded ? `✅ 返金済み（¥${refundAmount.toLocaleString()}）` : '⚠️ 返金失敗（要手動対応）'}</p>`
-        : '';
+      let refundInfo = '';
+      if (isPaid) {
+        if (refunded) {
+          refundInfo = `<p><strong>決済状況:</strong> ✅ 返金済み（¥${refundAmount.toLocaleString()} / ${refundRate}%返金）</p>`;
+        } else if (refundRate === 0) {
+          refundInfo = `<p><strong>決済状況:</strong> キャンセルポリシーにより返金なし（0%）</p>`;
+        } else {
+          refundInfo = `<p><strong>決済状況:</strong> ⚠️ 返金失敗（要手動対応 / ${refundRate}%返金予定）</p>`;
+        }
+      }
 
       try {
         await resend.emails.send({
@@ -160,7 +199,7 @@ export async function POST(request: Request) {
       } catch (e) { console.error("Admin/Owner email failed:", e); }
     }
 
-    return NextResponse.json({ success: true, refunded });
+    return NextResponse.json({ success: true, refunded, refundRate, refundAmount });
 
   } catch (error: any) {
     console.error('Self Cancel API Error:', error);

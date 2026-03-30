@@ -7,7 +7,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase, MessageSquare, ArrowUp, ArrowDown,Palette, 
-  CheckCircle, Building2, Smile,Sparkles } from "lucide-react";
+  CheckCircle, Building2, Smile, Sparkles, RefreshCcw } from "lucide-react";
 import { fetchTenantData, type Tenant } from "../lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -128,6 +128,13 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+  });
+
+  // キャンセルポリシー設定
+  const [cancelPolicy, setCancelPolicy] = useState({
+    fullRefundDays: 2,   // X日前まで全額返金
+    halfRefundDays: 1,   // X日前まで50%返金
+    // それ以降は返金なし
   });
 
   // ★追加：複数講師の管理
@@ -287,6 +294,14 @@ useEffect(() => {
           image: event.lecturerImage || "",
           suffix: "様"
         }]);
+      }
+
+      // キャンセルポリシーの読み込み
+      if (event.cancelPolicy) {
+        setCancelPolicy({
+          fullRefundDays: event.cancelPolicy.fullRefundDays ?? 2,
+          halfRefundDays: event.cancelPolicy.halfRefundDays ?? 1,
+        });
       }
 
       if (event.tickets && Array.isArray(event.tickets)) {
@@ -553,7 +568,8 @@ useEffect(() => {
         location: formData.venueName,
         updatedAt: new Date(),
         branchTag: formData.branchTag || "本部",
-        tickets: tickets, // ★チケットリストを保存
+        tickets: tickets,
+        cancelPolicy: cancelPolicy,
         price: tickets[0]?.price === 0 ? "無料" : tickets[0]?.price.toString(),
         
         // ★追加：講師リストを保存
@@ -795,6 +811,56 @@ useEffect(() => {
     </button>
   </div>
 </div>
+
+{/* キャンセルポリシー設定 */}
+{tickets.some(t => t.price > 0) && (
+<div className="mt-6">
+  <label className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-3">
+    <RefreshCcw size={14} className="text-indigo-400"/> キャンセル・返金ポリシー
+  </label>
+  <div className="bg-slate-950 p-4 rounded-xl border border-slate-700/50 space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="text-[10px] text-slate-500 block mb-1">全額返金（100%）の期限</label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">開催日の</span>
+          <input
+            type="number"
+            min="1"
+            max="30"
+            value={cancelPolicy.fullRefundDays}
+            onChange={(e) => setCancelPolicy(prev => ({ ...prev, fullRefundDays: parseInt(e.target.value) || 2 }))}
+            className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
+          />
+          <span className="text-xs text-slate-400">日前まで</span>
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 block mb-1">半額返金（50%）の期限</label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">開催日の</span>
+          <input
+            type="number"
+            min="0"
+            max="29"
+            value={cancelPolicy.halfRefundDays}
+            onChange={(e) => setCancelPolicy(prev => ({ ...prev, halfRefundDays: parseInt(e.target.value) || 1 }))}
+            className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:border-indigo-500 outline-none font-mono font-bold"
+          />
+          <span className="text-xs text-slate-400">日前まで</span>
+        </div>
+      </div>
+    </div>
+    <div className="bg-slate-900/50 rounded-lg p-3 text-[11px] text-slate-400 leading-relaxed">
+      <p className="font-bold text-slate-300 mb-1">適用される返金ルール：</p>
+      <p>・開催日の <strong className="text-indigo-400">{cancelPolicy.fullRefundDays}日前</strong> まで → <strong className="text-emerald-400">全額返金（100%）</strong></p>
+      <p>・開催日の <strong className="text-indigo-400">{cancelPolicy.halfRefundDays}日前</strong> まで → <strong className="text-yellow-400">半額返金（50%）</strong></p>
+      <p>・それ以降（当日含む）→ <strong className="text-red-400">返金なし（0%）</strong></p>
+    </div>
+  </div>
+</div>
+)}
+
     </div>
   </div>
 </div>

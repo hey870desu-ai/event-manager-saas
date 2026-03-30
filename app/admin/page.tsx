@@ -205,7 +205,9 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.error);
 
       if (isPaid && data.refunded) {
-        alert("キャンセル完了！参加費の返金処理も完了しました。本人に通知メールを送信済みです。");
+        alert(`キャンセル完了！¥${data.refundAmount?.toLocaleString() || 0}（${data.refundRate}%）を返金しました。本人に通知メール送信済みです。`);
+      } else if (isPaid && data.refundRate === 0) {
+        alert("キャンセル完了！キャンセルポリシーにより返金なし（0%）です。本人に通知メール送信済みです。");
       } else if (isPaid && !data.refunded) {
         alert("キャンセルは完了しましたが、返金処理に失敗しました。Stripeダッシュボードから手動で返金してください。");
       } else {
