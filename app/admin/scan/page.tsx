@@ -21,6 +21,7 @@ type Reservation = {
   checkedIn: boolean;
   attendedAt?: string;
   selectedTicket?: string;
+  customAnswers?: Record<string, any>;
 };
 
 export default function AdminScanPage() {
@@ -171,6 +172,23 @@ export default function AdminScanPage() {
     }
   }, [selectedEventId, isProcessing]);
 
+  // 受付取り消し
+  const handleUndoCheckIn = async (participantId: string, participantName: string) => {
+    if (!selectedEventId) return;
+    if (!confirm(`${participantName} さんの受付を取り消しますか？`)) return;
+    try {
+      const resRef = doc(db, "events", selectedEventId, "reservations", participantId);
+      await updateDoc(resRef, {
+        checkedIn: false,
+        status: "confirmed",
+        attendedAt: null,
+      });
+      setScanResult({ type: 'error', name: participantName, message: '受付を取り消しました' });
+    } catch (e) {
+      console.error("Undo Error:", e);
+    }
+  };
+
   // フォームSubmit（Enter or ボタン）
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,13 +203,24 @@ export default function AdminScanPage() {
     }
   }, [scanResult]);
 
+  // customAnswersから会社名・役職を抽出
+  const getCompanyInfo = (p: Reservation) => {
+    const answers = p.customAnswers || {};
+    const company = p.company || answers['会社名'] || answers['所属'] || answers['団体名'] || '';
+    const role = answers['役職'] || answers['肩書き'] || answers['部署'] || '';
+    return { company: String(company), role: String(role) };
+  };
+
   // 名簿フィルタ
   const filteredParticipants = nameFilter
-    ? participants.filter(p =>
-        p.name?.toLowerCase().includes(nameFilter.toLowerCase()) ||
-        p.email?.toLowerCase().includes(nameFilter.toLowerCase()) ||
-        p.company?.toLowerCase().includes(nameFilter.toLowerCase())
-      )
+    ? participants.filter(p => {
+        const { company, role } = getCompanyInfo(p);
+        const q = nameFilter.toLowerCase();
+        return p.name?.toLowerCase().includes(q) ||
+          p.email?.toLowerCase().includes(q) ||
+          company.toLowerCase().includes(q) ||
+          role.toLowerCase().includes(q);
+      })
     : participants;
 
   // 集計
@@ -201,7 +230,7 @@ export default function AdminScanPage() {
   if (loadingAuth) return <div className="min-h-screen bg-[#0B0D17] flex items-center justify-center text-indigo-500"><div className="animate-spin h-8 w-8 border-2 border-current border-t-transparent rounded-full"/></div>;
 
   return (
-    <div className="min-h-screen bg-[#0B0D17] text-white font-sans">
+    <div className="fixed inset-0 z-[100] bg-[#0B0D17] text-white font-sans overflow-hidden flex flex-col">
 
       {/* ヘッダー */}
       <header className="bg-[#0f1219] border-b border-slate-800 sticky top-0 z-30">
@@ -250,8 +279,8 @@ export default function AdminScanPage() {
 
       {/* メインコンテンツ */}
       {selectedEventId && (
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="flex-1 overflow-hidden max-w-7xl mx-auto px-4 py-4 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
 
             {/* 左側: スキャンエリア */}
             <div className="lg:col-span-1 space-y-4">
@@ -330,7 +359,7 @@ export default function AdminScanPage() {
 
             {/* 右側: 参加者名簿 */}
             <div className="lg:col-span-2">
-              <div className="bg-[#151926] rounded-2xl border border-slate-800 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+              <div className="bg-[#151926] rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-full">
                 {/* 名簿ヘッダー */}
                 <div className="p-4 border-b border-slate-800 flex items-center gap-3">
                   <div className="relative flex-1">
@@ -372,18 +401,19 @@ export default function AdminScanPage() {
                         .map((p) => {
                           const isChecked = p.checkedIn || p.status === 'attended';
                           const isJustCheckedIn = isChecked && lastScannedId.current === p.id;
+                          const { company, role } = getCompanyInfo(p);
                           return (
                             <div key={p.id}
-                              className={`flex items-center gap-3 px-4 py-3 transition-all ${
+                              className={`flex items-center gap-3 px-4 py-2.5 transition-all ${
                                 isJustCheckedIn ? 'bg-emerald-500/10 animate-in fade-in duration-300' :
-                                isChecked ? 'bg-slate-900/30 opacity-60' : ''
+                                isChecked ? 'bg-slate-900/20' : ''
                               }`}
                             >
                               {/* チェックマーク */}
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
                                 isChecked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-600'
                               }`}>
-                                {isChecked ? <CheckCircle2 size={16}/> : <User size={16}/>}
+                                {isChecked ? <CheckCircle2 size={14}/> : <User size={14}/>}
                               </div>
 
                               {/* 参加者情報 */}
@@ -393,33 +423,45 @@ export default function AdminScanPage() {
                                     {p.name}
                                   </p>
                                   {p.type && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
                                       p.type === 'online' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-violet-500/20 text-violet-400'
                                     }`}>
                                       {p.type === 'online' ? 'Online' : '会場'}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-[10px] text-slate-500 truncate">
-                                  {p.company ? `${p.company} | ` : ''}{p.email}
-                                </p>
+                                {(company || role) && (
+                                  <p className={`text-[11px] truncate ${isChecked ? 'text-slate-600' : 'text-indigo-400/70'}`}>
+                                    {company}{company && role ? ' / ' : ''}{role}
+                                  </p>
+                                )}
+                                <p className="text-[10px] text-slate-600 truncate">{p.email}</p>
                               </div>
 
                               {/* ステータス */}
-                              <div className="flex-shrink-0 text-right">
+                              <div className="flex-shrink-0 flex items-center gap-2">
                                 {isChecked ? (
-                                  <div>
-                                    <p className="text-[10px] text-emerald-400 font-bold">受付済</p>
-                                    {p.attendedAt && (
-                                      <p className="text-[9px] text-slate-600">{new Date(p.attendedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</p>
-                                    )}
-                                  </div>
+                                  <>
+                                    <div className="text-right">
+                                      <p className="text-[10px] text-emerald-400 font-bold">受付済</p>
+                                      {p.attendedAt && (
+                                        <p className="text-[9px] text-slate-600">{new Date(p.attendedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</p>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={() => handleUndoCheckIn(p.id, p.name)}
+                                      className="text-[9px] text-slate-600 hover:text-red-400 px-1.5 py-1 rounded hover:bg-red-500/10 transition-colors"
+                                      title="受付を取り消す"
+                                    >
+                                      <XCircle size={14}/>
+                                    </button>
+                                  </>
                                 ) : (
                                   <button
                                     onClick={() => processCheckIn(p.id)}
                                     className="text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors"
                                   >
-                                    手動受付
+                                    受付
                                   </button>
                                 )}
                               </div>
