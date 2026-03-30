@@ -13,8 +13,10 @@ export async function POST(request: Request) {
     // ここで「メールリンク」も同時に有効にするのがプロの技だっぺ！
     const tenant = await adminAuth.tenantManager().createTenant({
       displayName: name,
-      allowPasswordSignIn: true,
-      enableEmailLinkSignIn: true, // 👈 これでさっきのチェックボックスが自動でONになるぞい！
+      emailSignInConfig: {
+        enabled: true,
+        passwordRequired: false, // false = メールリンク認証を有効化
+      },
     });
 
     // 2. 【Firestore自動保存】
