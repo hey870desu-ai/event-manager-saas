@@ -29,12 +29,32 @@ export async function GET(request: Request) {
     const stripeConnectId = response.stripe_user_id; // 例: acct_12345...
 
     // 2. Firestoreに保存する（adminDbを使用）
-    // tenantsコレクションの該当ドキュメントを更新
     await adminDb.collection('tenants').doc(tenantId).update({
       stripeConnectId: stripeConnectId,
-      stripeConnectEnabled: true,      // 連携済みフラグ
+      stripeConnectEnabled: true,
       stripeConnectUpdatedAt: new Date(),
     });
+
+    // 3. Stripe Connectアカウントのビジネス名をテナント名に設定
+    try {
+      const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+      const tenantName = tenantSnap.data()?.orgName || tenantSnap.data()?.name;
+      if (tenantName && stripeConnectId) {
+        await stripe.accounts.update(stripeConnectId, {
+          business_profile: {
+            name: tenantName,
+          },
+          settings: {
+            payments: {
+              statement_descriptor: tenantName.slice(0, 22), // Stripe上限22文字
+            },
+          },
+        });
+        console.log(`✅ Stripe account name set to: ${tenantName}`);
+      }
+    } catch (e) {
+      console.warn("Stripeアカウント名設定に失敗（Connect自体は成功）:", e);
+    }
 
     console.log(`✅ Stripe Connected for tenant: ${tenantId}`);
 

@@ -1,8 +1,9 @@
 // 📂 app/api/stripe/checkout-event/route.ts
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebase-admin';
 
-const domain = "https://www.event-manager.app";
+const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.event-manager.app";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -29,17 +30,28 @@ export async function POST(request: Request) {
     const isEmergencyMode = (tenantId === "caredesignworks"); // ★ここを自分のテナントIDに合わせてくんちぇ！
     console.log("🚨 緊急モード判定:", isEmergencyMode, "現在のID:", tenantId); // ★これも！
 
+    // テナント名を取得（カード明細に表示するため）
+    let tenantName = "";
+    try {
+      const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+      tenantName = tenantSnap.data()?.orgName || tenantSnap.data()?.name || "";
+    } catch (e) {
+      console.warn("テナント名取得失敗:", e);
+    }
+
     // 通常時（子アカウント送金用）の手数料計算
     const applicationFeeAmount = Math.floor(Number(amount) * 0.02);
 
-    // 2. 送金先設定の分岐（ここが「くるくる」を回避するキモだばい！）
-    const paymentIntentData = isEmergencyMode 
-      ? {} // 親口座に直接入れる場合は、送金先を指定しない！
+    // 2. 送金先設定の分岐
+    const statementSuffix = tenantName ? tenantName.slice(0, 22) : undefined;
+    const paymentIntentData: any = isEmergencyMode
+      ? (statementSuffix ? { statement_descriptor_suffix: statementSuffix } : {})
       : {
           application_fee_amount: applicationFeeAmount,
           transfer_data: {
             destination: stripeAccountId,
           },
+          ...(statementSuffix ? { statement_descriptor_suffix: statementSuffix } : {}),
         };
 
     // 3. 決済セッション作成
