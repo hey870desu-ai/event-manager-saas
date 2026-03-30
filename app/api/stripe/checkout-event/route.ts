@@ -12,7 +12,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("🚀 API到達！受信データ:", body); // ★これを入れるっぺ！
     const { 
       tenantId, 
       eventId,
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
 
     // 1. 緊急フラグ：自分のテナントIDの時だけ「親（塙さん）の口座」に直接入れるぞい！
     const isEmergencyMode = (tenantId === "caredesignworks"); // ★ここを自分のテナントIDに合わせてくんちぇ！
-    console.log("🚨 緊急モード判定:", isEmergencyMode, "現在のID:", tenantId); // ★これも！
 
     // テナント名を取得（カード明細に表示するため）
     let tenantName = "";
@@ -86,7 +84,6 @@ export async function POST(request: Request) {
       },
     }, isEmergencyMode ? undefined : { stripeAccount: stripeAccountId });
 
-    console.log("✅ セッション作成成功！URL:", session.url); // ★これも！
     return NextResponse.json({ url: session.url });
 
   } catch (error: any) {
