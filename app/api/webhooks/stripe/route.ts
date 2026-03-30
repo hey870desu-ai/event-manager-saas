@@ -163,95 +163,116 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
     return NextResponse.json({ received: true });
   }
 
-  // ▼▼▼ 2. セミナーチケットの決済（ここが追加機能！） ▼▼▼
-  // 条件：メタデータに「reservationId」がある
+  // ▼▼▼ 2. セミナーチケットの決済 ▼▼▼
   if (session.metadata?.reservationId && session.metadata?.eventId) {
-    
-    // 監視するイベント：
-    // - checkout.session.completed : カード決済（即時）またはコンビニ申込完了（未払い）
-    // - checkout.session.async_payment_succeeded : コンビニ・銀行振込の支払い完了（重要！）
+
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-      
-      // ★支払いステータスが「paid（支払い済み）」になった時だけ処理する
+
       if (session.payment_status === 'paid') {
         const { eventId, reservationId, tenantId } = session.metadata;
         console.log(`🎟️ Ticket Payment Succeeded for Reservation: ${reservationId} (Event: ${eventId})`);
 
         try {
-          // Firestore参照
           const eventRef = adminDb.collection('events').doc(eventId);
           const reservationRef = eventRef.collection('reservations').doc(reservationId);
-          
-          // 現在のステータスを確認（二重送信防止）
+
+          // 予約データ取得 & 存在チェック
           const reservationSnap = await reservationRef.get();
+          if (!reservationSnap.exists) {
+            console.error(`❌ Reservation ${reservationId} not found`);
+            return NextResponse.json({ received: true });
+          }
           const rData = reservationSnap.data();
 
-          // まだ「confirmed」になっておらず、かつ「メール送信済み」でもない場合のみ
-          if (reservationSnap.exists && rData?.status !== 'confirmed' && !rData?.emailed) {
-            
-            // A. ステータスを「確定」に更新し、同時に「メール送信済み」フラグを立てる
-            await reservationRef.update({
-              status: 'confirmed',
-              paymentStatus: 'paid',
-              paidAt: new Date(),
-              stripeSessionId: session.id,
-              emailed: true, // ★ ここにこの1行を追加！
-            });
+          // 二重処理防止
+          if (rData?.status === 'confirmed' || rData?.emailed) {
+            console.log("ℹ️ Already confirmed. Skipping update.");
+            return NextResponse.json({ received: true });
+          }
 
-            // B. メール送信に必要なデータを集める
-            const eventSnap = await eventRef.get();
-            const eData = eventSnap.data();
-            
-            let tenantName = "HANAHIRO CO.,LTD.";
-            let themeColor = "";
-            let replyTo = "";
+          // 【高優先】金額検証: Stripeの決済金額とイベント価格を照合
+          const eventSnap = await eventRef.get();
+          const eData = eventSnap.data();
 
-            if (tenantId) {
+          if (!eData) {
+            console.error(`❌ Event ${eventId} not found. Reservation confirmed but event data missing.`);
+            // イベントが削除されていても決済は完了しているので、予約は確定する
+          }
+
+          const paidAmount = session.amount_total; // Stripeが実際に徴収した金額
+          const expectedPrice = Number(eData?.price || 0);
+          if (eData && paidAmount !== null && paidAmount !== undefined && expectedPrice > 0) {
+            if (paidAmount < expectedPrice) {
+              console.error(`🚨 金額不一致! Stripe=${paidAmount}円, イベント価格=${expectedPrice}円 (reservation: ${reservationId})`);
+              // 金額不足でも決済自体は成功しているので予約は確定するが、ログで警告
+            }
+          }
+
+          // A. ステータスを「確定」に更新
+          await reservationRef.update({
+            status: 'confirmed',
+            paymentStatus: 'paid',
+            paidAt: new Date(),
+            paidAmount: paidAmount || null,
+            stripeSessionId: session.id,
+            emailed: true,
+          });
+
+          // B. メール送信に必要なデータを集める
+          let tenantName = "イベント事務局";
+          let themeColor = "";
+          let replyTo = "";
+
+          if (tenantId) {
+            try {
               const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
               const tData = tenantSnap.data();
               tenantName = tData?.orgName || tData?.name || tenantName;
               themeColor = tData?.themeColor || "";
               replyTo = tData?.ownerEmail || "";
+            } catch (e) {
+              console.warn("テナント情報取得失敗:", e);
             }
+          }
 
-            // C. メール送信APIを叩く
-            const baseUrl = "https://www.event-manager.app";
+          // C. メール送信（失敗してもWebhook自体は成功扱い）
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
 
-            // ★ 金額を見栄え良く整える（¥1,100 クレジットカード決済済）
-            const displayPrice = eData?.price 
-              ? `¥${Number(eData?.price).toLocaleString()} (クレジットカード決済済)` 
-              : "無料";
+          const displayPrice = eData?.price
+            ? `¥${Number(eData.price).toLocaleString()} (クレジットカード決済済)`
+            : "無料";
 
+          try {
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                subject: `【受講票】${eData?.title} 受付完了`,
+                subject: `【受講票】${eData?.title || 'イベント'} 受付完了`,
                 name: rData?.name,
                 email: rData?.email,
                 type: rData?.type,
                 customAnswers: rData?.customAnswers,
                 reservationId: reservationId,
                 eventId: eventId,
-                eventTitle: eData?.title,
-                eventDate: eData?.date,
-                eventTime: `${eData?.startTime} - ${eData?.endTime}`,
-                venueName: eData?.venueName,
-                zoomUrl: eData?.zoomUrl,
-                meetingId: eData?.meetingId,
-                zoomPasscode: eData?.zoomPasscode,
+                eventTitle: eData?.title || 'イベント',
+                eventDate: eData?.date || '',
+                eventTime: eData?.startTime ? `${eData.startTime} - ${eData.endTime}` : '',
+                venueName: eData?.venueName || '',
+                zoomUrl: eData?.zoomUrl || '',
+                meetingId: eData?.meetingId || '',
+                zoomPasscode: eData?.zoomPasscode || '',
                 tenantName: tenantName,
                 themeColor: themeColor,
                 replyTo: replyTo || rData?.email,
                 contactName: eData?.contactName || tenantName,
                 contactEmail: eData?.contactEmail || "",
                 contactPhone: eData?.contactPhone || "",
-                eventPrice: displayPrice // 👈 整えた金額を渡すようにしたぞい！
+                eventPrice: displayPrice,
               }),
             });
-            console.log("📧 Async payment email sent via Webhook");
-          } else {
-            console.log("ℹ️ Already confirmed. Skipping update.");
+            console.log("📧 Confirmation email sent via Webhook");
+          } catch (emailErr) {
+            console.error("❌ メール送信失敗（決済・予約確定は完了済み）:", emailErr);
           }
 
         } catch (err) {
@@ -259,7 +280,6 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
           return NextResponse.json({ error: 'Ticket update failed' }, { status: 500 });
         }
       } else {
-        // まだ未払い（コンビニ申込直後など）の場合は何もしない（画面側で案内済み）
         console.log(`⏳ Payment pending for reservation: ${session.metadata.reservationId}`);
       }
     }
