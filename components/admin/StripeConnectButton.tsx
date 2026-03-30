@@ -170,9 +170,12 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
             </div>
           )}
 
-          <div className="bg-indigo-500/10 rounded-lg p-3 mt-2">
+          <div className="bg-indigo-500/10 rounded-lg p-3 mt-2 space-y-1.5">
             <p className="text-[10px] text-indigo-300 leading-relaxed">
               <strong>Stripeアカウントは無料</strong>で作成できます。審査には通常1〜2営業日かかりますが、情報が正確であれば即日承認されることもあります。
+            </p>
+            <p className="text-[10px] text-indigo-300/80 leading-relaxed">
+              すでにStripeアカウントをお持ちの方は、<strong>ログインするだけ</strong>で連携が完了します。
             </p>
           </div>
         </div>
