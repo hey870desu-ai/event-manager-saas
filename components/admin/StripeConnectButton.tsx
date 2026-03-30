@@ -43,19 +43,18 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
     }
   };
 
-  // 必須項目の入力チェック
   const missingFields = REQUIRED_FIELDS.filter(f => !legalInfo?.[f.key]?.trim());
   const isReady = missingFields.length === 0;
 
   if (isConnected) {
     return (
-      <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl flex items-center gap-3">
-        <div className="bg-emerald-500/20 p-2 rounded-full">
-          <CheckCircle2 size={20} className="text-emerald-400"/>
+      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+        <div className="bg-emerald-100 p-2 rounded-full">
+          <CheckCircle2 size={20} className="text-emerald-600"/>
         </div>
         <div>
-          <p className="text-emerald-400 font-bold text-sm">Stripe連携済み</p>
-          <p className="text-[10px] text-slate-400">有料チケットの販売が可能です</p>
+          <p className="text-emerald-700 font-bold text-sm">Stripe連携済み</p>
+          <p className="text-xs text-emerald-600/70">有料チケットの販売が可能です</p>
         </div>
       </div>
     );
@@ -65,14 +64,14 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
     <div className="space-y-4">
       {/* 未入力項目がある場合の警告 */}
       {!isReady && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="flex items-start gap-2.5 mb-2">
-            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5"/>
-            <p className="text-xs font-bold text-amber-300">Stripe連携の前に、特商法情報を入力してください</p>
+            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5"/>
+            <p className="text-xs font-bold text-amber-700">Stripe連携の前に、特商法情報を入力してください</p>
           </div>
           <div className="ml-6 space-y-1">
             {missingFields.map((f, idx) => (
-              <p key={idx} className="text-[10px] text-amber-400/80 flex items-center gap-1.5">
+              <p key={idx} className="text-[10px] text-amber-600 flex items-center gap-1.5">
                 <span className="w-1 h-1 bg-amber-400 rounded-full"></span>
                 {f.label}が未入力です
               </p>
@@ -91,7 +90,7 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
         className={`w-full font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
           isReady
             ? 'bg-[#635BFF] hover:bg-[#5851df] text-white shadow-[#635BFF]/20 active:scale-95'
-            : 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+            : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
         }`}
       >
         <CreditCard size={18}/>
@@ -100,7 +99,7 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
       </button>
 
       {isReady && (
-        <p className="text-[10px] text-slate-500 text-center">
+        <p className="text-[10px] text-slate-400 text-center">
           Stripeの画面に移動します（約5〜10分で完了）
         </p>
       )}
@@ -111,9 +110,9 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
           const filled = !!legalInfo?.[f.key]?.trim();
           return (
             <span key={idx} className={`text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 ${
-              filled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'
+              filled ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400 border border-slate-200'
             }`}>
-              {filled ? <Check size={10}/> : <span className="w-2.5 h-2.5 rounded-full border border-slate-600"></span>}
+              {filled ? <Check size={10}/> : <span className="w-2.5 h-2.5 rounded-full border border-slate-300"></span>}
               {f.label}
             </span>
           );
@@ -123,15 +122,15 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
       {/* 準備ガイド */}
       <button
         onClick={() => setShowGuide(!showGuide)}
-        className="w-full flex items-center justify-between text-xs text-indigo-400 hover:text-indigo-300 font-bold py-2 px-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 transition-all"
+        className="w-full flex items-center justify-between text-xs text-indigo-600 hover:text-indigo-500 font-bold py-2 px-3 bg-indigo-50 rounded-lg border border-indigo-100 transition-all"
       >
         <span>連携前に準備するもの</span>
         {showGuide ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
       </button>
 
       {showGuide && (
-        <div className="bg-slate-950 rounded-xl border border-slate-800 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-          <p className="text-[10px] text-slate-400 mb-2">Stripeの登録画面で以下の情報を入力します。事前にご準備ください。</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+          <p className="text-[10px] text-slate-500 mb-2">Stripeの登録画面で以下の情報を入力します。事前にご準備ください。</p>
 
           <div className="space-y-2.5">
             {[
@@ -141,9 +140,9 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
               { icon: <Shield size={14}/>, title: "ウェブサイトURL", desc: "下の特商法ページURLをコピーして貼り付けてください" },
             ].map((item, idx) => (
               <div key={idx} className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-slate-800 rounded-lg text-indigo-400 flex-shrink-0 mt-0.5">{item.icon}</div>
+                <div className="p-1.5 bg-slate-100 rounded-lg text-indigo-500 flex-shrink-0 mt-0.5">{item.icon}</div>
                 <div>
-                  <p className="text-xs font-bold text-slate-300">{item.title}</p>
+                  <p className="text-xs font-bold text-slate-700">{item.title}</p>
                   <p className="text-[10px] text-slate-500">{item.desc}</p>
                 </div>
               </div>
@@ -152,17 +151,17 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
 
           {/* 特商法ページURL */}
           {legalPageUrl && (
-            <div className="mt-3 pt-3 border-t border-slate-800">
-              <p className="text-[10px] text-slate-400 mb-2 font-bold">Stripe審査で使うURL（コピーしてください）</p>
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-[10px] text-slate-500 mb-2 font-bold">Stripe審査で使うURL（コピーしてください）</p>
               <div className="flex items-center gap-2">
                 <input
                   readOnly
                   value={legalPageUrl}
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-slate-300 font-mono"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[10px] text-slate-600 font-mono"
                 />
                 <button
                   onClick={handleCopyUrl}
-                  className={`p-2 rounded-lg transition-all text-xs font-bold flex items-center gap-1 ${copied ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-400'}`}
+                  className={`p-2 rounded-lg transition-all text-xs font-bold flex items-center gap-1 ${copied ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200'}`}
                 >
                   {copied ? <><Check size={14}/> OK</> : <><Copy size={14}/> コピー</>}
                 </button>
@@ -170,11 +169,11 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
             </div>
           )}
 
-          <div className="bg-indigo-500/10 rounded-lg p-3 mt-2 space-y-1.5">
-            <p className="text-[10px] text-indigo-300 leading-relaxed">
+          <div className="bg-indigo-50 rounded-lg p-3 mt-2 space-y-1.5">
+            <p className="text-[10px] text-indigo-700 leading-relaxed">
               <strong>Stripeアカウントは無料</strong>で作成できます。審査には通常1〜2営業日かかりますが、情報が正確であれば即日承認されることもあります。
             </p>
-            <p className="text-[10px] text-indigo-300/80 leading-relaxed">
+            <p className="text-[10px] text-indigo-600/80 leading-relaxed">
               すでにStripeアカウントをお持ちの方は、<strong>ログインするだけ</strong>で連携が完了します。
             </p>
           </div>
