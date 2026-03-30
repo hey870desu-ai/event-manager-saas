@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // 1. 【Auth自動設定】Googleの門番に新しい「部屋」を作らせる
     // ここで「メールリンク」も同時に有効にするのがプロの技だっぺ！
     const tenant = await adminAuth.tenantManager().createTenant({
-      displayName: name,
+      displayName: tenantId,
       emailSignInConfig: {
         enabled: true,
         passwordRequired: false, // false = メールリンク認証を有効化

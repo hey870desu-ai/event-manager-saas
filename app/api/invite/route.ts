@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     if (!realAuthId) {
       console.log(`[INVITE-DEBUG] Step4: creating new Auth tenant...`);
       const newTenant = await adminAuth.tenantManager().createTenant({
-        displayName: tenantName || tenantData?.name || tenantId,
+        displayName: tenantId,
         emailSignInConfig: {
           enabled: true,
           passwordRequired: false,
