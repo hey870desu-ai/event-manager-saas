@@ -40,7 +40,7 @@ export default function LegalPage() {
     { label: "運営統括責任者", value: tenantData.representative, icon: <User size={18}/> },
     { label: "所在地", value: tenantData.address, icon: <MapPin size={18}/> },
     { label: "電話番号", value: tenantData.phone, icon: <Phone size={18}/>, note: "お問い合わせはメールにて承っております" },
-    { label: "メールアドレス", value: tenantData.ownerEmail || tenantData.contactEmail, icon: <Mail size={18}/> },
+    { label: "メールアドレス", value: tenantData.legalEmail || tenantData.ownerEmail || tenantData.contactEmail, icon: <Mail size={18}/> },
     { label: "ウェブサイト", value: tenantData.homepage, icon: <Globe size={18}/>, isLink: true },
     {
       label: "販売商品",

@@ -150,6 +150,7 @@ export default function AdminDashboard() {
   const [representative, setRepresentative] = useState("");     // 代表者名
   const [legalAddress, setLegalAddress] = useState("");        // 所在地
   const [legalPhone, setLegalPhone] = useState("");          // 連絡先電話番号
+  const [legalEmail, setLegalEmail] = useState("");           // 連絡先メールアドレス
   const [legalHomepage, setLegalHomepage] = useState("");      // 公式HP
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
@@ -372,6 +373,7 @@ useEffect(() => {
         setRepresentative(data.representative || "");
         setLegalAddress(data.address || "");
         setLegalPhone(data.phone || "");
+        setLegalEmail(data.legalEmail || "");
         setLegalHomepage(data.homepage || "");
       }
     });
@@ -528,6 +530,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       representative,
       address: legalAddress,
       phone: legalPhone,
+      legalEmail: legalEmail,
       homepage: legalHomepage,
       instagramUrl,
       lineUrl,
@@ -1823,6 +1826,10 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
           <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">電話番号</label>
           <input type="text" value={legalPhone} onChange={(e)=>setLegalPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="0248-xx-xxxx" />
         </div>
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">メールアドレス（特商法ページに表示）</label>
+        <input type="email" value={legalEmail} onChange={(e)=>setLegalEmail(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="info@example.com" />
       </div>
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">所在地</label>
