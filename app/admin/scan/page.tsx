@@ -41,7 +41,7 @@ export default function AdminScanPage() {
 
   // スキャン
   const [inputCode, setInputCode] = useState("");
-  const [scanResult, setScanResult] = useState<{ type: 'success' | 'already' | 'error' | 'not_found'; name: string; message: string } | null>(null);
+  const [scanResult, setScanResult] = useState<{ type: 'success' | 'already' | 'error' | 'not_found'; name: string; company?: string; role?: string; message: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanCooldown = useRef(false);
@@ -138,10 +138,13 @@ export default function AdminScanPage() {
 
       const resData = resSnap.data();
       const participantName = resData.name || "ゲスト";
+      const answers = resData.customAnswers || {};
+      const companyName = resData.company || answers['会社名'] || answers['所属'] || answers['団体名'] || '';
+      const roleName = answers['役職'] || answers['肩書き'] || answers['部署'] || '';
 
       // 既に受付済み
       if (resData.checkedIn === true || resData.status === 'attended') {
-        setScanResult({ type: 'already', name: participantName, message: '受付済みです' });
+        setScanResult({ type: 'already', name: participantName, company: companyName, role: roleName, message: '受付済みです' });
         setIsProcessing(false);
         lastScannedId.current = cleanId;
         scanCooldown.current = true;
@@ -156,7 +159,7 @@ export default function AdminScanPage() {
         attendedAt: new Date().toISOString(),
       });
 
-      setScanResult({ type: 'success', name: participantName, message: '受付完了！' });
+      setScanResult({ type: 'success', name: participantName, company: companyName, role: roleName, message: '受付完了！' });
       lastScannedId.current = cleanId;
       scanCooldown.current = true;
       setTimeout(() => { scanCooldown.current = false; }, 2000);
@@ -311,16 +314,21 @@ export default function AdminScanPage() {
               {/* スキャン結果バナー */}
               {scanResult && (
                 <div className={`p-5 rounded-2xl border text-center animate-in zoom-in-95 duration-200 ${
-                  scanResult.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30' :
+                  scanResult.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/10' :
                   scanResult.type === 'already' ? 'bg-amber-500/10 border-amber-500/30' :
                   'bg-red-500/10 border-red-500/30'
                 }`}>
                   {scanResult.type === 'success' && <CheckCircle2 size={40} className="mx-auto mb-2 text-emerald-400"/>}
                   {scanResult.type === 'already' && <Clock size={40} className="mx-auto mb-2 text-amber-400"/>}
-                  {scanResult.type === 'error' || scanResult.type === 'not_found' ? <XCircle size={40} className="mx-auto mb-2 text-red-400"/> : null}
+                  {(scanResult.type === 'error' || scanResult.type === 'not_found') && <XCircle size={40} className="mx-auto mb-2 text-red-400"/>}
 
                   {scanResult.name && (
-                    <p className="text-xl font-black text-white mb-1">{scanResult.name} 様</p>
+                    <p className="text-xl font-black text-white mb-0.5">{scanResult.name} 様</p>
+                  )}
+                  {(scanResult.company || scanResult.role) && (
+                    <p className="text-xs text-slate-400 mb-2">
+                      {scanResult.company}{scanResult.company && scanResult.role ? ' / ' : ''}{scanResult.role}
+                    </p>
                   )}
                   <p className={`text-sm font-bold ${
                     scanResult.type === 'success' ? 'text-emerald-400' :
@@ -405,7 +413,7 @@ export default function AdminScanPage() {
                           return (
                             <div key={p.id}
                               className={`flex items-center gap-3 px-4 py-2.5 transition-all ${
-                                isJustCheckedIn ? 'bg-emerald-500/10 animate-in fade-in duration-300' :
+                                isJustCheckedIn ? 'bg-emerald-500/15 border-l-4 border-l-emerald-400 animate-pulse' :
                                 isChecked ? 'bg-slate-900/20' : ''
                               }`}
                             >
