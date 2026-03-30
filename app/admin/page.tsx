@@ -226,7 +226,7 @@ export default function AdminDashboard() {
 
   // ★ スタンダード（サブスク）以外は、たとえスポットでお金を払ってても複製は禁止だぞい！
   if (!isStandard) {
-    alert("【機能制限】イベントの複製は、スタンダードプラン専用の機能です。");
+    setIsUpgradeModalOpen(true);
     return;
   }
 
@@ -946,7 +946,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     setShowGuideTooltip(false);
     // ★ スタンダードじゃない（＝フリーの人）は1件制限だっぺ！
     if (!isStandard && events.length >= 1) {
-      alert("【作成制限】現在、管理できるイベントは1件までとなっております。別のイベントを作成するには、現在のイベントを削除するか、スタンダードプランをご検討ください。");
+      setIsUpgradeModalOpen(true);
       return;
     }
     setSelectedEvent(null);
