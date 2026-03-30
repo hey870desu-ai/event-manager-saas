@@ -129,7 +129,7 @@ export async function POST(request: Request) {
       subject = customSubject || `【受講票】${eventTitle} 受付完了のお知らせ`;
       const isOnline = type === 'online';
       const formattedDate = formatToJapaneseDate(eventDate);
-      const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${reservationId}&amp;bgcolor=ffffff` : "";
+      const qrCodeUrl = reservationId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${reservationId}&bgcolor=ffffff&ecc=M` : "";
       
       const calendarDetails = isOnline 
         ? `Zoom URL: ${zoomUrl}\nID: ${meetingId}\nPASS: ${zoomPasscode}` 
