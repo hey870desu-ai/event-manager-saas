@@ -41,7 +41,7 @@ const EMAIL_TEMPLATES = [
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager.app/unsubscribe?email={email}
+https://www.event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -58,7 +58,7 @@ https://event-manager.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager.app/unsubscribe?email={email}
+https://www.event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -83,7 +83,7 @@ https://event-manager.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager.app/unsubscribe?email={email}
+https://www.event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -108,7 +108,7 @@ https://event-manager.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-https://event-manager.app/unsubscribe?email={email}
+https://www.event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   },
   {
@@ -129,7 +129,7 @@ https://event-manager.app/unsubscribe?email={email}
 
 --------------------------------------------------
 ▼配信停止をご希望の方はこちら
-hhttps://event-manager.app/unsubscribe?email={email}
+https://www.event-manager.app/unsubscribe?email={email}
 --------------------------------------------------`
   }
 ];
@@ -211,9 +211,14 @@ useEffect(() => {
   }, []);
 
   // ★ 抽出されたリストを検索ワードで絞り込むロジックだっぺ！
-  const displayedRecipients = recipients.filter(r => 
-    r.name.includes(searchQuery) || r.email.includes(searchQuery)
-  );
+  const displayedRecipients = recipients.filter(r => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return r.name?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q) ||
+      r.company?.toLowerCase().includes(q) ||
+      r.memo?.toLowerCase().includes(q);
+  });
 
   const safeBranches = Array.isArray(tenantData?.branches) 
     ? tenantData.branches.flatMap((b: any) => {
