@@ -310,7 +310,14 @@ const fetchTargets = async () => {
         })
       );
 
-      setRecipients(uniqueList);
+      // 「仮登録中」等の不正な名前を空にクリーニング
+      const invalidNames = ['仮登録中', '仮登録', '仮', '名前なし', 'ユーザー', 'ゲスト', 'test', 'テスト'];
+      const cleanedList = uniqueList.map(r => ({
+        ...r,
+        name: invalidNames.includes(r.name.trim()) ? '' : r.name,
+      }));
+
+      setRecipients(cleanedList);
       setExtracted(true);
       if (blockedCount > 0) console.log(`🚫 ${blockedCount} 名を除外しました。`);
 
@@ -356,6 +363,28 @@ const handleSaveMemo = async (email: string, memo: string) => {
     console.error("Memo Save Error:", e);
   }
 };
+  // 名前・会社名・電話番号のインライン編集保存
+  const handleSaveField = async (email: string, field: string, value: string) => {
+    if (!tenantData) return;
+    try {
+      // manual_contacts に保存（イベント予約のデータも上書きされるようにするため）
+      const contactRef = doc(db, "tenants", tenantData.id, "manual_contacts", email);
+      await setDoc(contactRef, {
+        email,
+        [field]: value,
+        source: 'manual_edit',
+        updatedAt: new Date(),
+      }, { merge: true });
+
+      // ローカルstateも更新
+      setRecipients(prev => prev.map(r =>
+        r.email === email ? { ...r, [field]: value } : r
+      ));
+    } catch (e) {
+      console.error("Field Save Error:", e);
+    }
+  };
+
 // ✅ 絆リスト専用：CSVダウンロード関数（電話番号の0守護神版！）
   const handleDownloadCSV = () => {
     if (recipients.length === 0) return alert("まずはリストを抽出してくんちぇ！");
@@ -737,46 +766,72 @@ const handleSaveMemo = async (email: string, memo: string) => {
                   {/* 📂 名簿リストを表示するスクロールエリア */}
                   <div className="max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
                     {displayedRecipients.map((r, i) => (
-                      <div 
-                        key={i} 
+                      <div
+                        key={i}
                         className={`p-3 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
                       >
-                        <div className="flex items-center gap-3">
-                          {/* チェックボックス */}
-                          <input 
-                            type="checkbox" 
-                            checked={selectedEmails.has(r.email)} 
-                            onChange={() => { 
-                              const newSet = new Set(selectedEmails); 
-                              if (newSet.has(r.email)) newSet.delete(r.email); 
-                              else newSet.add(r.email); 
-                              setSelectedEmails(newSet); 
-                            }} 
-                            className="w-4 h-4 rounded border-slate-700 text-indigo-600 bg-slate-800 cursor-pointer" 
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedEmails.has(r.email)}
+                            onChange={() => {
+                              const newSet = new Set(selectedEmails);
+                              if (newSet.has(r.email)) newSet.delete(r.email);
+                              else newSet.add(r.email);
+                              setSelectedEmails(newSet);
+                            }}
+                            className="w-4 h-4 rounded border-slate-700 text-indigo-600 bg-slate-800 cursor-pointer mt-1.5"
                           />
-                          
-                          {/* 🎯 文字情報：ここを白く大きくしたぞい！ */}
-                          <div className="flex-1 min-w-0">
-                            {/* 🏆 名前：text-xs → text-sm にアップ、text-white で純白に！ */}
-                            <div className="text-sm font-bold text-white truncate">
-                              {r.name}
-                            </div>
-                            {/* 🏆 メアド：text-[10px] → text-xs にアップ、text-slate-300 で明るく！ */}
-                            <div className="text-xs text-slate-300 truncate">
-                              {r.email}
-                            </div>
-                          </div>
-                        </div>
 
-                        {/* 絆メモの入力欄 */}
-                        <div className="mt-2 ml-7">
-                          <input 
-                            type="text" 
-                            placeholder="絆メモ" 
-                            defaultValue={r.memo || ""} 
-                            onBlur={(e) => handleSaveMemo(r.email, e.target.value)} 
-                            className="w-full bg-slate-950 border border-slate-800/50 rounded px-2 py-1 text-[10px] text-slate-400 focus:border-indigo-500/50 outline-none transition-all italic" 
-                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            {/* 名前（インライン編集） */}
+                            <input
+                              type="text"
+                              defaultValue={r.name}
+                              placeholder="名前を入力..."
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                if (v !== r.name) handleSaveField(r.email, 'name', v);
+                              }}
+                              className={`w-full bg-transparent text-sm font-bold outline-none border-b border-transparent focus:border-indigo-500/50 transition-all py-0.5 ${r.name ? 'text-white' : 'text-slate-500 italic'}`}
+                            />
+
+                            {/* メールアドレス */}
+                            <div className="text-xs text-slate-400 truncate">{r.email}</div>
+
+                            {/* 会社名・電話番号（インライン編集） */}
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                defaultValue={r.company || ''}
+                                placeholder="会社名"
+                                onBlur={(e) => {
+                                  const v = e.target.value.trim();
+                                  if (v !== (r.company || '')) handleSaveField(r.email, 'company', v);
+                                }}
+                                className="flex-1 bg-transparent text-[10px] text-slate-400 outline-none border-b border-transparent focus:border-indigo-500/30 transition-all placeholder:text-slate-700 py-0.5"
+                              />
+                              <input
+                                type="text"
+                                defaultValue={r.phone || ''}
+                                placeholder="電話番号"
+                                onBlur={(e) => {
+                                  const v = e.target.value.trim();
+                                  if (v !== (r.phone || '')) handleSaveField(r.email, 'phone', v);
+                                }}
+                                className="w-28 bg-transparent text-[10px] text-slate-400 outline-none border-b border-transparent focus:border-indigo-500/30 transition-all placeholder:text-slate-700 font-mono py-0.5"
+                              />
+                            </div>
+
+                            {/* 絆メモ */}
+                            <input
+                              type="text"
+                              placeholder="絆メモを入力..."
+                              defaultValue={r.memo || ""}
+                              onBlur={(e) => handleSaveMemo(r.email, e.target.value)}
+                              className="w-full bg-slate-950/50 border border-slate-800/30 rounded px-2 py-1 text-[10px] text-slate-500 focus:border-indigo-500/50 focus:text-slate-300 outline-none transition-all italic"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
