@@ -394,24 +394,24 @@ const handleSaveMemo = async (email: string, memo: string) => {
     
     // 中身の作成
     const csvRows = recipients.map(r => {
-      // --- 📞 電話番号の「0落ち」を補完＆保護するロジック ---
+      // 電話番号の0落ち補完
       let p = (r.phone || "").toString().trim();
-      
-      // 1. もし0が消えて届いていたら（90...とかになっていたら）0を足す
-      if (p && !p.startsWith('0') && (p.length === 10 || p.length === 9)) {
+      if (p && !p.startsWith('0') && /^\d{9,10}$/.test(p)) {
         p = '0' + p;
       }
-      
-      // 2. エクセルのお節介を止めるために「文字ですよ」という印を付ける
-      // データの先頭に \t (タブ) を入れることで、エクセルが数字変換するのを防ぐっぺ！
-      const safePhone = `"\t${p}"`;
-      // ----------------------------------------------------
+      // ハイフンが入っていない純数字の場合もフォーマット
+      if (p && /^\d{10,11}$/.test(p)) {
+        if (p.length === 11) p = p.replace(/^(\d{3})(\d{4})(\d{4})$/, '$1-$2-$3');
+        else if (p.length === 10) p = p.replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
+      }
+      // ="090-1234-5678" 形式でExcelの数値変換を完全に防止
+      const safePhone = p ? `="'${p}"` : `""`;
 
       return [
         `"${(r.name || "").replace(/"/g, '""')}"`,
         `"${(r.email || "").replace(/"/g, '""')}"`,
         `"${(r.company || "").replace(/"/g, '""')}"`,
-        safePhone, // ✅ ここで守られた電話番号を流し込む！
+        safePhone,
         `"${(r.memo || "").replace(/"/g, '""')}"`
       ].join(",");
     });
