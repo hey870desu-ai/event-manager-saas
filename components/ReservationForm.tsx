@@ -52,7 +52,11 @@ export default function ReservationForm({
   const safeEventId = eventId || event?.id || (params?.event as string);
   const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
   const themeColor = safeTenant?.themeColor || "#f97316";
-  const customFields: CustomField[] = event.customFields || [];
+  // カスタムフィールドのIDを安全な値に正規化（全角記号等が入っていた場合の対策）
+  const customFields: CustomField[] = (event.customFields || []).map((f: any, i: number) => ({
+    ...f,
+    id: (f.id && /^[a-zA-Z0-9_-]+$/.test(f.id)) ? f.id : `cf_${i}_${Math.random().toString(36).substring(2, 7)}`,
+  }));
 
   // --- 🏆 【2段目】次に「状態（State）」を準備するぞい ---
   const [currentCount, setCurrentCount] = useState(0);
