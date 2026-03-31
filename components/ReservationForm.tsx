@@ -158,31 +158,41 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
       const isStripeReady = !!safeTenant?.stripeConnectId;
 
-      const reservationData = {
-        tenantId: safeTenantId,
-        eventId: safeEventId,
-        eventTitle: event.title,
-        contactName: event.contactName || "運営事務局",
-        contactEmail: event.contactEmail || "", 
-        contactPhone: event.contactPhone || "",
-        name: inputName,   // 🚨 上で保存した変数を使う
-        email: inputEmail, // 🚨 上で保存した変数を使う
-        phone: inputPhone, // 🚨 上で保存した変数を使う
-        type: participationType,
-        customAnswers: customAnswers, // 🚨 上で保存した変数を使う
-        notes: inputNotes, // 🚨 上で保存した変数を使う
-        selectedTicket: selectedTicket.name,
-        status: isPaid 
-          ? (isStripeReady ? "payment_pending" : "on_site") 
-          : "confirmed", 
+      // Firestoreに安全に保存できるようにデータを構築
+      const safeStr = (v: any) => (v == null ? "" : String(v));
+
+      const reservationData: Record<string, any> = {
+        tenantId: safeStr(safeTenantId),
+        eventId: safeStr(safeEventId),
+        eventTitle: safeStr(event.title),
+        contactName: safeStr(event.contactName || "運営事務局"),
+        contactEmail: safeStr(event.contactEmail),
+        contactPhone: safeStr(event.contactPhone),
+        name: safeStr(inputName),
+        email: safeStr(inputEmail),
+        phone: safeStr(inputPhone),
+        type: safeStr(participationType),
+        customAnswers: customAnswers,
+        notes: safeStr(inputNotes),
+        selectedTicket: safeStr(selectedTicket?.name),
+        status: isPaid
+          ? (isStripeReady ? "payment_pending" : "on_site")
+          : "confirmed",
         createdAt: serverTimestamp(),
         emailed: false,
         checkedIn: false,
-        price: isPaid ? priceAmount : 0,
+        price: isPaid ? Number(priceAmount) || 0 : 0,
       };
-      
+
+      // 最終サニタイズ: Firestoreが受け付けない値を除去
+      // serverTimestampは特殊オブジェクトなので一旦退避
+      const createdAtVal = reservationData.createdAt;
+      delete reservationData.createdAt;
+      const sanitized = JSON.parse(JSON.stringify(reservationData));
+      sanitized.createdAt = createdAtVal;
+
       // 1. まずFirestoreに保存
-      const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), reservationData);
+      const docRef = await addDoc(collection(db, "events", safeEventId, "reservations"), sanitized);
       setNewReservationId(docRef.id);
 
       // ★ 改造ポイント3: 分かれ道の切り替えだっぺ！
