@@ -21,7 +21,35 @@ interface SnapItem {
   titleColor?: string;
   titleSize?: string;
   bgColor?: string;
+  brightness?: number;
+  contrast?: number;
+  saturate?: number;
+  blur?: number;
+  filterPreset?: string;
 }
+
+const FILTER_PRESETS = [
+  { id: 'none', label: 'なし', filter: '' },
+  { id: 'warm', label: '暖色', filter: 'sepia(0.2) saturate(1.3) brightness(1.05)' },
+  { id: 'cool', label: '寒色', filter: 'saturate(0.8) hue-rotate(15deg) brightness(1.05)' },
+  { id: 'vivid', label: '鮮やか', filter: 'saturate(1.6) contrast(1.1)' },
+  { id: 'soft', label: 'ソフト', filter: 'brightness(1.1) contrast(0.9) saturate(0.9)' },
+  { id: 'mono', label: 'モノクロ', filter: 'grayscale(1)' },
+  { id: 'sepia', label: 'セピア', filter: 'sepia(0.8)' },
+  { id: 'dramatic', label: 'ドラマ', filter: 'contrast(1.3) brightness(0.95) saturate(1.2)' },
+];
+
+const buildFilterStyle = (snap: SnapItem) => {
+  if (snap.filterPreset && snap.filterPreset !== 'none') {
+    return FILTER_PRESETS.find(p => p.id === snap.filterPreset)?.filter || '';
+  }
+  const parts = [];
+  if (snap.brightness !== undefined && snap.brightness !== 100) parts.push(`brightness(${snap.brightness / 100})`);
+  if (snap.contrast !== undefined && snap.contrast !== 100) parts.push(`contrast(${snap.contrast / 100})`);
+  if (snap.saturate !== undefined && snap.saturate !== 100) parts.push(`saturate(${snap.saturate / 100})`);
+  if (snap.blur !== undefined && snap.blur > 0) parts.push(`blur(${snap.blur}px)`);
+  return parts.join(' ');
+};
 
 export default function NewsletterStudio() {
   // 🏆 テナント情報（SNSや住所などの設定）を保持
@@ -538,14 +566,15 @@ export default function NewsletterStudio() {
                     <>
                       <label className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
-                          <img 
-                            src={snap.preview} 
-                            className="w-full h-full object-cover rounded-none transition-all duration-100" 
+                          <img
+                            src={snap.preview}
+                            className="w-full h-full object-cover rounded-none transition-all duration-100"
                             style={{
                               transform: `scale(${snap.scale || 1})`,
-                              transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
+                              transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`,
+                              filter: buildFilterStyle(snap),
                             }}
-                            alt="Snap" 
+                            alt="Snap"
                           />
                         ) : (
                           <div className="text-center">
@@ -566,6 +595,11 @@ export default function NewsletterStudio() {
                                 const newSnaps = [...snaps];
                                 newSnaps[idx].scale = 1;
                                 newSnaps[idx].position = { x: 50, y: 50 };
+                                newSnaps[idx].brightness = 100;
+                                newSnaps[idx].contrast = 100;
+                                newSnaps[idx].saturate = 100;
+                                newSnaps[idx].blur = 0;
+                                newSnaps[idx].filterPreset = 'none';
                                 setSnaps(newSnaps);
                               }}
                               className="text-[9px] font-black text-blue-600 hover:text-blue-800 transition-colors"
@@ -574,6 +608,90 @@ export default function NewsletterStudio() {
                             </button>
                           </div>
                           
+                          {/* フィルタープリセット */}
+                          <div className="space-y-2">
+                            <span className="text-[8px] font-bold text-slate-500 uppercase">Filter Preset</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {FILTER_PRESETS.map(preset => (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const newSnaps = [...snaps];
+                                    newSnaps[idx].filterPreset = preset.id;
+                                    if (preset.id !== 'none') {
+                                      newSnaps[idx].brightness = 100;
+                                      newSnaps[idx].contrast = 100;
+                                      newSnaps[idx].saturate = 100;
+                                      newSnaps[idx].blur = 0;
+                                    }
+                                    setSnaps(newSnaps);
+                                  }}
+                                  className={`text-[8px] font-bold px-2 py-1 rounded transition-all ${
+                                    (snap.filterPreset || 'none') === preset.id
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 手動調整（プリセットが「なし」の時のみ） */}
+                          {(!snap.filterPreset || snap.filterPreset === 'none') && (
+                          <>
+                          {/* 明るさ */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Brightness</span>
+                              <span>{snap.brightness ?? 100}%</span>
+                            </div>
+                            <input type="range" min="50" max="150" value={snap.brightness ?? 100}
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].brightness = parseInt(e.target.value);
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                            />
+                          </div>
+
+                          {/* コントラスト */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Contrast</span>
+                              <span>{snap.contrast ?? 100}%</span>
+                            </div>
+                            <input type="range" min="50" max="150" value={snap.contrast ?? 100}
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].contrast = parseInt(e.target.value);
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                            />
+                          </div>
+
+                          {/* 彩度 */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
+                              <span>Saturation</span>
+                              <span>{snap.saturate ?? 100}%</span>
+                            </div>
+                            <input type="range" min="0" max="200" value={snap.saturate ?? 100}
+                              onChange={(e) => {
+                                const newSnaps = [...snaps];
+                                newSnaps[idx].saturate = parseInt(e.target.value);
+                                setSnaps(newSnaps);
+                              }}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                            />
+                          </div>
+                          </>
+                          )}
+
                           {/* ズーム調整 */}
                           <div className="space-y-1">
                             <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase">
@@ -967,14 +1085,13 @@ export default function NewsletterStudio() {
                 {snap.layout !== 'text' && (
                   <div className="w-full aspect-[4/3] bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center relative">
                     {snap.preview ? (
-                      <img 
-                        src={snap.preview} 
-                        className="w-full h-full object-cover rounded-none transition-all duration-100" 
+                      <img
+                        src={snap.preview}
+                        className="w-full h-full object-cover rounded-none transition-all duration-100"
                         style={{
-                          // 🏆 プレビューでも拡大（ズーム）を反映！
                           transform: `scale(${snap.scale || 1})`,
-                          // 🏆 拡大の中心点（上下左右のズレ）を反映！
-                          transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`
+                          transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`,
+                          filter: buildFilterStyle(snap),
                         }}
                       />
                     ) : (
