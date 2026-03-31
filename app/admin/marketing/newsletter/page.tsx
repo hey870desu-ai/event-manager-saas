@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Camera, Send, Instagram, MessageCircle, Facebook, 
   Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw
@@ -211,6 +211,59 @@ export default function NewsletterStudio() {
     
     setSnaps([...snaps, newTextItem]);
   };
+
+  // 写真ドラッグ/タッチで位置調整
+  const dragState = useRef<{ idx: number; startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+
+  const handleDragStart = (idx: number, clientX: number, clientY: number) => {
+    if ((snaps[idx].scale || 1) <= 1) return; // ズームしてない時はドラッグ不要
+    dragState.current = {
+      idx,
+      startX: clientX,
+      startY: clientY,
+      startPosX: snaps[idx].position?.x ?? 50,
+      startPosY: snaps[idx].position?.y ?? 50,
+    };
+  };
+
+  const handleDragMove = (clientX: number, clientY: number) => {
+    if (!dragState.current) return;
+    const { idx, startX, startY, startPosX, startPosY } = dragState.current;
+    // 移動量をパーセントに変換（感度調整）
+    const sensitivity = 0.15;
+    const dx = (clientX - startX) * sensitivity;
+    const dy = (clientY - startY) * sensitivity;
+    const newX = Math.max(0, Math.min(100, startPosX - dx));
+    const newY = Math.max(0, Math.min(100, startPosY - dy));
+    const newSnaps = [...snaps];
+    newSnaps[idx].position = { x: Math.round(newX), y: Math.round(newY) };
+    setSnaps(newSnaps);
+  };
+
+  const handleDragEnd = () => {
+    dragState.current = null;
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => handleDragMove(e.clientX, e.clientY);
+    const onMouseUp = () => handleDragEnd();
+    const onTouchMove = (e: TouchEvent) => {
+      if (dragState.current) e.preventDefault();
+      if (e.touches[0]) handleDragMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    const onTouchEnd = () => handleDragEnd();
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  });
 
   const removeSnap = (idx: number) => {
     setSnaps(snaps.filter((_, i) => i !== idx));
@@ -564,26 +617,45 @@ export default function NewsletterStudio() {
                   {/* 🎯 写真枠：比率を 4:3 に合わせてギャップを埋めるっぺ！ */}
                   {snap.layout !== 'text' && snap.layout !== 'divider' && (
                     <>
-                      <label className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden rounded-none relative shadow-inner">
+                      <div className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
-                          <img
-                            src={snap.preview}
-                            className="w-full h-full object-cover rounded-none transition-all duration-100"
-                            style={{
-                              transform: `scale(${snap.scale || 1})`,
-                              transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`,
-                              filter: buildFilterStyle(snap),
-                            }}
-                            alt="Snap"
-                          />
+                          <div
+                            className={`w-full h-full relative ${(snap.scale || 1) > 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                            onMouseDown={(e) => { if ((snap.scale || 1) > 1) { e.preventDefault(); handleDragStart(idx, e.clientX, e.clientY); } }}
+                            onTouchStart={(e) => { if ((snap.scale || 1) > 1 && e.touches[0]) { handleDragStart(idx, e.touches[0].clientX, e.touches[0].clientY); } }}
+                          >
+                            <img
+                              src={snap.preview}
+                              className="w-full h-full object-cover rounded-none transition-none select-none pointer-events-none"
+                              style={{
+                                transform: `scale(${snap.scale || 1})`,
+                                transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`,
+                                filter: buildFilterStyle(snap),
+                              }}
+                              alt="Snap"
+                              draggable={false}
+                            />
+                            {(snap.scale || 1) > 1 && (
+                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[8px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
+                                ドラッグで位置調整
+                              </div>
+                            )}
+                          </div>
                         ) : (
-                          <div className="text-center">
+                          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
                             <Camera size={24} className="text-slate-300 mb-1 mx-auto" />
                             <span className="text-[10px] font-bold text-slate-400 uppercase">写真を選択</span>
-                          </div>
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
+                          </label>
                         )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
-                      </label>
+                        {/* 写真差し替え用（写真がある時） */}
+                        {snap.preview && (
+                          <label className="absolute top-2 left-2 bg-white/80 backdrop-blur-sm text-slate-500 p-1.5 rounded-lg cursor-pointer hover:bg-white transition-all shadow-sm z-10" title="写真を変更">
+                            <Camera size={14}/>
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSnapImageChange(idx, e)} />
+                          </label>
+                        )}
+                      </div>
 
                       {/* 🏆 写真調整スライダー（ここも1セットに集約！） */}
                       {snap.preview && (
