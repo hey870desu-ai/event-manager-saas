@@ -117,15 +117,24 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     const inputNotes = formData.get("notes")?.toString() || "";
 
     // アンケート回答を安全に抽出（Firestoreに保存可能な値のみ）
-    const customAnswers: {[key: string]: any} = {};
+    const rawAnswers: {[key: string]: any} = {};
     customFields.forEach(field => {
-      if (field.type === "checkbox") {
-         const values = formData.getAll(field.id).map(v => v.toString()).filter(v => v !== "");
-         customAnswers[field.label] = values.length > 0 ? values : [];
-      } else {
-         customAnswers[field.label] = formData.get(field.id)?.toString() || "";
-      }
+      if (!field.id || !field.label) return;
+      try {
+        if (field.type === "checkbox") {
+          const values = formData.getAll(field.id)
+            .filter(v => typeof v === 'string')
+            .map(v => String(v))
+            .filter(v => v !== "");
+          rawAnswers[field.label] = values;
+        } else {
+          const val = formData.get(field.id);
+          rawAnswers[field.label] = (typeof val === 'string') ? val : (val?.toString() || "");
+        }
+      } catch { /* skip */ }
     });
+    // Firestoreに安全な値だけにクリーニング（File, undefined, 関数を除去）
+    const customAnswers = JSON.parse(JSON.stringify(rawAnswers));
 
     setStatus("loading");
     setErrorMessage("");
