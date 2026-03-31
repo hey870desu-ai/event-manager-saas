@@ -305,13 +305,37 @@ export default function NewsletterStudio() {
     setSnaps(newSnaps);
   };
 
-  const addDividerBlock = () => {
+  const addDividerBlock = (insertAt?: number) => {
     if (snaps.length >= 12) return;
-    setSnaps([...snaps, {
-      id: Date.now(), title: '', comment: '', preview: null, file: null,
-      layout: 'divider', scale: 1, position: { x: 50, y: 50 }
-    }]);
+    const newItem: SnapItem = { id: Date.now(), title: '', comment: '', preview: null, file: null, layout: 'divider', scale: 1, position: { x: 50, y: 50 } };
+    if (insertAt !== undefined) {
+      const newSnaps = [...snaps];
+      newSnaps.splice(insertAt, 0, newItem);
+      setSnaps(newSnaps);
+    } else {
+      setSnaps([...snaps, newItem]);
+    }
   };
+
+  // 任意の位置にブロックを挿入
+  const insertBlockAt = (insertAt: number, type: 'text' | 'divider' | 'photo') => {
+    if (snaps.length >= 12) return;
+    const newItem: SnapItem = {
+      id: Date.now(),
+      title: type === 'text' ? 'おしらせ' : '',
+      comment: '',
+      preview: null,
+      file: null,
+      layout: type === 'photo' ? 'full' : type,
+      scale: 1,
+      position: { x: 50, y: 50 },
+    };
+    const newSnaps = [...snaps];
+    newSnaps.splice(insertAt, 0, newItem);
+    setSnaps(newSnaps);
+  };
+
+  const [showInsertMenu, setShowInsertMenu] = useState<number | null>(null);
 
   // --- 📦 Firebase Storageへアップロードする魔法 ---
   const uploadPhoto = async (file: File, folder: string) => {
@@ -700,10 +724,32 @@ export default function NewsletterStudio() {
             
             <div className="flex flex-wrap gap-6 items-start">
               {snaps.map((snap: any, idx) => (
-                <div 
-                  key={idx} 
+                <React.Fragment key={snap.id || idx}>
+                {/* ブロック間の挿入ボタン */}
+                {idx === 0 || snap.layout === 'full' || snap.layout === 'text' || snap.layout === 'divider' ? (
+                  <div className="w-full flex justify-center py-1 relative">
+                    <button
+                      onClick={() => setShowInsertMenu(showInsertMenu === idx ? null : idx)}
+                      className="group flex items-center gap-1 text-[9px] font-bold text-slate-300 hover:text-blue-500 transition-all"
+                    >
+                      <div className="w-8 h-px bg-slate-200 group-hover:bg-blue-300 transition-colors"></div>
+                      <PlusCircle size={14} />
+                      <div className="w-8 h-px bg-slate-200 group-hover:bg-blue-300 transition-colors"></div>
+                    </button>
+                    {showInsertMenu === idx && (
+                      <div className="absolute top-full z-20 bg-white border border-slate-200 rounded-xl shadow-xl p-2 flex gap-1 animate-in fade-in zoom-in-95 duration-150">
+                        <button onClick={() => { insertBlockAt(idx, 'text'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">文章</button>
+                        <button onClick={() => { insertBlockAt(idx, 'photo'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">写真</button>
+                        <button onClick={() => { insertBlockAt(idx, 'divider'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors">区切り</button>
+                        <button onClick={() => setShowInsertMenu(null)} className="text-[9px] px-1.5 py-1.5 text-slate-400 hover:text-red-400"><X size={12}/></button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                <div
                   className={`bg-white p-5 rounded-none border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm ${
-                    snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' : 
+                    snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' :
                     snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
                   }`}
                 >
@@ -978,6 +1024,7 @@ export default function NewsletterStudio() {
                   </>
                   )}
                 </div>
+                </React.Fragment>
               ))}
 
               {/* 🏆 おもてなしボタン群：ここを端折らずに全部書いたぞい！！ */}
