@@ -1051,7 +1051,7 @@ export default function NewsletterStudio() {
                     <FileText size={20} /><span className="text-[8px] font-black uppercase">文章のみ</span>
                   </button>
                   {/* 区切り線 */}
-                  <button onClick={addDividerBlock} className="h-32 border-2 border-dashed border-slate-200 rounded-none flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition-all gap-1 bg-slate-50/30 shadow-sm">
+                  <button onClick={() => addDividerBlock()} className="h-32 border-2 border-dashed border-slate-200 rounded-none flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition-all gap-1 bg-slate-50/30 shadow-sm">
                     <div className="w-12 h-px bg-slate-400"></div><span className="text-[8px] font-black uppercase">区切り線</span>
                   </button>
                 </div>
