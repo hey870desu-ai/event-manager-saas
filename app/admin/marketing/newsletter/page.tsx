@@ -51,6 +51,14 @@ const buildFilterStyle = (snap: SnapItem) => {
   return parts.join(' ');
 };
 
+const FRAME_TYPES = [
+  { id: 'full', label: '全面', desc: '写真を画面幅いっぱいに' },
+  { id: 'side-text', label: '横並び', desc: '左に写真、右にテキスト' },
+  { id: 'overlay', label: 'オーバーレイ', desc: '写真の上にテキスト' },
+  { id: 'split', label: '上下分割', desc: '上に写真、下にカラー帯' },
+  { id: 'banner', label: 'バナー', desc: '横長バナースタイル' },
+];
+
 export default function NewsletterStudio() {
   // 🏆 テナント情報（SNSや住所などの設定）を保持
   const [tenantData, setTenantData] = useState<any>(null);
@@ -70,6 +78,13 @@ export default function NewsletterStudio() {
   // 📸 メイン写真用
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const [mainFile, setMainFile] = useState<File | null>(null);
+  const [mainScale, setMainScale] = useState(1);
+  const [mainPosition, setMainPosition] = useState({ x: 50, y: 50 });
+  const [mainFilter, setMainFilter] = useState('none');
+  const [mainBrightness, setMainBrightness] = useState(100);
+  const [mainContrast, setMainContrast] = useState(100);
+  const [mainSaturate, setMainSaturate] = useState(100);
+  const [mainFrameType, setMainFrameType] = useState<string>('full'); // full, side-text, overlay, split, banner
   
   // 🎯 <SnapItem[]> を書き足して、初期値にも scale と position を入れる
   const [snaps, setSnaps] = useState<SnapItem[]>([
@@ -152,6 +167,15 @@ export default function NewsletterStudio() {
 
   const displayTenantName = tenantData?.orgName || tenantData?.name || "BANTARO Partner";
 
+  const mainFilterStyle = () => {
+    if (mainFilter !== 'none') return FILTER_PRESETS.find(p => p.id === mainFilter)?.filter || '';
+    const parts = [];
+    if (mainBrightness !== 100) parts.push(`brightness(${mainBrightness / 100})`);
+    if (mainContrast !== 100) parts.push(`contrast(${mainContrast / 100})`);
+    if (mainSaturate !== 100) parts.push(`saturate(${mainSaturate / 100})`);
+    return parts.join(' ');
+  };
+
   // --- 📸 写真選択の処理 ---
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -216,28 +240,32 @@ export default function NewsletterStudio() {
   const dragState = useRef<{ idx: number; startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   const handleDragStart = (idx: number, clientX: number, clientY: number) => {
-    if ((snaps[idx].scale || 1) <= 1) return; // ズームしてない時はドラッグ不要
-    dragState.current = {
-      idx,
-      startX: clientX,
-      startY: clientY,
-      startPosX: snaps[idx].position?.x ?? 50,
-      startPosY: snaps[idx].position?.y ?? 50,
-    };
+    // idx === -1 はメイン写真
+    if (idx === -1) {
+      if (mainScale <= 1) return;
+      dragState.current = { idx: -1, startX: clientX, startY: clientY, startPosX: mainPosition.x, startPosY: mainPosition.y };
+    } else {
+      if ((snaps[idx].scale || 1) <= 1) return;
+      dragState.current = { idx, startX: clientX, startY: clientY, startPosX: snaps[idx].position?.x ?? 50, startPosY: snaps[idx].position?.y ?? 50 };
+    }
   };
 
   const handleDragMove = (clientX: number, clientY: number) => {
     if (!dragState.current) return;
     const { idx, startX, startY, startPosX, startPosY } = dragState.current;
-    // 移動量をパーセントに変換（感度調整）
     const sensitivity = 0.15;
     const dx = (clientX - startX) * sensitivity;
     const dy = (clientY - startY) * sensitivity;
     const newX = Math.max(0, Math.min(100, startPosX - dx));
     const newY = Math.max(0, Math.min(100, startPosY - dy));
-    const newSnaps = [...snaps];
-    newSnaps[idx].position = { x: Math.round(newX), y: Math.round(newY) };
-    setSnaps(newSnaps);
+
+    if (idx === -1) {
+      setMainPosition({ x: Math.round(newX), y: Math.round(newY) });
+    } else {
+      const newSnaps = [...snaps];
+      newSnaps[idx].position = { x: Math.round(newX), y: Math.round(newY) };
+      setSnaps(newSnaps);
+    }
   };
 
   const handleDragEnd = () => {
@@ -556,24 +584,105 @@ export default function NewsletterStudio() {
             </div>
           </section>
 
-          {/* メイン写真 */}
+          {/* メインビジュアル */}
           <section className="space-y-4">
             <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">2</div>
               メインビジュアル
             </label>
             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <label className="relative w-full h-56 bg-white rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-all overflow-hidden group">
+
+              {/* フレーム選択 */}
+              <div>
+                <span className="text-[10px] font-black text-slate-400 uppercase block mb-2">Frame Type</span>
+                <div className="flex flex-wrap gap-2">
+                  {FRAME_TYPES.map(ft => (
+                    <button key={ft.id} type="button" onClick={() => setMainFrameType(ft.id)}
+                      className={`text-[9px] font-bold px-3 py-1.5 rounded-lg transition-all ${mainFrameType === ft.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                      {ft.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 写真選択エリア */}
+              <div className="relative w-full h-56 bg-white rounded-2xl border-2 border-dashed border-slate-300 overflow-hidden">
                 {mainImagePreview ? (
-                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Preview" />
+                  <>
+                    <div
+                      className={`w-full h-full ${mainScale > 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      onMouseDown={(e) => { if (mainScale > 1) { e.preventDefault(); handleDragStart(-1, e.clientX, e.clientY); } }}
+                      onTouchStart={(e) => { if (mainScale > 1 && e.touches[0]) handleDragStart(-1, e.touches[0].clientX, e.touches[0].clientY); }}
+                    >
+                      <img src={mainImagePreview} className="w-full h-full object-cover select-none pointer-events-none transition-none"
+                        style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }}
+                        alt="Preview" draggable={false} />
+                      {mainScale > 1 && (
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[8px] font-bold px-2 py-0.5 rounded-full pointer-events-none">ドラッグで位置調整</div>
+                      )}
+                    </div>
+                    <label className="absolute top-2 left-2 bg-white/80 backdrop-blur-sm text-slate-500 p-1.5 rounded-lg cursor-pointer hover:bg-white transition-all shadow-sm z-10" title="写真を変更">
+                      <Camera size={14}/><input type="file" accept="image/*" className="hidden" onChange={handleMainImageChange} />
+                    </label>
+                  </>
                 ) : (
-                  <div className="text-center">
-                    <Camera className="text-slate-300 group-hover:text-blue-500 mb-2 mx-auto" size={40} />
-                    <span className="text-xs text-slate-400 group-hover:text-blue-600 font-bold">メイン写真を選択</span>
-                  </div>
+                  <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-all">
+                    <Camera className="text-slate-300 mb-2" size={40} />
+                    <span className="text-xs text-slate-400 font-bold">メイン写真を選択</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleMainImageChange} />
+                  </label>
                 )}
-                <input type="file" accept="image/*" className="hidden" onChange={handleMainImageChange} />
-              </label>
+              </div>
+
+              {/* メイン写真調整パネル */}
+              {mainImagePreview && (
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Adjust</span>
+                    <button type="button" onClick={() => { setMainScale(1); setMainPosition({x:50,y:50}); setMainFilter('none'); setMainBrightness(100); setMainContrast(100); setMainSaturate(100); }}
+                      className="text-[9px] font-black text-blue-600 hover:text-blue-800">RESET</button>
+                  </div>
+
+                  {/* フィルタープリセット */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {FILTER_PRESETS.map(p => (
+                      <button key={p.id} type="button" onClick={() => { setMainFilter(p.id); if (p.id !== 'none') { setMainBrightness(100); setMainContrast(100); setMainSaturate(100); } }}
+                        className={`text-[8px] font-bold px-2 py-1 rounded transition-all ${mainFilter === p.id ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* ズーム */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[8px] font-bold text-slate-500 uppercase"><span>Zoom</span><span>{Math.round(mainScale * 100)}%</span></div>
+                    <input type="range" min="1" max="3" step="0.05" value={mainScale} onChange={(e) => setMainScale(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                  </div>
+
+                  {/* 手動調整（プリセットなしの時） */}
+                  {mainFilter === 'none' && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase">Bright {mainBrightness}%</span>
+                        <input type="range" min="50" max="150" value={mainBrightness} onChange={(e) => setMainBrightness(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-200 rounded appearance-none cursor-pointer accent-yellow-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase">Contrast {mainContrast}%</span>
+                        <input type="range" min="50" max="150" value={mainContrast} onChange={(e) => setMainContrast(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-200 rounded appearance-none cursor-pointer accent-orange-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase">Saturate {mainSaturate}%</span>
+                        <input type="range" min="0" max="200" value={mainSaturate} onChange={(e) => setMainSaturate(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-200 rounded appearance-none cursor-pointer accent-pink-500" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <input type="text" placeholder="大きな見出し" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black outline-none shadow-sm" />
               <textarea rows={4} placeholder="導入の文章..." value={mainMessage} onChange={(e) => setMainMessage(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm leading-relaxed outline-none resize-none shadow-sm" />
             </div>
@@ -1118,21 +1227,79 @@ export default function NewsletterStudio() {
              <div className="text-blue-400 text-[10px] font-black mt-4 tracking-[0.5em] opacity-80 uppercase">公式ニュースレター</div>
           </div>
 
-          {/* Main Visual */}
-          <div className="w-full aspect-[16/9] bg-slate-100 flex items-center justify-center">
-            {mainImagePreview ? (
-              <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main" />
-            ) : (
-              <span className="text-slate-300 font-bold italic">Main Visual Area</span>
-            )}
-          </div>
+          {/* Main Visual - フレーム対応 */}
+          {mainFrameType === 'full' && (
+            <>
+              <div className="w-full aspect-[16/9] bg-slate-100 flex items-center justify-center overflow-hidden">
+                {mainImagePreview ? (
+                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
+                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
+                ) : <span className="text-slate-300 font-bold italic">Main Visual Area</span>}
+              </div>
+              <div className="p-12">
+                <h2 className="text-4xl font-black text-slate-800 mb-8 leading-tight tracking-tight">{mainTitle}</h2>
+                <div className="text-xl text-slate-600 leading-relaxed whitespace-pre-wrap border-l-[12px] border-blue-500 pl-8 py-2 bg-slate-50 rounded-r-2xl">{mainMessage}</div>
+              </div>
+            </>
+          )}
 
-          <div className="p-12">
-            <h2 className="text-4xl font-black text-slate-800 mb-8 leading-tight tracking-tight">{mainTitle}</h2>
-            <div className="text-xl text-slate-600 leading-relaxed whitespace-pre-wrap border-l-[12px] border-blue-500 pl-8 py-2 bg-slate-50 rounded-r-2xl">
-              {mainMessage}
+          {mainFrameType === 'side-text' && (
+            <div className="flex">
+              <div className="w-1/2 aspect-square bg-slate-100 overflow-hidden">
+                {mainImagePreview ? (
+                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
+                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
+                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
+              </div>
+              <div className="w-1/2 p-8 flex flex-col justify-center bg-slate-50">
+                <h2 className="text-2xl font-black text-slate-800 mb-4 leading-tight">{mainTitle}</h2>
+                <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {mainFrameType === 'overlay' && (
+            <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
+              {mainImagePreview ? (
+                <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
+                  style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
+              ) : <div className="w-full h-full bg-slate-200"></div>}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-12">
+                <h2 className="text-4xl font-black text-white mb-4 leading-tight drop-shadow-lg">{mainTitle}</h2>
+                <div className="text-lg text-white/80 leading-relaxed whitespace-pre-wrap drop-shadow">{mainMessage}</div>
+              </div>
+            </div>
+          )}
+
+          {mainFrameType === 'split' && (
+            <>
+              <div className="w-full aspect-[2/1] bg-slate-100 overflow-hidden">
+                {mainImagePreview ? (
+                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
+                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
+                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
+              </div>
+              <div className="bg-blue-600 p-10 text-center">
+                <h2 className="text-3xl font-black text-white mb-4 leading-tight">{mainTitle}</h2>
+                <div className="text-base text-blue-100 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+              </div>
+            </>
+          )}
+
+          {mainFrameType === 'banner' && (
+            <div className="p-12 space-y-8">
+              <div className="w-full aspect-[3/1] bg-slate-100 rounded-2xl overflow-hidden">
+                {mainImagePreview ? (
+                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
+                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
+                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Banner</div>}
+              </div>
+              <div>
+                <h2 className="text-4xl font-black text-slate-800 mb-6 leading-tight tracking-tight">{mainTitle}</h2>
+                <div className="text-xl text-slate-600 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+              </div>
+            </div>
+          )}
 
           {/* 🏆 右側：ここが「比率も調整もメールと同じ」プレビューだばい！！ */}
           <div className="px-12 pb-12 flex flex-wrap gap-y-12 gap-x-4 items-start">
