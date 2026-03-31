@@ -336,7 +336,8 @@ useEffect(() => {
       if (event.customFields && Array.isArray(event.customFields) && event.customFields.length > 0) {
         setCustomFields(event.customFields.map((f: any) => ({
           ...f,
-          // ★修正: カンマではなく「改行(\n)」でつなぐ
+          // IDが不正（全角文字や記号を含む）場合は安全なIDに置き換え
+          id: /^[a-zA-Z0-9_-]+$/.test(f.id) ? f.id : Math.random().toString(36).substring(2, 9),
           optionsString: f.options ? f.options.join("\n") : ""
         })));
       } else if (event.id) {
@@ -348,7 +349,7 @@ useEffect(() => {
       if (event.surveyFields && Array.isArray(event.surveyFields) && event.surveyFields.length > 0) {
         setSurveyFields(event.surveyFields.map((f: any) => ({
           ...f,
-          // ★修正: ここも「改行(\n)」でつなぐ
+          id: /^[a-zA-Z0-9_-]+$/.test(f.id) ? f.id : Math.random().toString(36).substring(2, 9),
           optionsString: f.options ? f.options.join("\n") : ""
         })));
       }
