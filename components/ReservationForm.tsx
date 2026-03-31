@@ -116,11 +116,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     const inputPhone = formData.get("phone")?.toString() || "";
     const inputNotes = formData.get("notes")?.toString() || "";
 
-    // アンケート回答も先に全部抜き出すぞい！
+    // アンケート回答を安全に抽出（Firestoreに保存可能な値のみ）
     const customAnswers: {[key: string]: any} = {};
     customFields.forEach(field => {
       if (field.type === "checkbox") {
-         customAnswers[field.label] = formData.getAll(field.id);
+         const values = formData.getAll(field.id).map(v => v.toString()).filter(v => v !== "");
+         customAnswers[field.label] = values.length > 0 ? values : [];
       } else {
          customAnswers[field.label] = formData.get(field.id)?.toString() || "";
       }
