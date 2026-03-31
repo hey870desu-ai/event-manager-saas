@@ -18,6 +18,9 @@ interface SnapItem {
   layout: string;
   scale: number;
   position?: { x: number; y: number };
+  titleColor?: string;
+  titleSize?: string;
+  bgColor?: string;
 }
 
 export default function NewsletterStudio() {
@@ -61,7 +64,6 @@ export default function NewsletterStudio() {
     const unsubAuth = auth.onAuthStateChanged(async (user) => {
       if (user && user.email) {
         // 🎯 塙さんのFirestoreは「メアド」がドキュメントIDだっぺ！
-        console.log("🔥 ログインメアドで検索中:", user.email);
         const { getDoc, doc } = await import("firebase/firestore");
 
         // admin_users コレクションをメアドで直撃だばい
@@ -69,13 +71,11 @@ export default function NewsletterStudio() {
         
         if (userSnap.exists()) {
           const tid = userSnap.data().tenantId; // 🎯 ここで "caredesignworks" が取れる！
-          console.log("🎯 取得成功！tenantId:", tid);
 
           if (tid) {
             // テナント情報をリアルタイム取得（プレビューの社名に反映！）
             onSnapshot(doc(db, "tenants", tid), (docSnap) => {
               if (docSnap.exists()) {
-                console.log("🏢 テナントデータ確定:", docSnap.data().orgName);
                 setTenantData({ ...docSnap.data(), id: tid });
               }
             });
@@ -86,7 +86,7 @@ export default function NewsletterStudio() {
             fetchArchives(tid);
           }
         } else {
-          console.error("❌ admin_usersの中にこのメアドのデータがねぇぞい:", user.email);
+          console.error("admin_users not found:", user.email);
         }
       }
     });
@@ -98,21 +98,19 @@ export default function NewsletterStudio() {
       const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
       const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
       // 🎯 ここ！ループの前に箱を作るのを忘れちゃいけねぇだばい！
-      const evList: any[] = [];
-
       const q = query(collection(db, "events"), where("tenantId", "==", tid));
       const evSnap = await getDocs(q);
+      const evList = evSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
       const userMap = new Map();
 
       for (const edoc of evSnap.docs) {
         const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
         resSnap.forEach(rdoc => {
           const data = rdoc.data();
-          // 🎯 2. メアドがあって、かつ「配信停止リスト」に入っていない人だけを抽出！
           if (data.email && !blockedEmails.has(data.email)) {
-            userMap.set(data.email, { 
-              email: data.email, name: data.name, 
-              eventId: edoc.id, eventTitle: edoc.data().title 
+            userMap.set(data.email, {
+              email: data.email, name: data.name,
+              eventId: edoc.id, eventTitle: edoc.data().title
             });
           }
         });
@@ -188,6 +186,22 @@ export default function NewsletterStudio() {
 
   const removeSnap = (idx: number) => {
     setSnaps(snaps.filter((_, i) => i !== idx));
+  };
+
+  const moveSnap = (idx: number, direction: 'up' | 'down') => {
+    const newSnaps = [...snaps];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= newSnaps.length) return;
+    [newSnaps[idx], newSnaps[targetIdx]] = [newSnaps[targetIdx], newSnaps[idx]];
+    setSnaps(newSnaps);
+  };
+
+  const addDividerBlock = () => {
+    if (snaps.length >= 12) return;
+    setSnaps([...snaps, {
+      id: Date.now(), title: '', comment: '', preview: null, file: null,
+      layout: 'divider', scale: 1, position: { x: 50, y: 50 }
+    }]);
   };
 
   // --- 📦 Firebase Storageへアップロードする魔法 ---
@@ -503,12 +517,24 @@ export default function NewsletterStudio() {
                     snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
                   }`}
                 >
-                  <button onClick={() => removeSnap(idx)} className="absolute -top-2 -right-2 bg-white text-red-500 p-2 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors z-10">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+                    {idx > 0 && (
+                      <button onClick={() => moveSnap(idx, 'up')} className="bg-white text-slate-400 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors" title="上に移動">
+                        <ChevronLeft size={14}/>
+                      </button>
+                    )}
+                    {idx < snaps.length - 1 && (
+                      <button onClick={() => moveSnap(idx, 'down')} className="bg-white text-slate-400 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors" title="下に移動">
+                        <ChevronRight size={14}/>
+                      </button>
+                    )}
+                    <button onClick={() => removeSnap(idx)} className="bg-white text-red-500 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
 
                   {/* 🎯 写真枠：比率を 4:3 に合わせてギャップを埋めるっぺ！ */}
-                  {snap.layout !== 'text' && (
+                  {snap.layout !== 'text' && snap.layout !== 'divider' && (
                     <>
                       <label className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 cursor-pointer overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
@@ -606,34 +632,58 @@ export default function NewsletterStudio() {
                     </>
                   )}
 
-                  <input 
-                    type="text" 
-                    placeholder="タイトル" 
-                    value={snap.title} 
-                    onChange={(e) => {
-                      const newSnaps = [...snaps];
-                      newSnaps[idx].title = e.target.value;
-                      setSnaps(newSnaps);
-                    }} 
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-xs font-black mb-2 outline-none" 
-                  />
-                  <textarea 
-                    placeholder="本文メッセージ..." 
-                    value={snap.comment} 
+                  {snap.layout === 'divider' ? (
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="flex-1 h-px bg-slate-300"></div>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase">区切り線</span>
+                      <div className="flex-1 h-px bg-slate-300"></div>
+                    </div>
+                  ) : (
+                  <>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="タイトル"
+                      value={snap.title}
+                      onChange={(e) => {
+                        const newSnaps = [...snaps];
+                        newSnaps[idx].title = e.target.value;
+                        setSnaps(newSnaps);
+                      }}
+                      className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-none text-xs font-black outline-none"
+                      style={{ color: snap.titleColor || '#0f172a' }}
+                    />
+                    <input
+                      type="color"
+                      value={snap.titleColor || '#0f172a'}
+                      onChange={(e) => {
+                        const newSnaps = [...snaps];
+                        newSnaps[idx].titleColor = e.target.value;
+                        setSnaps(newSnaps);
+                      }}
+                      className="w-10 h-10 rounded cursor-pointer border border-slate-200"
+                      title="タイトル色"
+                    />
+                  </div>
+                  <textarea
+                    placeholder="本文メッセージ..."
+                    value={snap.comment}
                     onChange={(e) => {
                       const newSnaps = [...snaps];
                       newSnaps[idx].comment = e.target.value;
                       setSnaps(newSnaps);
-                    }} 
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-[10px] leading-relaxed outline-none resize-none" 
-                    rows={snap.layout === 'text' ? 4 : 2} 
+                    }}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-[10px] leading-relaxed outline-none resize-none"
+                    rows={snap.layout === 'text' ? 4 : 2}
                   />
+                  </>
+                  )}
                 </div>
               ))}
 
               {/* 🏆 おもてなしボタン群：ここを端折らずに全部書いたぞい！！ */}
               {snaps.length < 12 && (
-                <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                <div className="w-full grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
                   {/* 1枚 */}
                   <label className="h-32 border-2 border-dashed border-slate-200 rounded-none flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 cursor-pointer transition-all gap-1 bg-white/50 shadow-sm">
                     <PlusCircle size={20} /><span className="text-[8px] font-black uppercase">1枚追加</span>
@@ -653,6 +703,10 @@ export default function NewsletterStudio() {
                   {/* 文章 */}
                   <button onClick={addTextBlock} className="h-32 border-2 border-dashed border-emerald-200 rounded-none flex flex-col items-center justify-center text-emerald-500 hover:bg-emerald-50 transition-all gap-1 bg-emerald-50/30 shadow-sm">
                     <FileText size={20} /><span className="text-[8px] font-black uppercase">文章のみ</span>
+                  </button>
+                  {/* 区切り線 */}
+                  <button onClick={addDividerBlock} className="h-32 border-2 border-dashed border-slate-200 rounded-none flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition-all gap-1 bg-slate-50/30 shadow-sm">
+                    <div className="w-12 h-px bg-slate-400"></div><span className="text-[8px] font-black uppercase">区切り線</span>
                   </button>
                 </div>
               )}
@@ -901,7 +955,15 @@ export default function NewsletterStudio() {
                   'w-full'
                 }`}
               >
-                {/* 🎯 写真枠：aspect-squareを卒業して4:3に変更だばい！ */}
+                {/* 区切り線ブロック */}
+                {snap.layout === 'divider' ? (
+                  <div className="w-full py-6 flex items-center gap-4">
+                    <div className="flex-1 h-px bg-slate-200"></div>
+                    <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                    <div className="flex-1 h-px bg-slate-200"></div>
+                  </div>
+                ) : (
+                <>
                 {snap.layout !== 'text' && (
                   <div className="w-full aspect-[4/3] bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center relative">
                     {snap.preview ? (
@@ -921,13 +983,13 @@ export default function NewsletterStudio() {
                   </div>
                 )}
                 
-                {/* 🎯 文章部分：ここも rounded-none で直角だばい！ */}
                 <div className={`${
-                  snap.layout === 'text' 
-                    ? 'p-10 bg-blue-50/50 rounded-none border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]' 
+                  snap.layout === 'text'
+                    ? 'p-10 bg-blue-50/50 rounded-none border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]'
                     : 'px-2'
                 } text-left`}>
-                  <h4 className={`font-black text-slate-900 ${snap.layout === 'text' ? 'text-2xl mb-3' : 'text-[14px] mb-2'}`}>
+                  <h4 className={`font-black ${snap.layout === 'text' ? 'text-2xl mb-3' : 'text-[14px] mb-2'}`}
+                    style={{ color: snap.titleColor || '#0f172a' }}>
                     {snap.title || (snap.layout === 'text' ? 'おしらせ' : `SCENE ${idx + 1}`)}
                   </h4>
                   {snap.comment && (
@@ -936,6 +998,8 @@ export default function NewsletterStudio() {
                     </p>
                   )}
                 </div>
+                </>
+                )}
               </div>
             ))}
           </div>
@@ -981,7 +1045,7 @@ export default function NewsletterStudio() {
             <div className="flex justify-center gap-4 mt-6 text-[10px] font-bold text-blue-400">
               {tenantData?.homepage && <a href={tenantData.homepage} target="_blank" rel="noreferrer" className="hover:underline">公式ホームページ</a>}
               <span className="text-slate-700">|</span>
-              <a href="#" className="hover:underline text-slate-500">配信停止（Unsubscribe）</a>
+              <a href="https://www.event-manager.app/unsubscribe" className="hover:underline text-slate-500">配信停止（Unsubscribe）</a>
             </div>
             <div className="w-16 h-1 bg-blue-500 mx-auto my-10 rounded-full"></div>
             <p className="text-[9px] font-black tracking-[0.4em] uppercase opacity-20">
