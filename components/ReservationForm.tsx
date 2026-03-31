@@ -120,25 +120,27 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     const inputPhone = formData.get("phone")?.toString() || "";
     const inputNotes = formData.get("notes")?.toString() || "";
 
-    // アンケート回答を安全に抽出（Firestoreに保存可能な値のみ）
-    const rawAnswers: {[key: string]: any} = {};
+    // アンケート回答を安全に抽出
+    // Firestoreはキーに1500バイト制限があるため、長文ラベルをキーにせず配列形式で保存
+    const customAnswersList: Array<{label: string, value: string | string[]}> = [];
     customFields.forEach(field => {
-      if (!field.id || !field.label) return;
+      if (!field.id) return;
+      const label = String(field.label || "").slice(0, 200); // ラベルも安全な長さに
       try {
         if (field.type === "checkbox") {
           const values = formData.getAll(field.id)
             .filter(v => typeof v === 'string')
             .map(v => String(v))
             .filter(v => v !== "");
-          rawAnswers[field.label] = values;
+          customAnswersList.push({ label, value: values });
         } else {
           const val = formData.get(field.id);
-          rawAnswers[field.label] = (typeof val === 'string') ? val : (val?.toString() || "");
+          customAnswersList.push({ label, value: (typeof val === 'string') ? val : String(val || "") });
         }
       } catch { /* skip */ }
     });
-    // Firestoreに安全な値だけにクリーニング（File, undefined, 関数を除去）
-    const customAnswers = JSON.parse(JSON.stringify(rawAnswers));
+    // 配列形式なのでキーの長さ問題がない + JSON.stringify で最終浄化
+    const customAnswers = JSON.parse(JSON.stringify(customAnswersList));
 
     setStatus("loading");
     setErrorMessage("");
