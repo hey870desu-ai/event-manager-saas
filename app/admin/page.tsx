@@ -655,42 +655,58 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     const eventData = eventSnap.data();
     const customFields = eventData.customFields || []; // 今の質問リスト
 
-    // 2. 予約データを取得
+    // 2. 予約データを取得（キャンセル者を最後に並べる）
     const s = await getDocs(query(collection(db, "events", eventId, "reservations")));
-    const r = s.docs.map(d => d.data() as any).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    const r = s.docs.map(d => d.data() as any)
+      .sort((a, b) => {
+        // キャンセル者を最後に
+        const aCancelled = a.status === 'cancelled' ? 1 : 0;
+        const bCancelled = b.status === 'cancelled' ? 1 : 0;
+        if (aCancelled !== bCancelled) return aCancelled - bCancelled;
+        return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+      });
     if(!r.length) { alert("データなし"); return; }
 
     // 3. CSVヘッダーの作成
-    // 基本項目 ＋ 今のカスタム質問のラベルだけを並べるぞい
-    const baseHeaders = ["ステータス", "名前", "メール", "電話", "形式", "金額"];
+    const baseHeaders = ["ステータス", "名前", "メール", "電話", "形式", "チケット種別", "金額"];
     const customLabels = customFields.map((f: any) => f.label);
     const headers = [...baseHeaders, ...customLabels, "申込日時"];
 
     // 4. 各行のデータ作成
     const csvRows = r.map(x => {
       const cleanPhone = formatPhone(x.phone);
-      
-      // 基本データの配列
+
+      // ステータス判定
+      let statusLabel = "未受付";
+      if (x.status === 'cancelled') statusLabel = "キャンセル";
+      else if (x.checkedIn || x.status === 'attended') statusLabel = "受付済";
+
       const row = [
-        `"${x.checkedIn ? "受付済" : "未受付"}"`,
+        `"${statusLabel}"`,
         `"${x.name || ""}"`,
         `"${x.email || ""}"`,
         `"${cleanPhone}"`,
         `"${x.type === 'online' ? "オンライン" : "会場"}"`,
+        `"${x.selectedTicket || "通常参加"}"`,
         `"${x.price || 0}"`
       ];
 
-      // ★ カスタム回答を「今の質問順」に並べるっぺ！
+      // カスタム回答（配列形式とオブジェクト形式の両方に対応）
       customLabels.forEach((label: string) => {
-        const answer = x.customAnswers ? x.customAnswers[label] : "";
-        // 配列（チェックボックス）ならスラッシュ区切りにするぞい
-        const formattedAnswer = Array.isArray(answer) ? answer.join("/") : (answer || "");
-        row.push(`"${formattedAnswer.toString().replace(/"/g, '""')}"`); // ダブルクォーテーションをエスケープ
+        let answer = "";
+        if (Array.isArray(x.customAnswers)) {
+          // 新形式（配列）
+          const found = x.customAnswers.find((a: any) => a.label === label);
+          answer = found ? (Array.isArray(found.value) ? found.value.join("/") : String(found.value)) : "";
+        } else if (x.customAnswers) {
+          // 旧形式（オブジェクト）
+          const val = x.customAnswers[label];
+          answer = Array.isArray(val) ? val.join("/") : (val || "");
+        }
+        row.push(`"${answer.toString().replace(/"/g, '""')}"`);
       });
 
-      // 最後に日時を追加
       row.push(`"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`);
-      
       return row.join(",");
     });
 
@@ -1221,7 +1237,8 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                        <th className="p-2 w-10 text-center"><input type="checkbox" className="w-4 h-4 accent-indigo-500 cursor-pointer" checked={participants.length > 0 && selectedParticipantIds.length === participants.length} onChange={toggleSelectAll} /></th>
                        <th className="p-2 md:p-4 whitespace-nowrap">受付</th>
                        <th className="p-2 md:p-4">参加者情報</th>
-                       <th className="p-2 md:p-4">お支払い</th> {/* ★ これを追加！ */}
+                       <th className="p-2 md:p-4">お支払い</th>
+                       <th className="p-2 md:p-4">チケット</th>
                        <th className="hidden md:table-cell p-4">会社</th>
                        <th className="hidden md:table-cell p-4">形式</th>
                        <th className="p-2 md:p-4 text-center">個別送信</th>
@@ -1292,6 +1309,15 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
             </span>
           )}
         </div>
+      </td>
+
+      {/* チケット種別 */}
+      <td className="p-2 md:p-4 align-middle">
+        {(p as any).selectedTicket && (
+          <span className="inline-flex px-2 py-1 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30">
+            {(p as any).selectedTicket}
+          </span>
+        )}
       </td>
 
       {/* 4. 会社名（PCのみ） */}
