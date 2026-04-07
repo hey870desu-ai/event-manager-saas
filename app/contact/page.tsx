@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // あなたのFirebase設定ファイルをインポート
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [honeypot, setHoneypot] = useState(""); // ボット用の罠
+  const formStartTime = useRef(Date.now());
 
-  // フォームの内容
+  useEffect(() => {
+    formStartTime.current = Date.now();
+  }, []);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,14 +32,22 @@ export default function ContactPage() {
     setError("");
 
     try {
-      // Firestoreの 'contacts' コレクションに保存
-      await addDoc(collection(db, "contacts"), {
-        ...formData,
-        createdAt: serverTimestamp(),
-        status: "unread", // 未読ステータス
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          _hp: honeypot,
+          _ts: formStartTime.current,
+        }),
       });
 
-      setSubmitted(true);
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const data = await res.json();
+        setError(data.error || "送信に失敗しました。時間をおいて再度お試しください。");
+      }
     } catch (err) {
       console.error(err);
       setError("送信に失敗しました。時間をおいて再度お試しください。");
@@ -83,7 +94,13 @@ export default function ContactPage() {
         ) : (
           // ▼ 入力フォーム
           <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-lg">
-            
+
+            {/* Honeypot: ボット用の隠しフィールド（人間には見えない） */}
+            <div style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
+              <label htmlFor="website">Website</label>
+              <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+            </div>
+
             {error && (
               <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 flex items-center gap-2 text-sm font-bold">
                 <AlertCircle size={18} /> {error}
