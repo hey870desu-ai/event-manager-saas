@@ -34,6 +34,9 @@ export default function Home() {
       <Link href="#pricing" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
         料金
       </Link>
+      <Link href="/contact" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
+        お問い合わせ
+      </Link>
       <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
       <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">
         ログイン
