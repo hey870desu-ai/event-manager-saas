@@ -888,31 +888,76 @@ useEffect(() => {
   <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
     <Mail size={20} className="text-cyan-400"/> 自動返信メール設定
   </h3>
-  <div className="space-y-6">
-    <div className="space-y-2">
-      <label className="block text-xs text-slate-500 font-bold">自動返信メールへの追加メッセージ</label>
-      <textarea
-        name="replyMessage"
-        value={formData.replyMessage}
-        onChange={handleChange}
-        rows={4}
-        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none resize-none text-sm"
-        placeholder="例：当日は筆記用具をお持ちください。&#10;駐車場は第2駐車場をご利用ください。"
-      />
-      <p className="text-[10px] text-slate-500">申込完了メールの中に、この文章が追加されます。空欄の場合は表示されません。</p>
+
+  {/* メールプレビュー風の編集画面 */}
+  <div className="bg-white rounded-xl overflow-hidden border border-slate-700 shadow-xl">
+    {/* メールヘッダー */}
+    <div className="bg-slate-900 px-5 py-3 text-center">
+      <span className="text-white text-sm font-bold">{formData.contactName || "運営事務局"}</span>
     </div>
 
-    <div className="space-y-2">
-      <label className="block text-xs text-slate-500 font-bold">事前アンケートURL（任意）</label>
-      <input
-        type="url"
-        name="preSurveyUrl"
-        value={formData.preSurveyUrl}
-        onChange={handleChange}
-        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none text-sm"
-        placeholder="https://forms.google.com/... など"
-      />
-      <p className="text-[10px] text-slate-500">入力すると、申込完了メールに事前アンケートへのリンクが追加されます。Googleフォーム等のURLを貼り付けてください。</p>
+    <div className="p-5 space-y-4 text-sm text-slate-700">
+      {/* 固定部分: 挨拶 */}
+      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-slate-400 text-xs">
+        <p><strong className="text-slate-600">○○ 様</strong></p>
+        <p>「{formData.title || "イベント名"}」にお申し込みいただき、ありがとうございます。</p>
+      </div>
+
+      {/* 固定部分: イベント情報 */}
+      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs text-slate-400">
+        <div className="grid grid-cols-2 gap-1">
+          <span>イベント:</span><span className="text-slate-600">{formData.title || "イベント名"}</span>
+          <span>日時:</span><span className="text-slate-600">{formData.date || "未設定"} {formData.startTime}-{formData.endTime}</span>
+          <span>会場:</span><span className="text-slate-600">{formData.venueName || "未設定"}</span>
+        </div>
+      </div>
+
+      {/* 編集可能: 追加メッセージ */}
+      <div>
+        <label className="block text-[10px] text-indigo-500 font-bold mb-1 uppercase">主催者からのお知らせ（編集できます）</label>
+        <div className="border-l-4 border-indigo-500 bg-blue-50 rounded-r-lg overflow-hidden">
+          <textarea
+            name="replyMessage"
+            value={formData.replyMessage}
+            onChange={handleChange}
+            rows={3}
+            className="w-full p-3 bg-transparent text-slate-700 text-sm outline-none resize-none placeholder:text-slate-400"
+            placeholder="ここに追加メッセージを入力すると、メールに表示されます。&#10;例：当日は筆記用具をお持ちください。"
+          />
+        </div>
+      </div>
+
+      {/* 編集可能: 事前アンケート */}
+      <div>
+        <label className="block text-[10px] text-purple-500 font-bold mb-1 uppercase">事前アンケート（URLを入力するとメールに表示されます）</label>
+        <div className="border border-dashed border-purple-300 bg-purple-50 rounded-lg p-3">
+          <input
+            type="url"
+            name="preSurveyUrl"
+            value={formData.preSurveyUrl}
+            onChange={handleChange}
+            className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+            placeholder="https://forms.google.com/... など"
+          />
+          {formData.preSurveyUrl && (
+            <div className="mt-2 text-center">
+              <span className="inline-block bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg">アンケートに回答する</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 固定部分: QR・キャンセルリンク */}
+      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs text-slate-400 text-center space-y-1">
+        <p>[ QRコード / 会場情報 ]</p>
+        <p>[ カレンダーに追加 ]</p>
+        <p className="text-red-400">[ キャンセルリンク ]</p>
+      </div>
+    </div>
+
+    {/* メールフッター */}
+    <div className="bg-slate-100 px-5 py-3 text-center text-[10px] text-slate-400 border-t border-slate-200">
+      {formData.contactName || "運営事務局"} | {formData.contactEmail || "info@example.com"}
     </div>
   </div>
 </div>
