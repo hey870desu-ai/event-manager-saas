@@ -248,6 +248,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               contactName: event.contactName || safeTenant?.name || "運営事務局",
               contactEmail: event.contactEmail || "",
               contactPhone: event.contactPhone || "",
+              replyMessage: event.replyMessage || "",
+              preSurveyUrl: event.preSurveyUrl || "",
               eventPrice: isPaid ? `${priceAmount}円（当日会場にてお支払い）` : "無料"
             }),
           });

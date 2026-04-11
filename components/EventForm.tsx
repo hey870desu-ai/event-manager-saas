@@ -124,10 +124,11 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
     
     replyTemplateId: "default",
     adminTemplateId: "default",
-    // 👇 ここに3つ追加
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+    replyMessage: "",       // 自動返信メールの追加メッセージ
+    preSurveyUrl: "",       // 事前アンケートURL
   });
 
   // キャンセルポリシー設定
@@ -280,6 +281,8 @@ useEffect(() => {
         contactName: event.contactName || "",
         contactEmail: event.contactEmail || "",
         contactPhone: event.contactPhone || "",
+        replyMessage: event.replyMessage || "",
+        preSurveyUrl: event.preSurveyUrl || "",
       });
       // ★追加：講師リストの読み込み
       if (event.lecturers && Array.isArray(event.lecturers)) {
@@ -879,6 +882,41 @@ useEffect(() => {
     ※ここに入力した情報は、イベントページおよび自動返信メールの署名に反映されます。
   </p>
 </div>
+
+{/* 3. 自動返信メール・事前アンケート設定 */}
+<div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800 mt-6">
+  <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">
+    <Mail size={20} className="text-cyan-400"/> 自動返信メール設定
+  </h3>
+  <div className="space-y-6">
+    <div className="space-y-2">
+      <label className="block text-xs text-slate-500 font-bold">自動返信メールへの追加メッセージ</label>
+      <textarea
+        name="replyMessage"
+        value={formData.replyMessage}
+        onChange={handleChange}
+        rows={4}
+        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none resize-none text-sm"
+        placeholder="例：当日は筆記用具をお持ちください。&#10;駐車場は第2駐車場をご利用ください。"
+      />
+      <p className="text-[10px] text-slate-500">申込完了メールの中に、この文章が追加されます。空欄の場合は表示されません。</p>
+    </div>
+
+    <div className="space-y-2">
+      <label className="block text-xs text-slate-500 font-bold">事前アンケートURL（任意）</label>
+      <input
+        type="url"
+        name="preSurveyUrl"
+        value={formData.preSurveyUrl}
+        onChange={handleChange}
+        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none text-sm"
+        placeholder="https://forms.google.com/... など"
+      />
+      <p className="text-[10px] text-slate-500">入力すると、申込完了メールに事前アンケートへのリンクが追加されます。Googleフォーム等のURLを貼り付けてください。</p>
+    </div>
+  </div>
+</div>
+
       {/* ★★★ デザインテーマ設定 (3パターン) ★★★ */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800">
         <h3 className="text-white font-bold flex items-center gap-2 mb-6 text-lg">

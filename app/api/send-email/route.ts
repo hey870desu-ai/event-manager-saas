@@ -43,8 +43,8 @@ export async function POST(request: Request) {
       reservationId,eventId, planName,
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
       contactName, contactEmail, contactPhone, eventPrice,
-      inviteUrl,
-      subject: customSubject // ★ ここに customSubject を追加
+      inviteUrl, replyMessage, preSurveyUrl,
+      subject: customSubject
     } = body;
 
     const senderName = tenantName || "HANAHIRO CO.,LTD.";
@@ -192,7 +192,25 @@ export async function POST(request: Request) {
           ${accessInfoHtml}
         </div>`;
 
-        // 🏆 【修正版】eventId を直接使うようにするぞい！
+        // 追加メッセージ（テナントがカスタマイズした内容）
+        if (replyMessage) {
+          mainHtml += `
+            <div style="background-color: #f0f9ff; border-left: 4px solid ${themeColor || '#3b82f6'}; border-radius: 0 8px 8px 0; padding: 16px 20px; margin-top: 20px;">
+              <p style="font-size: 13px; font-weight: bold; color: #1e293b; margin: 0 0 8px 0;">主催者からのお知らせ</p>
+              <p style="font-size: 14px; color: #334155; margin: 0; white-space: pre-wrap; line-height: 1.8;">${replyMessage.replace(/</g, '&lt;')}</p>
+            </div>`;
+        }
+
+        // 事前アンケートリンク
+        if (preSurveyUrl) {
+          mainHtml += `
+            <div style="background-color: #faf5ff; border: 1px dashed #c084fc; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
+              <p style="font-size: 14px; font-weight: bold; color: #7c3aed; margin: 0 0 12px 0;">📝 事前アンケートのお願い</p>
+              <p style="font-size: 13px; color: #6b7280; margin: 0 0 16px 0;">イベントをより良いものにするため、事前アンケートにご協力ください。</p>
+              <a href="${preSurveyUrl}" target="_blank" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">アンケートに回答する</a>
+            </div>`;
+        }
+
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com";
 
 // body.eventId ではなく、分割代入した eventId を使うんだっぺ！
