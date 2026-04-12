@@ -86,6 +86,7 @@ export async function POST(req: Request) {
                   <tr>
                     <td style="padding: 10px 2px;">
                       <p style="color: #111827; margin: 0; font-size: 11px; font-weight: 900; line-height: 1.2;">${s.title || ''}</p>
+                      ${s.comment ? `<p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; line-height: 1.6; white-space: pre-wrap;">${s.comment}</p>` : ''}
                     </td>
                   </tr>
                 </table>
