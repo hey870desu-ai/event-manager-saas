@@ -11,6 +11,7 @@ export default function ReliableScanner() {
   const [imgData, setImgData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -18,14 +19,18 @@ export default function ReliableScanner() {
   const startCamera = async () => {
     setImgData(null);
     setResult(null);
+    setCameraReady(false);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false 
+        audio: false
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setCameraReady(true);
+        };
       }
     } catch (err) {
       alert("カメラが開けねぇっぺ。設定で許可してくんちぇ！");
@@ -45,23 +50,36 @@ export default function ReliableScanner() {
   const capture = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video || !canvas || !cameraReady) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 画面の「枠」に合わせて切り抜き（高解像度）
+    // 映像の実サイズを取得
     const vWidth = video.videoWidth;
     const vHeight = video.videoHeight;
+    if (vWidth === 0 || vHeight === 0) return;
+
+    // 名刺枠（85%幅、アスペクト比1.6:1）に合わせて切り抜き
+    // 縦持ち・横持ちどちらでも正しく中央から切り抜く
     const cropWidth = vWidth * 0.85;
     const cropHeight = cropWidth / 1.6;
-    const startX = (vWidth - cropWidth) / 2;
-    const startY = (vHeight - cropHeight) / 2;
+
+    // 切り抜き範囲が映像をはみ出す場合は高さ基準で再計算
+    let finalCropW = cropWidth;
+    let finalCropH = cropHeight;
+    if (finalCropH > vHeight * 0.9) {
+      finalCropH = vHeight * 0.9;
+      finalCropW = finalCropH * 1.6;
+    }
+
+    const startX = (vWidth - finalCropW) / 2;
+    const startY = (vHeight - finalCropH) / 2;
 
     canvas.width = 1280;
     canvas.height = 800;
-    ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, 1280, 800);
-    
+    ctx.drawImage(video, startX, startY, finalCropW, finalCropH, 0, 0, 1280, 800);
+
     // 画像データをセットしてビデオを止める
     const data = canvas.toDataURL("image/jpeg", 0.9);
     setImgData(data);
@@ -69,7 +87,7 @@ export default function ReliableScanner() {
     if (video.srcObject) {
       (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
     }
-    
+
     // 💡 撮影したらそのままAI解析をスタートさせるべ！
     handleAnalyze(data);
   };
@@ -133,11 +151,12 @@ export default function ReliableScanner() {
       {/* 操作パネル */}
       <div className="p-10 bg-black border-t border-white/10 text-center">
         {!imgData ? (
-          <button 
-            onClick={capture} 
-            className="w-20 h-20 bg-white rounded-full border-8 border-slate-800 flex items-center justify-center active:scale-90 transition-all shadow-xl"
+          <button
+            onClick={capture}
+            disabled={!cameraReady}
+            className={`w-20 h-20 rounded-full border-8 border-slate-800 flex items-center justify-center active:scale-90 transition-all shadow-xl ${cameraReady ? 'bg-white' : 'bg-slate-600 opacity-50'}`}
           >
-            <Camera size={32} className="text-black" />
+            <Camera size={32} className={cameraReady ? "text-black" : "text-slate-400"} />
           </button>
         ) : result ? (
           /* 解析結果の確認 */
