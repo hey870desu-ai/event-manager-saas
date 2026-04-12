@@ -56,8 +56,8 @@ export default function ReliableScanner() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
-    } catch (err) {
-      alert("AI解析に失敗だっぺ。明るい場所でもう一度撮ってな！");
+    } catch (err: any) {
+      alert("AI解析に失敗だっぺ。\n\n" + (err?.message || "不明なエラー"));
       reset();
     } finally {
       setLoading(false);
