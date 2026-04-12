@@ -631,7 +631,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
           senderName: tenantData?.name || "絆太郎",
           replyTo: user?.email,
           themeColor: tenantData?.themeColor || "#3b82f6",
-          scheduledAt: scheduledTime,
+          scheduledAt: new Date(scheduledTime).toISOString(),
           status: 'scheduled',
           createdAt: new Date().toISOString(),
         });
