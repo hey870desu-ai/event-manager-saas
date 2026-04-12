@@ -18,27 +18,19 @@ export default function ReliableScanner() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target?.result as string;
-
-      // リサイズしてからOCRに送る（サイズ削減）
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxW = 1024;
-        const scale = Math.min(maxW / img.width, maxW / img.height, 1);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const resized = canvas.toDataURL("image/jpeg", 0.7);
-        setImgData(resized);
-        handleAnalyze(resized);
-      };
-      img.src = base64;
-    };
-    reader.readAsDataURL(file);
+    // createImageBitmapでEXIF回転を自動適用してからリサイズ
+    createImageBitmap(file).then((bitmap) => {
+      const canvas = document.createElement("canvas");
+      const maxW = 1024;
+      const scale = Math.min(maxW / bitmap.width, maxW / bitmap.height, 1);
+      canvas.width = bitmap.width * scale;
+      canvas.height = bitmap.height * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const resized = canvas.toDataURL("image/jpeg", 0.7);
+      setImgData(resized);
+      handleAnalyze(resized);
+    });
 
     // 同じファイルを再選択できるようにリセット
     e.target.value = "";
