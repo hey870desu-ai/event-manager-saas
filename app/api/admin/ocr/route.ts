@@ -3,13 +3,15 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+export const maxDuration = 30;
+
 export async function POST(request: Request) {
   try {
     const { image } = await request.json();
     if (!image) return NextResponse.json({ error: "No image" }, { status: 400 });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -32,8 +34,8 @@ JSON以外の文字は一切出力するな。`
         {
           role: "user",
           content: [
-            { type: "text", text: "この名刺を精査し、営業用データとして完璧に構造化してくんちぇ。" },
-            { type: "image_url", image_url: { url: image, detail: "high" } } // 💡最強解像度指定！
+            { type: "text", text: "この名刺を解析してJSON形式で返してください。" },
+            { type: "image_url", image_url: { url: image, detail: "low" } }
           ],
         },
       ],
@@ -42,6 +44,7 @@ JSON以外の文字は一切出力するな。`
 
     return NextResponse.json(JSON.parse(response.choices[0].message.content || "{}"));
   } catch (error: any) {
-    return NextResponse.json({ error: "解析失敗" }, { status: 500 });
+    console.error("🔥 OCR Error:", error?.message || error);
+    return NextResponse.json({ error: error?.message || "解析失敗" }, { status: 500 });
   }
 }
