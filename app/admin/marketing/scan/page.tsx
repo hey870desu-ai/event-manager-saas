@@ -33,11 +33,11 @@ export default function ReliableScanner() {
         audio: false
       });
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setCameraReady(true);
+        const video = videoRef.current;
+        video.onloadedmetadata = () => {
+          video.play().then(() => setCameraReady(true)).catch(() => {});
         };
+        video.srcObject = stream;
       }
     } catch (err) {
       alert("カメラが開けねぇっぺ。設定で許可してくんちぇ！");
