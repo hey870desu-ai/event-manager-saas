@@ -1,24 +1,45 @@
 // 📂 app/admin/marketing/scan/page.tsx
 "use client";
 
-import { useState, useRef } from "react";
-import { Camera, ArrowLeft, UserCircle, Building2, Mail, Phone, Tag } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, ArrowLeft, UserCircle, Building2, Mail, Phone, Tag, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
 export default function ReliableScanner() {
   const router = useRouter();
   const [imgData, setImgData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 認証＆テナント取得
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) { router.push("/login"); return; }
+      const userDoc = await getDoc(doc(db, "admin_users", user.email!));
+      if (userDoc.exists()) {
+        setTenantId(userDoc.data().tenantId);
+      } else if (user.email === SUPER_ADMIN_EMAIL) {
+        setTenantId("demo");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // 撮影した画像を読み込み → 自動でAI解析
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // createImageBitmapでEXIF回転を自動適用してからリサイズ
     createImageBitmap(file).then((bitmap) => {
       const canvas = document.createElement("canvas");
       const maxW = 1024;
@@ -32,11 +53,10 @@ export default function ReliableScanner() {
       handleAnalyze(resized);
     });
 
-    // 同じファイルを再選択できるようにリセット
     e.target.value = "";
   };
 
-  // AI解析（OpenAI Vision）
+  // AI解析（Gemini Vision）
   const handleAnalyze = async (base64Image: string) => {
     setLoading(true);
     try {
@@ -56,9 +76,44 @@ export default function ReliableScanner() {
     }
   };
 
+  // 絆リストに保存
+  const handleSave = async () => {
+    if (!result || !tenantId) return;
+    if (!result.email) {
+      alert("メールアドレスがないと保存できないっぺ。入力してくんちぇ！");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const contactRef = doc(db, "tenants", tenantId, "manual_contacts", result.email);
+      await setDoc(contactRef, {
+        email: result.email,
+        name: result.name || "",
+        company: result.company || "",
+        phone: result.phone || "",
+        role: result.title || "",
+        source: "business_card_scan",
+        updatedAt: new Date(),
+      }, { merge: true });
+
+      setSaved(true);
+      // 1.5秒後にリセットして次の名刺へ
+      setTimeout(() => {
+        reset();
+        setSaved(false);
+      }, 1500);
+    } catch (e: any) {
+      alert("保存に失敗だっぺ。\n\n" + (e?.message || "不明なエラー"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const reset = () => {
     setImgData(null);
     setResult(null);
+    setSaved(false);
   };
 
   return (
@@ -74,7 +129,6 @@ export default function ReliableScanner() {
       {/* メインエリア */}
       <div className="flex-1 flex items-center justify-center overflow-hidden">
         {!imgData ? (
-          /* 撮影ボタン（OS標準カメラを起動） */
           <div className="flex flex-col items-center gap-6 p-8">
             <div className="w-[280px] aspect-[1.6/1] border-2 border-dashed border-indigo-500/50 rounded-2xl flex items-center justify-center bg-slate-900/50">
               <div className="text-center">
@@ -83,7 +137,6 @@ export default function ReliableScanner() {
               </div>
             </div>
 
-            {/* 隠しファイル入力 */}
             <input
               ref={fileInputRef}
               type="file"
@@ -102,7 +155,6 @@ export default function ReliableScanner() {
             <p className="text-xs text-slate-500">タップでカメラ起動</p>
           </div>
         ) : (
-          /* 撮影済み画像 + 解析中/結果 */
           <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-900 p-6">
             <img src={imgData} className={`w-full max-w-sm rounded-lg shadow-2xl transition-all ${loading ? 'opacity-50' : 'opacity-100'}`} alt="captured" />
             {loading && (
@@ -116,7 +168,7 @@ export default function ReliableScanner() {
       </div>
 
       {/* 操作パネル（結果表示） */}
-      {imgData && result && (
+      {imgData && result && !saved && (
         <div className="p-6 bg-black border-t border-white/10">
           <div className="bg-slate-900 p-6 rounded-3xl border border-indigo-500/30 text-left space-y-4 animate-in zoom-in">
             <div className="flex items-center gap-3 border-b border-white/5 pb-2">
@@ -141,8 +193,26 @@ export default function ReliableScanner() {
             </div>
             <div className="flex gap-2">
               <button onClick={reset} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold">撮り直す</button>
-              <button className="flex-[2] py-3 bg-indigo-600 rounded-xl font-black shadow-lg">絆リストに保存</button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-black shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={18} className="animate-spin"/> : <CheckCircle2 size={18}/>}
+                {saving ? "保存中..." : "絆リストに保存"}
+              </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 保存完了 */}
+      {saved && (
+        <div className="p-6 bg-black border-t border-white/10 text-center">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-8 animate-in zoom-in">
+            <CheckCircle2 size={48} className="text-emerald-400 mx-auto mb-3"/>
+            <p className="text-emerald-400 font-black text-lg">保存完了！</p>
+            <p className="text-slate-400 text-xs mt-2">次の名刺を準備してください...</p>
           </div>
         </div>
       )}
