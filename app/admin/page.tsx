@@ -836,11 +836,8 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     {/* 【PC版】横並びメニュー（md以上の画面で見える） */}
     <div className="hidden md:flex gap-2 items-center">
       {/* 1. 名刺スキャン */}
-      <button 
-  onClick={() => alert("名刺スキャン機能は現在開発中です。近日公開予定ですので、楽しみにお待ちください。")} 
-  className="bg-slate-400 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center shadow-sm opacity-80 cursor-default"
->
-  <ScanLine size={16} /> <span>名刺スキャン（近日公開）</span>
+      <button onClick={() => router.push("/admin/marketing/scan")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
+  <ScanLine size={16} /> <span>名刺スキャン</span>
 </button>
       {/* 2. 絆リスト */}
       <button onClick={() => router.push("/admin/marketing")} className="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold flex gap-1.5 items-center hover:bg-orange-50">
@@ -886,11 +883,11 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       <div className="absolute top-16 left-0 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl flex flex-col p-4 gap-2 animate-in slide-in-from-top duration-300 md:hidden z-50">
         
         {/* 1. 名刺スキャン（特等席！） */}
-        <button 
-  onClick={() => alert("名刺スキャン機能は現在開発中です。近日公開予定です。")} 
-  className="flex items-center gap-4 p-4 bg-slate-500 text-white rounded-2xl font-bold shadow-lg opacity-80"
+        <button
+  onClick={() => { router.push("/admin/marketing/scan"); setIsMobileMenuOpen(false); }}
+  className="flex items-center gap-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-2xl font-black border border-indigo-100 shadow-sm"
 >
-  <ScanLine size={24} /> <span className="text-base">名刺スキャン（近日公開）</span>
+  <ScanLine size={24} /> <span className="text-base">名刺スキャン</span>
 </button>
 {/* 営業ツール（スマホでは目立つように一番上に！） */}
         <button 
