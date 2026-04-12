@@ -337,11 +337,28 @@ export default function NewsletterStudio() {
 
   const [showInsertMenu, setShowInsertMenu] = useState<number | null>(null);
 
-  // --- 📦 Firebase Storageへアップロードする魔法 ---
+  // --- 📦 Firebase Storageへアップロード（メール用にリサイズ） ---
+  const resizeImage = (file: File, maxWidth: number): Promise<Blob> => {
+    return new Promise((resolve) => {
+      createImageBitmap(file).then((bitmap) => {
+        const scale = Math.min(maxWidth / bitmap.width, 1);
+        const w = Math.round(bitmap.width * scale);
+        const h = Math.round(bitmap.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.8);
+      });
+    });
+  };
+
   const uploadPhoto = async (file: File, folder: string) => {
-    const fileName = `${Date.now()}_${file.name}`;
+    const resized = await resizeImage(file, 1200);
+    const fileName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`;
     const storageRef = ref(storage, `newsletters/${folder}/${fileName}`);
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, resized);
     return await getDownloadURL(storageRef);
   };
 
