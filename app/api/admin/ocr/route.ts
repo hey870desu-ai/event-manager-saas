@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     console.log(`📸 OCR受信: ${(base64Data.length / 1024).toFixed(0)}KB`);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const result = await model.generateContent([
       {
