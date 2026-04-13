@@ -697,11 +697,30 @@ const handleSaveMemo = async (email: string, memo: string) => {
       });
 
       if (res.ok) {
+        // 即時送信のログを保存（テスト送信以外）
+        if (!isTest && tenantData) {
+          await addDoc(collection(db, "tenants", tenantData.id, "scheduled_emails"), {
+            subject,
+            body,
+            recipients: finalRecipients,
+            recipientCount: finalRecipients.length,
+            senderName: tenantData?.name || "絆太郎",
+            replyTo: user?.email,
+            themeColor: tenantData?.themeColor || "#3b82f6",
+            scheduledAt: new Date().toISOString(),
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          });
+          // 一覧を再取得
+          const schedSnap = await getDocs(query(collection(db, "tenants", tenantData.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
+          setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }
         alert(isTest ? "テスト送信完了！メールを確認してください。" : "一斉送信リクエスト完了！順次配信されます。");
         if (!isTest) {
           setSubject("");
           setBody("");
-          setExtracted(false); 
+          setExtracted(false);
           setRecipients([]);
         }
       } else {
@@ -939,55 +958,77 @@ const handleSaveMemo = async (email: string, memo: string) => {
            </div>
         </div>
 
-        {/* 予約配信一覧 */}
+        {/* 配信履歴 */}
         {scheduledList.length > 0 && (
           <div className="lg:col-span-3 mt-2">
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
               <h2 className="text-white font-bold flex items-center gap-2 mb-4">
-                <Clock size={18} className="text-emerald-400"/> 予約配信一覧
+                <Clock size={18} className="text-emerald-400"/> 配信履歴
               </h2>
-              <div className="space-y-3">
-                {scheduledList.map((item) => (
-                  <div key={item.id} className="bg-slate-950/50 border border-slate-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          item.status === 'scheduled' ? 'bg-emerald-500/20 text-emerald-400' :
-                          item.status === 'sent' ? 'bg-indigo-500/20 text-indigo-400' :
-                          'bg-slate-700 text-slate-400'
-                        }`}>
-                          {item.status === 'scheduled' ? '予約中' : item.status === 'sent' ? '送信済み' : item.status}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {new Date(item.scheduledAt).toLocaleString('ja-JP')}
-                        </span>
+
+              {/* 予約中 */}
+              {scheduledList.filter(i => i.status === 'scheduled').length > 0 && (
+                <div className="mb-4">
+                  <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-2">予約中</p>
+                  <div className="space-y-2">
+                    {scheduledList.filter(i => i.status === 'scheduled').map((item) => (
+                      <div key={item.id} className="bg-slate-950/50 border border-emerald-500/20 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">予約中</span>
+                            <span className="text-xs text-slate-400">{new Date(item.scheduledAt).toLocaleString('ja-JP')}</span>
+                          </div>
+                          <p className="text-sm font-bold text-white truncate">{item.subject}</p>
+                          <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setPreviewScheduled(item)} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">
+                            <Eye size={12}/> 内容確認
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('この予約を取り消しますか？')) return;
+                              await deleteDoc(doc(db, "tenants", tenantData!.id, "scheduled_emails", item.id));
+                              setScheduledList(prev => prev.filter(s => s.id !== item.id));
+                            }}
+                            className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
+                          >
+                            <X size={12}/> 取消
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm font-bold text-white truncate">{item.subject}</p>
-                      <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPreviewScheduled(item)}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
-                      >
-                        <Eye size={12}/> 内容確認
-                      </button>
-                      {item.status === 'scheduled' && (
-                        <button
-                          onClick={async () => {
-                            if (!confirm('この予約を取り消しますか？')) return;
-                            await deleteDoc(doc(db, "tenants", tenantData!.id, "scheduled_emails", item.id));
-                            setScheduledList(prev => prev.filter(s => s.id !== item.id));
-                          }}
-                          className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
-                        >
-                          <X size={12}/> 取消
-                        </button>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* 送信済み */}
+              {scheduledList.filter(i => i.status === 'sent').length > 0 && (
+                <div>
+                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-2">送信済み</p>
+                  <div className="space-y-2">
+                    {scheduledList.filter(i => i.status === 'sent').slice(0, 20).map((item) => (
+                      <div key={item.id} className="bg-slate-950/50 border border-slate-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400">送信済み</span>
+                            <span className="text-xs text-slate-400">
+                              {item.sentAt ? new Date(item.sentAt).toLocaleString('ja-JP') : new Date(item.scheduledAt).toLocaleString('ja-JP')}
+                            </span>
+                          </div>
+                          <p className="text-sm font-bold text-white truncate">{item.subject}</p>
+                          <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setPreviewScheduled(item)} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">
+                            <Eye size={12}/> 宛先確認
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -999,9 +1040,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold text-white">予約配信の内容</h3>
+                <h3 className="text-lg font-bold text-white">{previewScheduled.status === 'sent' ? '送信済みメールの詳細' : '予約配信の内容'}</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  配信予定: {new Date(previewScheduled.scheduledAt).toLocaleString('ja-JP')} / {previewScheduled.recipientCount || previewScheduled.recipients?.length || 0}名宛
+                  {previewScheduled.status === 'sent' ? '送信日時' : '配信予定'}: {new Date(previewScheduled.sentAt || previewScheduled.scheduledAt).toLocaleString('ja-JP')} / {previewScheduled.recipientCount || previewScheduled.recipients?.length || 0}名宛
                 </p>
               </div>
               <button onClick={() => setPreviewScheduled(null)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white">
