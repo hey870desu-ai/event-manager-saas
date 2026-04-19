@@ -8,7 +8,21 @@ const BATCH_SIZE = 100;
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Vercel Pro: 最大60秒
 
+// 手動実行用（管理画面から呼ぶ）
+export async function POST(request: Request) {
+  const { secret } = await request.json().catch(() => ({}));
+  if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return processCron();
+}
+
+// Vercel Cron自動実行用
 export async function GET() {
+  return processCron();
+}
+
+async function processCron() {
   try {
     const now = new Date();
     console.log("🤖 CRON: 配信チェック開始...", now.toISOString());

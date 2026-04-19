@@ -979,9 +979,30 @@ const handleSaveMemo = async (email: string, memo: string) => {
         {scheduledList.length > 0 && (
           <div className="lg:col-span-3 mt-2">
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-              <h2 className="text-white font-bold flex items-center gap-2 mb-4">
-                <Clock size={18} className="text-emerald-400"/> 配信履歴
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-white font-bold flex items-center gap-2">
+                  <Clock size={18} className="text-emerald-400"/> 配信履歴
+                </h2>
+                {scheduledList.some(i => i.status === 'scheduled') && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('予約中のメールを今すぐ配信チェックしますか？')) return;
+                      try {
+                        const res = await fetch('/api/cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual-trigger' }) });
+                        const data = await res.json();
+                        if (res.ok) {
+                          alert(`配信チェック完了！ ${data.processed || 0}件処理しました。`);
+                          const schedSnap = await getDocs(query(collection(db, "tenants", tenantData!.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
+                          setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        } else { alert('エラー: ' + (data.error || '不明')); }
+                      } catch { alert('通信エラー'); }
+                    }}
+                    className="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-amber-500/30"
+                  >
+                    <RefreshCw size={12}/> 今すぐ配信チェック
+                  </button>
+                )}
+              </div>
 
               {/* 予約中 */}
               {scheduledList.filter(i => i.status === 'scheduled').length > 0 && (
