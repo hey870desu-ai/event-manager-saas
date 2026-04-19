@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, addDoc, deleteDoc } from "firebase/firestore";
-import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2, Link2, Copy } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
@@ -805,8 +805,20 @@ const handleSaveMemo = async (email: string, memo: string) => {
               <div className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-2">Total Recipients</div>
               <div className="text-4xl font-mono font-bold text-white mb-6">{recipients.length.toLocaleString()}</div>
               {extracted && (
-                <button onClick={handleDownloadCSV} className="mb-6 w-full py-3 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                <button onClick={handleDownloadCSV} className="mb-3 w-full py-3 bg-slate-800 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
                   <FileDown size={14}/> 絆リストをCSV出力
+                </button>
+              )}
+              {tenantData && (
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/subscribe?t=${tenantData.id}`;
+                    navigator.clipboard.writeText(url);
+                    alert("メルマガ登録URLをコピーしました！\n\n" + url);
+                  }}
+                  className="mb-6 w-full py-3 bg-slate-800 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  <Link2 size={14}/> メルマガ登録URLをコピー
                 </button>
               )}
               <div className="text-[10px] text-emerald-400 flex justify-center items-center gap-1 font-bold pb-2"><CheckCircle size={12}/> 重複アドレス除去済み</div>
