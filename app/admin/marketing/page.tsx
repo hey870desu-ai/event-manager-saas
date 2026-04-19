@@ -941,9 +941,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
                     {scheduledTime && (
                        <div className="mt-4 pl-7 animate-in fade-in slide-in-from-top-2">
                           <div className="flex gap-2 items-center">
-                            <input type="date" value={scheduledTime.split('T')[0] || ''} onChange={(e) => { const hour = scheduledTime.split('T')[1]?.split(':')[0] || '09'; setScheduledTime(`${e.target.value}T${hour}:00`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]" />
-                            <select value={scheduledTime.split('T')[1]?.split(':')[0] || '09'} onChange={(e) => { const date = scheduledTime.split('T')[0] || new Date().toISOString().split('T')[0]; setScheduledTime(`${date}T${e.target.value}:00`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]">
-                              {Array.from({length: 24}, (_, i) => <option key={i} value={String(i).padStart(2,'0')}>{i}時</option>)}
+                            <input type="date" value={scheduledTime.split('T')[0] || ''} onChange={(e) => { const time = scheduledTime.split('T')[1] || '09:00'; setScheduledTime(`${e.target.value}T${time}`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                            <select value={scheduledTime.split('T')[1] || '09:00'} onChange={(e) => { const date = scheduledTime.split('T')[0] || new Date().toISOString().split('T')[0]; setScheduledTime(`${date}T${e.target.value}`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]">
+                              {Array.from({length: 24}, (_, h) => [0,10,20,30,40,50].map(m => { const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; return <option key={val} value={val}>{h}:{String(m).padStart(2,'0')}</option>; })).flat()}
                             </select>
                           </div>
                           <p className="mt-2 text-xs text-amber-500 flex items-center gap-1"><Clock size={12}/> 設定した日時に自動送信します</p>
