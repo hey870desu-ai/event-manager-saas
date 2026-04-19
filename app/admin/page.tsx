@@ -126,6 +126,8 @@ export default function AdminDashboard() {
   const [mailBody, setMailBody] = useState("");
   const [mailScheduledTime, setMailScheduledTime] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
+  const [mailQueueList, setMailQueueList] = useState<any[]>([]);
+  const [previewMailQueue, setPreviewMailQueue] = useState<any>(null);
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -360,6 +362,12 @@ useEffect(() => {
 
     const unsub2 = onSnapshot(adminQuery, (s) => setAdminUsers(s.docs.map(d => d.data() as AdminUser)));
 
+    // mail_queue（セミナーメール予約配信）を取得
+    const mqQuery = query(collection(db, "mail_queue"), orderBy("createdAt", "desc"));
+    const unsub4 = onSnapshot(mqQuery, (s) => {
+      setMailQueueList(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     // 3. 設定（署名・組織名）の取得 ★ここが重要！
     // 共通の "settings/config" ではなく、自分のテナント情報を参照するように変更
     const unsub3 = onSnapshot(doc(db, "tenants", currentUserTenant), (docSnap) => {
@@ -379,7 +387,7 @@ useEffect(() => {
       }
     });
 
-    return () => { unsub1(); unsub2(); unsub3(); };
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [user, currentUserTenant, isSuperAdminMode]); // 依存配列に currentUserTenant を追加
 // ▲▲▲ 修正ここまで ▲▲▲
 
@@ -1218,6 +1226,57 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
         </div>
       )}
 
+      {/* セミナーメール配信履歴 */}
+      {mailQueueList.length > 0 && !isParticipantsOpen && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-slate-900 font-bold flex items-center gap-2 text-sm">
+              <Clock size={16} className="text-emerald-500"/> メール配信履歴
+            </h2>
+            {mailQueueList.some(i => i.status === 'pending') && (
+              <button
+                onClick={async () => {
+                  if (!confirm('予約中のメールを今すぐ配信チェックしますか？')) return;
+                  try {
+                    const res = await fetch('/api/cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual-trigger' }) });
+                    const data = await res.json();
+                    alert(res.ok ? `配信チェック完了！ ${data.processed || 0}件処理しました。` : 'エラー: ' + (data.error || '不明'));
+                  } catch { alert('通信エラー'); }
+                }}
+                className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-amber-200"
+              >
+                <RefreshCw size={12}/> 今すぐ配信チェック
+              </button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {mailQueueList.slice(0, 10).map((item) => (
+              <div key={item.id} className="bg-slate-50 border border-slate-100 rounded-lg p-3 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      item.status === 'pending' ? 'bg-amber-100 text-amber-600' :
+                      item.status === 'sent' ? 'bg-blue-100 text-blue-600' :
+                      'bg-slate-200 text-slate-500'
+                    }`}>
+                      {item.status === 'pending' ? '予約中' : item.status === 'sent' ? '送信済み' : item.status}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {item.scheduledAt?.toDate ? item.scheduledAt.toDate().toLocaleString('ja-JP') : item.sentAt?.toDate ? item.sentAt.toDate().toLocaleString('ja-JP') : ''}
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 truncate">{item.subject}</p>
+                  <p className="text-[10px] text-slate-400">{item.eventTitle ? `${item.eventTitle} / ` : ''}{item.recipients?.length || 0}名宛</p>
+                </div>
+                <button onClick={() => setPreviewMailQueue(item)} className="text-xs bg-white hover:bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-slate-200">
+                  <Eye size={12}/> 詳細
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isParticipantsOpen && currentEventForList && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -1788,6 +1847,44 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                </div>
              </div>
            </div>
+        </div>
+      )}
+
+      {/* メール予約配信一覧モーダル */}
+      {previewMailQueue && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-2xl p-6 max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white">{previewMailQueue.status === 'sent' ? '送信済みメールの詳細' : '予約配信の内容'}</h3>
+                <p className="text-xs text-slate-400 mt-1">{previewMailQueue.recipients?.length || 0}名宛</p>
+              </div>
+              <button onClick={() => setPreviewMailQueue(null)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"><X size={20}/></button>
+            </div>
+            <div className="overflow-y-auto flex-1 space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">件名</p>
+                <p className="text-white font-bold">{previewMailQueue.subject}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">本文</p>
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{previewMailQueue.body}</div>
+              </div>
+              {previewMailQueue.recipients && (
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">宛先（{previewMailQueue.recipients.length}名）</p>
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
+                    {previewMailQueue.recipients.map((r: any, idx: number) => (
+                      <div key={idx} className="text-xs text-slate-400 flex gap-2">
+                        <span className="text-slate-300 font-medium">{r.name}</span>
+                        <span className="text-slate-600">{r.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
