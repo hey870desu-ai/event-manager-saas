@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
+  const [mailScheduledTime, setMailScheduledTime] = useState("");
   const [sendingMail, setSendingMail] = useState(false);
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
@@ -600,28 +601,37 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
        ? `${targetParticipant?.name} 様` 
        : (mailTargetType === 'selected' ? `【選択した${targets.length}名】` : (mailTargetType === 'all' ? "【全員】" : "【受付済（参加者）のみ】"));
 
-    if (!confirm(`【最終確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n\nお一人ずつ宛名（〇〇様）を入れて送信します。\n送信には少し時間がかかりますが、そのままお待ちください。\n\n本当によろしいですか？`)) return;
-    
+    const confirmMsg = mailScheduledTime
+      ? `【予約配信の確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n配信日時: ${new Date(mailScheduledTime).toLocaleString('ja-JP')}\n\n予約しますか？`
+      : `【最終確認】\n宛先: ${targetName}\n件数: ${targets.length} 名\n\nお一人ずつ宛名（〇〇様）を入れて送信します。\n送信には少し時間がかかりますが、そのままお待ちください。\n\n本当によろしいですか？`;
+
+    if (!confirm(confirmMsg)) return;
+
     setSendingMail(true);
     try {
       const res = await fetch('/api/send-thankyou', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })), 
-          subject: mailSubject, 
+        body: JSON.stringify({
+          recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })),
+          subject: mailSubject,
           body: mailBody,
           eventTitle: currentEventForList.title,
           eventDate: currentEventForList.date,
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
-          // ★ 追加：イベントに設定されたお問い合わせ先をAPIに渡す
         contactName: currentEventForList.contactName || orgName,
         contactEmail: currentEventForList.contactEmail || "",
         contactPhone: currentEventForList.contactPhone || "",
+        scheduledAt: mailScheduledTime ? new Date(mailScheduledTime).toISOString() : undefined,
         }),
       });
-      if (res.ok) { alert("送信が完了しました！"); setIsMailModalOpen(false); } 
-      else { alert("送信中にエラーが発生しました。"); }
+      if (res.ok) {
+        alert(mailScheduledTime
+          ? `${new Date(mailScheduledTime).toLocaleString('ja-JP')} に ${targets.length}名への配信を予約しました。`
+          : "送信が完了しました！");
+        setIsMailModalOpen(false);
+        setMailScheduledTime("");
+      } else { alert("送信中にエラーが発生しました。"); }
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
   };
 
@@ -1743,12 +1753,32 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                </div>
              </div>
 
+             {/* 配信タイミング選択 */}
+             <div className="mt-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
+               <label className="block text-xs text-slate-400 mb-3 font-bold">配信タイミング</label>
+               <div className="flex flex-col sm:flex-row gap-3">
+                 <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all flex-1 ${!mailScheduledTime ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-950 border-slate-700'}`}>
+                   <input type="radio" name="mailTiming" checked={!mailScheduledTime} onChange={() => setMailScheduledTime("")} className="accent-indigo-500 w-4 h-4"/>
+                   <span className="text-sm text-white font-bold">今すぐ送信</span>
+                 </label>
+                 <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all flex-1 ${mailScheduledTime ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-950 border-slate-700'}`}>
+                   <input type="radio" name="mailTiming" checked={!!mailScheduledTime} onChange={() => setMailScheduledTime(new Date().toISOString().slice(0, 16))} className="accent-emerald-500 w-4 h-4"/>
+                   <span className="text-sm text-white font-bold">予約配信</span>
+                 </label>
+               </div>
+               {mailScheduledTime && (
+                 <div className="mt-3">
+                   <input type="datetime-local" value={mailScheduledTime} onChange={(e) => setMailScheduledTime(e.target.value)} className="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-emerald-500 [color-scheme:dark]" />
+                 </div>
+               )}
+             </div>
+
              <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-800">
                <div className="text-xs text-slate-500">送信対象: <span className="text-white font-bold text-base">{targetCount}</span> 名</div>
                <div className="flex gap-3">
-                 <button onClick={()=>setIsMailModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-sm">キャンセル</button>
-                 <button onClick={sendMail} disabled={sendingMail || targetCount===0} className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:shadow-lg transition-all flex items-center gap-2 text-sm disabled:opacity-50">
-                   {sendingMail?<div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"/>:<Send size={16}/>}送信する
+                 <button onClick={()=>{setIsMailModalOpen(false); setMailScheduledTime("");}} className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-sm">キャンセル</button>
+                 <button onClick={sendMail} disabled={sendingMail || targetCount===0} className={`px-8 py-2.5 rounded-xl text-white font-bold hover:shadow-lg transition-all flex items-center gap-2 text-sm disabled:opacity-50 ${mailScheduledTime ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+                   {sendingMail?<div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"/>:<Send size={16}/>}{mailScheduledTime ? '予約する' : '送信する'}
                  </button>
                </div>
              </div>
