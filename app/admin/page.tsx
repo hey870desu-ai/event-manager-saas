@@ -1762,13 +1762,18 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                    <span className="text-sm text-white font-bold">今すぐ送信</span>
                  </label>
                  <label className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all flex-1 ${mailScheduledTime ? 'bg-emerald-900/30 border-emerald-500' : 'bg-slate-950 border-slate-700'}`}>
-                   <input type="radio" name="mailTiming" checked={!!mailScheduledTime} onChange={() => setMailScheduledTime(new Date().toISOString().slice(0, 16))} className="accent-emerald-500 w-4 h-4"/>
+                   <input type="radio" name="mailTiming" checked={!!mailScheduledTime} onChange={() => { const d = new Date(); d.setDate(d.getDate() + 1); setMailScheduledTime(`${d.toISOString().split('T')[0]}T09:00`); }} className="accent-emerald-500 w-4 h-4"/>
                    <span className="text-sm text-white font-bold">予約配信</span>
                  </label>
                </div>
                {mailScheduledTime && (
                  <div className="mt-3">
-                   <input type="datetime-local" value={mailScheduledTime} onChange={(e) => setMailScheduledTime(e.target.value)} className="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-emerald-500 [color-scheme:dark]" />
+                   <div className="flex gap-2 items-center">
+                     <input type="date" value={mailScheduledTime.split('T')[0] || ''} onChange={(e) => { const hour = mailScheduledTime.split('T')[1]?.split(':')[0] || '09'; setMailScheduledTime(`${e.target.value}T${hour}:00`); }} className="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-emerald-500 [color-scheme:dark]" />
+                     <select value={mailScheduledTime.split('T')[1]?.split(':')[0] || '09'} onChange={(e) => { const date = mailScheduledTime.split('T')[0] || new Date().toISOString().split('T')[0]; setMailScheduledTime(`${date}T${e.target.value}:00`); }} className="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-emerald-500 [color-scheme:dark]">
+                       {Array.from({length: 24}, (_, i) => <option key={i} value={String(i).padStart(2,'0')}>{i}時</option>)}
+                     </select>
+                   </div>
                  </div>
                )}
              </div>

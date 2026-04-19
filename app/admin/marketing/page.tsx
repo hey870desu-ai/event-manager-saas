@@ -934,13 +934,18 @@ const handleSaveMemo = async (email: string, memo: string) => {
                           <div className="group-hover:text-white transition-colors"><span className="block text-sm font-bold text-slate-200">今すぐ配信</span><span className="block text-xs text-slate-500">即時配信されます</span></div>
                        </label>
                        <label className="flex items-center gap-3 cursor-pointer group">
-                          <input type="radio" name="deliveryType" checked={!!scheduledTime} onChange={() => setScheduledTime(new Date().toISOString().slice(0, 16))} className="w-4 h-4 text-indigo-500 bg-transparent border-slate-700"/>
+                          <input type="radio" name="deliveryType" checked={!!scheduledTime} onChange={() => { const d = new Date(); d.setDate(d.getDate() + 1); setScheduledTime(`${d.toISOString().split('T')[0]}T09:00`); }} className="w-4 h-4 text-indigo-500 bg-transparent border-slate-700"/>
                           <div className="group-hover:text-white transition-colors"><span className="block text-sm font-bold text-slate-200">予約配信</span><span className="block text-xs text-slate-500">指定した日時に配信します</span></div>
                        </label>
                     </div>
                     {scheduledTime && (
                        <div className="mt-4 pl-7 animate-in fade-in slide-in-from-top-2">
-                          <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                          <div className="flex gap-2 items-center">
+                            <input type="date" value={scheduledTime.split('T')[0] || ''} onChange={(e) => { const hour = scheduledTime.split('T')[1]?.split(':')[0] || '09'; setScheduledTime(`${e.target.value}T${hour}:00`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                            <select value={scheduledTime.split('T')[1]?.split(':')[0] || '09'} onChange={(e) => { const date = scheduledTime.split('T')[0] || new Date().toISOString().split('T')[0]; setScheduledTime(`${date}T${e.target.value}:00`); }} className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg p-2.5 outline-none focus:border-indigo-500 [color-scheme:dark]">
+                              {Array.from({length: 24}, (_, i) => <option key={i} value={String(i).padStart(2,'0')}>{i}時</option>)}
+                            </select>
+                          </div>
                           <p className="mt-2 text-xs text-amber-500 flex items-center gap-1"><Clock size={12}/> 設定した日時に自動送信します</p>
                        </div>
                     )}
