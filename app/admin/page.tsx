@@ -155,6 +155,7 @@ export default function AdminDashboard() {
   const [legalPhone, setLegalPhone] = useState("");          // 連絡先電話番号
   const [legalEmail, setLegalEmail] = useState("");           // 連絡先メールアドレス
   const [legalHomepage, setLegalHomepage] = useState("");      // 公式HP
+  const [privacyPolicyUrl, setPrivacyPolicyUrl] = useState(""); // 独自プライバシーポリシーURL
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
@@ -384,6 +385,7 @@ useEffect(() => {
         setLegalPhone(data.phone || "");
         setLegalEmail(data.legalEmail || "");
         setLegalHomepage(data.homepage || "");
+        setPrivacyPolicyUrl(data.privacyPolicyUrl || "");
       }
     });
 
@@ -541,6 +543,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       phone: legalPhone,
       legalEmail: legalEmail,
       homepage: legalHomepage,
+      privacyPolicyUrl,
       instagramUrl,
       lineUrl,
       facebookUrl,
@@ -1970,6 +1973,10 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">ホームページURL</label>
         <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="https://hana-hiro.com" />
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">プライバシーポリシーURL（任意）</label>
+        <input type="text" value={privacyPolicyUrl} onChange={(e)=>setPrivacyPolicyUrl(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="https://example.com/privacy（未入力の場合はデフォルトが使用されます）" />
       </div>
     </div>
 
