@@ -1154,8 +1154,8 @@ useEffect(() => {
         </div>
      </div>
      <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">肩書</label>
-                        <input type="text" value={lec.title} onChange={(e) => updateLecturer(index, "title", e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white" placeholder="役職など"/>
+                        <label className="text-[10px] text-slate-500 block mb-1">肩書（改行で複数入力可）</label>
+                        <textarea value={lec.title} onChange={(e) => updateLecturer(index, "title", e.target.value)} rows={2} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white text-sm resize-none" placeholder="例：株式会社はなひろ 代表取締役&#10;一般社団法人○○ 理事"/>
                      </div>
                    </div>
                    <div>

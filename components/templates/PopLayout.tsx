@@ -184,7 +184,7 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
                             {lec.image ? <img src={lec.image} className="w-full h-full object-cover"/> : <User size={64} className="m-auto mt-8 text-slate-400"/>}
                          </div>
                          <div>
-                            <p className="text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded inline-block mb-2">{lec.title}</p>
+                            <p className="text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded inline-block mb-2 whitespace-pre-line">{lec.title}</p>
                             <h3 className="text-2xl font-black mb-2">{lec.name}</h3>
                             <p className="text-sm font-medium text-slate-600">{lec.profile || lec.lecturerProfile}</p>
                          </div>

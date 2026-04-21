@@ -210,7 +210,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
                     <div key={i} className="flex flex-col sm:flex-row gap-8 p-6 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
                       {lec.image && <div className="shrink-0 ring-4 ring-white rounded-xl overflow-hidden shadow-lg h-fit"><img src={lec.image} className="w-32 h-40 object-cover" alt={lec.name}/></div>}
                       <div>
-                        <div className="inline-block px-3 py-1 rounded-lg text-[10px] font-black text-white mb-3" style={{ backgroundColor: dynamicColor }}>{lec.title}</div>
+                        <div className="inline-block px-3 py-1 rounded-lg text-[10px] font-black text-white mb-3 whitespace-pre-line" style={{ backgroundColor: dynamicColor }}>{lec.title}</div>
                         <h3 className="text-2xl font-black text-slate-900 mb-3">{lec.name}</h3>
                         <p className="text-slate-600 leading-relaxed font-medium">{lec.profile}</p>
                       </div>

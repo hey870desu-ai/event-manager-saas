@@ -253,7 +253,7 @@ if (submitted) {
                       {lec.image && <img src={lec.image} alt={lec.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[10px] font-black text-purple-600 mb-1 uppercase tracking-widest">{lec.title}</p>
+                      <p className="text-[10px] font-black text-purple-600 mb-1 tracking-widest whitespace-pre-line">{lec.title}</p>
                       <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-3">{lec.name}</h3>
                       <p className="text-sm text-slate-600 leading-relaxed font-medium">{lec.profile || lec.lecturerProfile}</p>
                     </div>
