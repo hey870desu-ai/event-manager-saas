@@ -409,9 +409,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
                         {customFields.map((field) => (
                           <div key={field.id} className="space-y-3">
-                            <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5">
-                              <span style={{color: themeColor}}>■</span> {field.label} 
-                              {field.required && <span className="text-red-400">*</span>}
+                            <label className="text-sm font-medium text-slate-300 flex items-start gap-1.5">
+                              <span style={{color: themeColor}} className="mt-0.5">■</span>
+                              <span className="whitespace-pre-line">{field.label}</span>
+                              {field.required && <span className="text-red-400 mt-0.5">*</span>}
                             </label>
 
                             {field.type === "text" && (

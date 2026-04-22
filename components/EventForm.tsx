@@ -1277,8 +1277,8 @@ useEffect(() => {
               
               <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
                 <div className="md:col-span-5">
-                   <label className="text-[10px] text-slate-500 block mb-1">質問ラベル</label>
-                   <input type="text" value={field.label} onChange={(e) => updateCustomField(index, "label", e.target.value)} placeholder="例: 懇親会に参加しますか？" className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
+                   <label className="text-[10px] text-slate-500 block mb-1">質問ラベル（改行可）</label>
+                   <textarea value={field.label} onChange={(e) => updateCustomField(index, "label", e.target.value)} rows={2} placeholder={"例: 懇親会に参加しますか？\n※会費3,000円です"} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-none" />
                 </div>
                 
                 <div className="md:col-span-3">
