@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendBatchEmail } from '@/lib/mailer';
 
 export async function POST(req: Request) {
   try {
@@ -170,10 +168,15 @@ export async function POST(req: Request) {
       };
     });
 
-    // 🚀 Resendの「Batch送信」で一括個別配信だっぺ！
-    const data = await resend.batch.send(batchRequests);
+    const emails = batchRequests.map((r: any) => ({
+      from: r.from,
+      to: r.to[0],
+      subject: r.subject,
+      html: r.html,
+    }));
 
-    return NextResponse.json(data);
+    const result = await sendBatchEmail(emails);
+    return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     console.error("Resend Batch API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

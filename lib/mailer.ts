@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
+import { adminDb } from '@/lib/firebase-admin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -52,8 +53,21 @@ export async function sendBatchEmail(emails: EmailParams[]) {
   let successCount = 0;
   let errorCount = 0;
 
+  // オプトアウト済みアドレスを除外
+  const allEmails = emails.map(e => Array.isArray(e.to) ? e.to[0] : e.to);
+  const optedOut = await filterOptedOut(allEmails);
+  const filtered = emails.filter(e => {
+    const addr = Array.isArray(e.to) ? e.to[0] : e.to;
+    if (optedOut.has(addr)) {
+      console.log(`⏭️ オプトアウト済みスキップ: ${addr}`);
+      return false;
+    }
+    return true;
+  });
+  if (filtered.length === 0) return { successCount: 0, errorCount: 0, provider: 'skipped' };
+
   if (USE_GMAIL && gmailTransport) {
-    for (const email of emails) {
+    for (const email of filtered) {
       try {
         await gmailTransport.sendMail({
           from: `${extractName(email.from)} <${process.env.GMAIL_USER}>`,
@@ -73,7 +87,7 @@ export async function sendBatchEmail(emails: EmailParams[]) {
 
   try {
     await resend.batch.send(
-      emails.map(e => ({
+      filtered.map(e => ({
         from: e.from,
         to: Array.isArray(e.to) ? e.to : [e.to],
         subject: e.subject,
@@ -81,12 +95,26 @@ export async function sendBatchEmail(emails: EmailParams[]) {
         reply_to: e.replyTo,
       })) as any
     );
-    successCount = emails.length;
+    successCount = filtered.length;
     return { successCount, errorCount, provider: 'resend' };
   } catch (err: any) {
     console.error('Resend Batch送信エラー:', err?.message);
     throw err;
   }
+}
+
+// オプトアウト済みのメールアドレスをフィルタリング
+async function filterOptedOut(emails: string[]): Promise<Set<string>> {
+  const optedOut = new Set<string>();
+  // 10件ずつチェック（Firestoreのinクエリ上限対策）
+  for (let i = 0; i < emails.length; i += 10) {
+    const batch = emails.slice(i, i + 10);
+    for (const email of batch) {
+      const doc = await adminDb.collection('marketing_optouts').doc(email).get();
+      if (doc.exists) optedOut.add(email);
+    }
+  }
+  return optedOut;
 }
 
 function extractName(from: string): string {

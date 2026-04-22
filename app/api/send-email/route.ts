@@ -1,9 +1,7 @@
 // 📂 app/api/send-email/route.ts (完全統合版)
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend'; // 👈 nodemailerを消してこれに変更
-import { adminDb } from '@/lib/firebase-admin'; 
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { adminDb } from '@/lib/firebase-admin';
+import { sendEmail } from '@/lib/mailer';
 
 // 日付フォーマット
 function formatToJapaneseDate(dateString: string): string {
@@ -259,35 +257,34 @@ mainHtml += `
       </body>
       </html>`;
 
-    const { data, error } = await resend.emails.send({
-      from: `${senderName} <info@event-manager.app>`, // 👈 ここが重要！
+    await sendEmail({
+      from: `${senderName} <info@event-manager.app>`,
       to: email,
       replyTo: replyTo || "info@event-manager.app",
       subject: subject,
       html: finalHtml,
     });
 
-    // 🏆 【修正版】オーナーのメアドをFirestoreから探して、連名で送るぞい！
+    // オーナーへの通知
     if (type !== 'upgrade_confirmation') {
       let ownerEmail = "";
       if (tenantId) {
         const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-        ownerEmail = tenantSnap.data()?.email || ""; // 塙さんのデータに合わせて .email を取得
+        ownerEmail = tenantSnap.data()?.email || "";
       }
 
       const adminRecipients: string[] = [];
-      if (contactEmail) adminRecipients.push(contactEmail); // 事務局
-      if (ownerEmail && ownerEmail !== contactEmail) adminRecipients.push(ownerEmail); // 🏆 オーナーを追加！
+      if (contactEmail) adminRecipients.push(contactEmail);
+      if (ownerEmail && ownerEmail !== contactEmail) adminRecipients.push(ownerEmail);
 
-      if (adminRecipients.length > 0) {
-        await resend.emails.send({
+      for (const recipient of adminRecipients) {
+        await sendEmail({
           from: `"絆太郎通知" <info@event-manager.app>`,
-          to: adminRecipients, // 👈 🏆 配列で渡せば全員に届くっぺ！
-          subject: `🚀 新規申し込み通知：${eventTitle}`,
+          to: recipient,
+          subject: `新規申し込み通知：${eventTitle}`,
           html: `
             <div style="font-family: sans-serif; color: #333; padding: 20px; border: 1px solid #0ea5e9; border-radius: 12px; background-color: #f0f9ff;">
-              <h2 style="color: #0ea5e9; margin-top: 0;">🚀 絆太郎からのお知らせだぞい！</h2>
-              <p style="font-size: 16px;"><strong>新しいお申し込みがありました！</strong></p>
+              <h2 style="color: #0ea5e9; margin-top: 0;">新しいお申し込みがありました</h2>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
               <p><strong>イベント名:</strong> ${eventTitle}</p>
               <p><strong>参加者氏名:</strong> ${name} 様</p>
@@ -301,12 +298,7 @@ mainHtml += `
       }
     }
 
-    if (error) {
-      console.error('Resend Error:', error);
-      return NextResponse.json({ success: false, error }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error('Email Send Error:', error);
