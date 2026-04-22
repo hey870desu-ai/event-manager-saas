@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { Resend } from 'resend';
+import { sendBatchEmail, sendEmail } from '@/lib/mailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const BATCH_SIZE = 100;
 
 export const dynamic = 'force-dynamic';
@@ -133,8 +132,8 @@ async function sendBatch(data: any) {
 
       return {
         from: `"${displaySender}" <info@event-manager.app>`,
-        to: [recipient.email],
-        reply_to: replyTo || "info@event-manager.app",
+        to: recipient.email,
+        replyTo: replyTo || "info@event-manager.app",
         subject: subject,
         html: `
           <!DOCTYPE html>
@@ -145,7 +144,7 @@ async function sendBatch(data: any) {
                   <span style="color: #ffffff; font-size: 20px; font-weight: bold;">${displaySender}</span>
                 </div>
                 <div style="padding: 40px 30px;">
-                  <div style="font-size: 15px; line-height: 1.8; color: #334155; white-space: pre-wrap;">${personalBody}</div>
+                  <div style="font-size: 15px; line-height: 1.8; color: #334155;">${personalBody}</div>
                 </div>
                 <div style="background-color: #f8fafc; color: #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; border-top: 1px solid #e2e8f0;">
                   <p style="margin: 0; font-weight: bold;">${displaySender}</p>
@@ -162,23 +161,14 @@ async function sendBatch(data: any) {
     });
 
     try {
-      await resend.batch.send(emails);
-      successCount += batch.length;
+      const result = await sendBatchEmail(emails);
+      successCount += result.successCount;
+      errorCount += result.errorCount;
     } catch (err: any) {
       console.error(`Batch送信エラー:`, err.message);
-      // フォールバック: 1件ずつ送信
-      for (const email of emails) {
-        try {
-          await resend.emails.send(email);
-          successCount++;
-          await new Promise(resolve => setTimeout(resolve, 700));
-        } catch (e) {
-          errorCount++;
-        }
-      }
+      errorCount += batch.length;
     }
 
-    // バッチ間待機
     if (i + BATCH_SIZE < recipients.length) {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -255,7 +245,7 @@ async function sendEventMail(data: any) {
       </body></html>`;
 
     try {
-      await resend.emails.send({
+      await sendEmail({
         from: `"${displaySender}" <info@event-manager.app>`,
         to: recipient.email,
         subject,

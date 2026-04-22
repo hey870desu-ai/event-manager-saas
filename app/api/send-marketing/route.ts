@@ -1,12 +1,9 @@
 // 📂 app/api/send-marketing/route.ts
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import { sendBatchEmail } from '@/lib/mailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Resend Batch APIは1回最大100件まで
 const BATCH_SIZE = 100;
-const BATCH_DELAY_MS = 1500; // バッチ間の待機時間
+const BATCH_DELAY_MS = 1500;
 
 export async function POST(request: Request) {
   try {
@@ -69,46 +66,32 @@ export async function POST(request: Request) {
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
 
-      // Resend Batch API用のメール配列を作成
       const emails = batch.map((recipient: any) => {
         let personalizedBody = emailBody.replace(
           /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g,
           `${recipient.name} 様`
         );
-        // 改行を<br>に変換（メールクライアントのwhite-space非対応対策）
         personalizedBody = personalizedBody.replace(/\n/g, '<br>');
 
         return {
           from: `"${senderName}" <info@event-manager.app>`,
-          to: [recipient.email],
-          reply_to: replyTo || "info@event-manager.app",
+          to: recipient.email,
+          replyTo: replyTo || "info@event-manager.app",
           subject: subject,
           html: buildHtml(recipient, personalizedBody),
         };
       });
 
       try {
-        // Resend Batch API（1回で最大100件を一括送信）
-        const result = await resend.batch.send(emails);
-        successCount += batch.length;
-        console.log(`📧 バッチ ${Math.floor(i / BATCH_SIZE) + 1} 送信完了: ${batch.length}件`);
+        const result = await sendBatchEmail(emails);
+        successCount += result.successCount;
+        errorCount += result.errorCount;
+        console.log(`📧 バッチ ${Math.floor(i / BATCH_SIZE) + 1} 送信完了: ${result.successCount}件 (${result.provider})`);
       } catch (err: any) {
         console.error(`バッチ ${Math.floor(i / BATCH_SIZE) + 1} エラー:`, err.message);
-
-        // Batch APIが失敗した場合、1件ずつフォールバック
-        for (const email of emails) {
-          try {
-            await resend.emails.send(email);
-            successCount++;
-            await new Promise(resolve => setTimeout(resolve, 700));
-          } catch (e) {
-            errorCount++;
-            console.error(`${email.to[0]} 送信失敗:`, e);
-          }
-        }
+        errorCount += batch.length;
       }
 
-      // 次のバッチまで待機（レート制限対策）
       if (i + BATCH_SIZE < recipients.length) {
         await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }

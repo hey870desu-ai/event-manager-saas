@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail } from '@/lib/mailer';
 
 // 📅 カレンダーURL生成（既存機能を完全維持）
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
@@ -122,8 +120,7 @@ export async function POST(request: Request) {
         </div></body></html>
       `;
 
-      // 🏆 送信：差出人を inboxSender にしてスッキリ！
-      await resend.emails.send({
+      await sendEmail({
         from: `"${senderForInbox}" <info@event-manager.app>`,
         to: recipient.email,
         subject: subject,
@@ -135,17 +132,17 @@ export async function POST(request: Request) {
     }
 
     if (contactEmail) {
-      await resend.emails.send({
+      await sendEmail({
         from: `"【絆太郎】申し込み通知" <info@event-manager.app>`,
-        to: contactEmail, // 👈 塙さんがEventFormで設定した「問い合わせメール」に届くっぺ！
+        to: contactEmail,
         subject: `【新規申込】${eventTitle} に新しい参加者だぞい！`,
         html: `
           <div style="font-family: sans-serif; color: #333;">
-            <h2 style="color: #3b82f6;">🚀 新しいお申し込みが入ったぞい！</h2>
+            <h2 style="color: #3b82f6;">新しいお申し込みが入りました</h2>
             <p><strong>イベント名:</strong> ${eventTitle}</p>
             <p><strong>参加者数:</strong> ${recipients.length} 名</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p>管理画面で詳細を確認してくんちぇ！！</p>
+            <p>管理画面で詳細を確認してください。</p>
           </div>
         `,
       });
