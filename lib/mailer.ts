@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Gmail Nodemailer（フォールバック用）
+// Gmail Nodemailer
 const gmailTransport = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
   ? nodemailer.createTransport({
       service: 'gmail',
@@ -14,6 +14,10 @@ const gmailTransport = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
     })
   : null;
 
+// GMAIL_APP_PASSWORDが設定されていればGmail優先
+// Resend復旧後、Vercelの環境変数からGMAIL_APP_PASSWORDを削除すればResendに戻る
+const USE_GMAIL = !!process.env.GMAIL_APP_PASSWORD;
+
 type EmailParams = {
   from: string;
   to: string | string[];
@@ -22,21 +26,8 @@ type EmailParams = {
   replyTo?: string;
 };
 
-// Resendで送信、失敗時はGmailにフォールバック
 export async function sendEmail(params: EmailParams) {
-  try {
-    await resend.emails.send({
-      from: params.from,
-      to: Array.isArray(params.to) ? params.to : [params.to],
-      subject: params.subject,
-      html: params.html,
-      replyTo: params.replyTo,
-    } as any);
-    return { provider: 'resend' };
-  } catch (resendErr: any) {
-    console.warn('⚠️ Resend送信失敗、Gmailにフォールバック:', resendErr?.message);
-    if (!gmailTransport) throw new Error('Resend停止中かつGmail未設定');
-
+  if (USE_GMAIL && gmailTransport) {
     await gmailTransport.sendMail({
       from: `${extractName(params.from)} <${process.env.GMAIL_USER}>`,
       to: Array.isArray(params.to) ? params.to.join(',') : params.to,
@@ -46,29 +37,22 @@ export async function sendEmail(params: EmailParams) {
     });
     return { provider: 'gmail' };
   }
+
+  await resend.emails.send({
+    from: params.from,
+    to: Array.isArray(params.to) ? params.to : [params.to],
+    subject: params.subject,
+    html: params.html,
+    replyTo: params.replyTo,
+  } as any);
+  return { provider: 'resend' };
 }
 
-// Resend Batch送信、失敗時はGmailで1件ずつ
 export async function sendBatchEmail(emails: EmailParams[]) {
   let successCount = 0;
   let errorCount = 0;
 
-  try {
-    await resend.batch.send(
-      emails.map(e => ({
-        from: e.from,
-        to: Array.isArray(e.to) ? e.to : [e.to],
-        subject: e.subject,
-        html: e.html,
-        reply_to: e.replyTo,
-      })) as any
-    );
-    successCount = emails.length;
-    return { successCount, errorCount, provider: 'resend' };
-  } catch (resendErr: any) {
-    console.warn('⚠️ Resend Batch送信失敗、Gmailにフォールバック:', resendErr?.message);
-    if (!gmailTransport) throw new Error('Resend停止中かつGmail未設定');
-
+  if (USE_GMAIL && gmailTransport) {
     for (const email of emails) {
       try {
         await gmailTransport.sendMail({
@@ -86,9 +70,25 @@ export async function sendBatchEmail(emails: EmailParams[]) {
     }
     return { successCount, errorCount, provider: 'gmail' };
   }
+
+  try {
+    await resend.batch.send(
+      emails.map(e => ({
+        from: e.from,
+        to: Array.isArray(e.to) ? e.to : [e.to],
+        subject: e.subject,
+        html: e.html,
+        reply_to: e.replyTo,
+      })) as any
+    );
+    successCount = emails.length;
+    return { successCount, errorCount, provider: 'resend' };
+  } catch (err: any) {
+    console.error('Resend Batch送信エラー:', err?.message);
+    throw err;
+  }
 }
 
-// "送信者名" <email> → 送信者名 を抽出
 function extractName(from: string): string {
   const match = from.match(/"([^"]+)"/);
   return match ? match[1] : '絆太郎';
