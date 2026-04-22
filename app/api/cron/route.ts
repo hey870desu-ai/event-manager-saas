@@ -128,6 +128,8 @@ async function sendBatch(data: any) {
         `${recipient.name || 'お客様'} 様`
       );
       personalBody = personalBody.replace(/{email}/g, recipient.email);
+      // 改行を<br>に変換（メールクライアントのwhite-space非対応対策）
+      personalBody = personalBody.replace(/\n/g, '<br>');
 
       return {
         from: `"${displaySender}" <info@event-manager.app>`,
@@ -223,6 +225,8 @@ async function sendEventMail(data: any) {
     } else {
       personalBody = personalBody.replace(/{qr}/g, "");
     }
+    // 改行を<br>に変換（メールクライアントのwhite-space非対応対策）
+    personalBody = personalBody.replace(/\n/g, '<br>');
 
     const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 

@@ -71,10 +71,12 @@ export async function POST(request: Request) {
 
       // Resend Batch API用のメール配列を作成
       const emails = batch.map((recipient: any) => {
-        const personalizedBody = emailBody.replace(
+        let personalizedBody = emailBody.replace(
           /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g,
           `${recipient.name} 様`
         );
+        // 改行を<br>に変換（メールクライアントのwhite-space非対応対策）
+        personalizedBody = personalizedBody.replace(/\n/g, '<br>');
 
         return {
           from: `"${senderName}" <info@event-manager.app>`,
