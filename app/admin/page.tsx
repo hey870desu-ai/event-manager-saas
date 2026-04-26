@@ -23,7 +23,7 @@ const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
 type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string;isSpotPaid?: boolean; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
-type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string; };
+type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string;status?: string;price?: number;refundAmount?: number;selfCancelledAt?: any; };
 
 // テンプレート定義
 const MAIL_TEMPLATES = {
@@ -159,6 +159,7 @@ export default function AdminDashboard() {
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
+  const [cancelledParticipants, setCancelledParticipants] = useState<ReservationData[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -406,23 +407,21 @@ useEffect(() => {
   }, [events]);
 
   useEffect(() => {
-    if (!isParticipantsOpen || !currentEventForList) { setParticipants([]); return; }
+    if (!isParticipantsOpen || !currentEventForList) { setParticipants([]); setCancelledParticipants([]); return; }
     const q = query(collection(db, "events", currentEventForList.id, "reservations"), orderBy("createdAt", "asc"));
-    
+
     return onSnapshot(q, (s) => {
-      const loadedData = s.docs
-        .map(d => {
-          const data = d.data();
-          return { 
-             id: d.id, 
-             ...data,
-             checkedIn: data.status === 'attended' || data.checkedIn === true
-          };
-        })
-        // 🏆 【ここが追加ポイント！】ステータスが 'cancelled' 以外の人だけを残すぞい！
-        .filter((p: any) => p.status !== 'cancelled') as ReservationData[];
-        
-      setParticipants(loadedData);
+      const allData = s.docs.map(d => {
+        const data = d.data();
+        return {
+           id: d.id,
+           ...data,
+           checkedIn: data.status === 'attended' || data.checkedIn === true
+        };
+      }) as ReservationData[];
+
+      setParticipants(allData.filter((p: any) => p.status !== 'cancelled'));
+      setCancelledParticipants(allData.filter((p: any) => p.status === 'cancelled'));
     });
   }, [isParticipantsOpen, currentEventForList]);
 
@@ -1431,37 +1430,94 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                  </table>
                )}
             </div>
-            {/* ▼▼▼ フッター：合計金額の計算と表示をパワーアップ！ ▼▼▼ */}
-<div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
-  {/* 左側：人数統計 */}
-  <div className="flex gap-4 text-xs text-slate-400">
-    <span>申込数: <span className="text-white font-bold">{participants.length}</span> 名</span>
-    <span>受付済: <span className="text-emerald-400 font-bold">{participants.filter(p=>p.checkedIn).length}</span> 名</span>
-  </div>
-
-  {/* 右側：金額合計（ここが塙さんのこだわりだっぺ！） */}
-  <div className="flex flex-wrap justify-end gap-3 md:gap-6">
-    {/* 1. 全体の売上予定額 */}
-    <div className="flex flex-col items-end">
-      <span className="text-[10px] text-slate-500 uppercase font-bold">売上予定（合計）</span>
-      <span className="text-white font-black text-lg">
-        ¥{participants.reduce((sum, p) => sum + (Number((p as any).price) || 0), 0).toLocaleString()}
-      </span>
+            {/* ▼▼▼ フッター：合計金額の計算と表示 ▼▼▼ */}
+<div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col gap-3 shrink-0">
+  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+    {/* 左側：人数統計 */}
+    <div className="flex gap-4 text-xs text-slate-400">
+      <span>申込数: <span className="text-white font-bold">{participants.length}</span> 名</span>
+      <span>受付済: <span className="text-emerald-400 font-bold">{participants.filter(p=>p.checkedIn).length}</span> 名</span>
+      {cancelledParticipants.length > 0 && (
+        <span>キャンセル: <span className="text-red-400 font-bold">{cancelledParticipants.length}</span> 名</span>
+      )}
     </div>
 
-    {/* 2. 当日現金で回収するべき残額 */}
-    <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
-      <span className="text-[10px] text-orange-400 uppercase font-bold">当日現金（未回収分）</span>
-      <span className="text-orange-500 font-black text-lg">
-        ¥{participants
-          .filter(p => (p as any).status !== 'paid') // 決済済み以外を集計
-          .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
-          .toLocaleString()}
-      </span>
+    {/* 右側：金額合計 */}
+    <div className="flex flex-wrap justify-end gap-3 md:gap-6">
+      {/* 1. 全体の売上予定額 */}
+      <div className="flex flex-col items-end">
+        <span className="text-[10px] text-slate-500 uppercase font-bold">売上予定（合計）</span>
+        <span className="text-white font-black text-lg">
+          ¥{participants.reduce((sum, p) => sum + (Number((p as any).price) || 0), 0).toLocaleString()}
+        </span>
+      </div>
+
+      {/* 2. 受付済の徴収額 */}
+      <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
+        <span className="text-[10px] text-emerald-400 uppercase font-bold">受付済（徴収額）</span>
+        <span className="text-emerald-400 font-black text-lg">
+          ¥{participants
+            .filter(p => p.checkedIn)
+            .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
+            .toLocaleString()}
+        </span>
+      </div>
+
+      {/* 3. 当日現金で回収するべき残額 */}
+      <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
+        <span className="text-[10px] text-orange-400 uppercase font-bold">当日現金（未回収分）</span>
+        <span className="text-orange-500 font-black text-lg">
+          ¥{participants
+            .filter(p => (p as any).paymentStatus !== 'paid' && !p.checkedIn)
+            .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
+            .toLocaleString()}
+        </span>
+      </div>
+
+      {/* 4. キャンセル料 */}
+      {cancelledParticipants.length > 0 && (
+        <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
+          <span className="text-[10px] text-red-400 uppercase font-bold">キャンセル料</span>
+          <span className="text-red-400 font-black text-lg">
+            ¥{cancelledParticipants
+              .reduce((sum, p) => {
+                const price = Number((p as any).price) || 0;
+                const refund = Number(p.refundAmount) || 0;
+                return sum + (price - refund);
+              }, 0)
+              .toLocaleString()}
+          </span>
+        </div>
+      )}
     </div>
   </div>
+
+  {/* キャンセル者一覧 */}
+  {cancelledParticipants.length > 0 && (
+    <details className="text-xs">
+      <summary className="text-red-400 cursor-pointer hover:text-red-300 font-bold">キャンセル者 ({cancelledParticipants.length}名)</summary>
+      <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+        {cancelledParticipants.map(p => {
+          const price = Number((p as any).price) || 0;
+          const refund = Number(p.refundAmount) || 0;
+          const cancelFee = price - refund;
+          return (
+            <div key={p.id} className="flex justify-between items-center text-slate-400 bg-slate-950 px-3 py-1.5 rounded">
+              <span>{p.name} <span className="text-slate-600">({p.email})</span></span>
+              <span className="flex gap-4">
+                {price > 0 && <span>参加費: ¥{price.toLocaleString()}</span>}
+                {refund > 0 && <span className="text-yellow-500">返金: ¥{refund.toLocaleString()}</span>}
+                {cancelFee > 0 && <span className="text-red-400 font-bold">キャンセル料: ¥{cancelFee.toLocaleString()}</span>}
+                {price === 0 && <span className="text-slate-600">無料</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  )}
 </div>
-{/* ▲▲▲ 修正ここまで ▲▲▲ */}
+{/* ▲▲▲ フッター修正ここまで ▲▲▲ */}
           </div>
         </div>
       )}
