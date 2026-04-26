@@ -1,8 +1,22 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { adminDb } from '@/lib/firebase-admin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// AWS SES
+const sesClient = process.env.AWS_SES_ACCESS_KEY_ID && process.env.AWS_SES_SECRET_ACCESS_KEY
+  ? new SESClient({
+      region: process.env.AWS_SES_REGION || 'ap-northeast-1',
+      credentials: {
+        accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
+
+const SES_FROM = process.env.AWS_SES_FROM || 'noreply@event-manager.app';
 
 // Gmail Nodemailer
 const gmailTransport = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
@@ -15,9 +29,9 @@ const gmailTransport = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
     })
   : null;
 
-// GMAIL_APP_PASSWORDが設定されていればGmail優先
-// Resend復旧後、Vercelの環境変数からGMAIL_APP_PASSWORDを削除すればResendに戻る
-const USE_GMAIL = !!process.env.GMAIL_APP_PASSWORD;
+// 優先順位: SES > Resend > Gmail
+// SES承認後、Vercelに AWS_SES_ACCESS_KEY_ID / AWS_SES_SECRET_ACCESS_KEY を追加すればSESに切り替わる
+const USE_SES = !!sesClient;
 
 type EmailParams = {
   from: string;
@@ -28,7 +42,38 @@ type EmailParams = {
 };
 
 export async function sendEmail(params: EmailParams) {
-  if (USE_GMAIL && gmailTransport) {
+  // SES優先
+  if (USE_SES && sesClient) {
+    const toAddresses = Array.isArray(params.to) ? params.to : [params.to];
+    const senderName = extractName(params.from);
+    await sesClient.send(new SendEmailCommand({
+      Source: `${senderName} <${SES_FROM}>`,
+      Destination: { ToAddresses: toAddresses },
+      Message: {
+        Subject: { Data: params.subject, Charset: 'UTF-8' },
+        Body: { Html: { Data: params.html, Charset: 'UTF-8' } },
+      },
+      ReplyToAddresses: params.replyTo ? [params.replyTo] : undefined,
+    }));
+    return { provider: 'ses' };
+  }
+
+  // Resend
+  try {
+    await resend.emails.send({
+      from: params.from,
+      to: Array.isArray(params.to) ? params.to : [params.to],
+      subject: params.subject,
+      html: params.html,
+      replyTo: params.replyTo,
+    } as any);
+    return { provider: 'resend' };
+  } catch (err: any) {
+    console.error('Resend送信エラー:', err?.message);
+  }
+
+  // Gmail フォールバック
+  if (gmailTransport) {
     await gmailTransport.sendMail({
       from: `${extractName(params.from)} <${process.env.GMAIL_USER}>`,
       to: Array.isArray(params.to) ? params.to.join(',') : params.to,
@@ -39,14 +84,7 @@ export async function sendEmail(params: EmailParams) {
     return { provider: 'gmail' };
   }
 
-  await resend.emails.send({
-    from: params.from,
-    to: Array.isArray(params.to) ? params.to : [params.to],
-    subject: params.subject,
-    html: params.html,
-    replyTo: params.replyTo,
-  } as any);
-  return { provider: 'resend' };
+  throw new Error('メール送信に失敗しました（全プロバイダー）');
 }
 
 export async function sendBatchEmail(emails: EmailParams[]) {
@@ -66,7 +104,49 @@ export async function sendBatchEmail(emails: EmailParams[]) {
   });
   if (filtered.length === 0) return { successCount: 0, errorCount: 0, provider: 'skipped' };
 
-  if (USE_GMAIL && gmailTransport) {
+  // SES優先
+  if (USE_SES && sesClient) {
+    for (const email of filtered) {
+      try {
+        const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
+        const senderName = extractName(email.from);
+        await sesClient.send(new SendEmailCommand({
+          Source: `${senderName} <${SES_FROM}>`,
+          Destination: { ToAddresses: toAddresses },
+          Message: {
+            Subject: { Data: email.subject, Charset: 'UTF-8' },
+            Body: { Html: { Data: email.html, Charset: 'UTF-8' } },
+          },
+          ReplyToAddresses: email.replyTo ? [email.replyTo] : undefined,
+        }));
+        successCount++;
+        await new Promise(r => setTimeout(r, 100));
+      } catch {
+        errorCount++;
+      }
+    }
+    return { successCount, errorCount, provider: 'ses' };
+  }
+
+  // Resend
+  try {
+    await resend.batch.send(
+      filtered.map(e => ({
+        from: e.from,
+        to: Array.isArray(e.to) ? e.to : [e.to],
+        subject: e.subject,
+        html: e.html,
+        reply_to: e.replyTo,
+      })) as any
+    );
+    successCount = filtered.length;
+    return { successCount, errorCount, provider: 'resend' };
+  } catch (err: any) {
+    console.error('Resend Batch送信エラー:', err?.message);
+  }
+
+  // Gmail フォールバック
+  if (gmailTransport) {
     for (const email of filtered) {
       try {
         await gmailTransport.sendMail({
@@ -85,22 +165,7 @@ export async function sendBatchEmail(emails: EmailParams[]) {
     return { successCount, errorCount, provider: 'gmail' };
   }
 
-  try {
-    await resend.batch.send(
-      filtered.map(e => ({
-        from: e.from,
-        to: Array.isArray(e.to) ? e.to : [e.to],
-        subject: e.subject,
-        html: e.html,
-        reply_to: e.replyTo,
-      })) as any
-    );
-    successCount = filtered.length;
-    return { successCount, errorCount, provider: 'resend' };
-  } catch (err: any) {
-    console.error('Resend Batch送信エラー:', err?.message);
-    throw err;
-  }
+  throw new Error('バッチメール送信に失敗しました（全プロバイダー）');
 }
 
 // オプトアウト済みのメールアドレスをフィルタリング
