@@ -291,12 +291,17 @@ const fetchTargets = async () => {
             if (blockedEmails.has(data.email)) {
               blockedCount++;
             } else {
-              // 💡 すでにあるデータより、新しい情報を優先して上書き保存するっぺ
-              customerMap.set(data.email, {
-                name: data.name,
-                company: data.company || data.department || "",
-                phone: data.phone || "",
-              });
+              const createdAt = data.createdAt?.toDate?.()?.getTime?.() || 0;
+              const existing = customerMap.get(data.email);
+              // 新しい予約データを優先（登録日が新しい or まだ登録なし）
+              if (!existing || createdAt > (existing._createdAt || 0)) {
+                customerMap.set(data.email, {
+                  name: data.name,
+                  company: data.company || data.department || "",
+                  phone: data.phone || "",
+                  _createdAt: createdAt,
+                });
+              }
             }
           }
         });
