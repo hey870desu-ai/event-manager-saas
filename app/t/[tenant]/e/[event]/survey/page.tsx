@@ -163,7 +163,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div key={index} className="space-y-3">
                <label className="block text-sm font-bold text-slate-300">
                  <span className="text-emerald-400 mr-2">Q{index + 1}.</span>
-                 {field.label}
+                 <span className="whitespace-pre-wrap">{field.label}</span>
                  {field.required && <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">必須</span>}
                </label>
 

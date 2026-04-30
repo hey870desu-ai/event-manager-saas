@@ -1391,16 +1391,16 @@ useEffect(() => {
                 {/* 質問文の入力欄 */}
                 <div className="md:col-span-5">
                    <label className="text-[10px] text-slate-500 block mb-1">質問文</label>
-                   <input 
-                     type="text" 
-                     value={field.label} 
+                   <textarea
+                     rows={2}
+                     value={field.label}
                      onChange={(e) => {
                         const newFields = [...surveyFields];
                         newFields[index].label = e.target.value;
                         setSurveyFields(newFields);
-                     }} 
-                     placeholder="例: 本日の感想をお聞かせください" 
-                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" 
+                     }}
+                     placeholder="例: 本日の感想をお聞かせください"
+                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]"
                    />
                 </div>
                 
