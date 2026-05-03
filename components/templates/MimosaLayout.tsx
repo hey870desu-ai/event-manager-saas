@@ -147,7 +147,7 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
                 {event.lecturerImage && <img src={event.lecturerImage} className="w-24 h-32 object-cover rounded-2xl ring-4 ring-white shadow-md"/>}
                 <div>
                   <h3 className="text-xl font-black text-slate-900">{event.lecturer}{event.lecturerSuffix}</h3>
-                  <p className="text-xs font-bold text-yellow-600 mb-2">{event.lecturerTitle}</p>
+                  <p className="text-xs font-bold text-yellow-600 mb-2 whitespace-pre-line">{event.lecturerTitle}</p>
                   <p className="text-slate-600 text-sm leading-relaxed">{event.lecturerProfile}</p>
                 </div>
               </div>

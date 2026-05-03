@@ -89,7 +89,7 @@ export default function LightTheme({ event, tenant }: Props) {
                    <img src={event.lecturerImage} className="w-24 h-24 rounded-full object-cover border-2 border-slate-100 shadow-sm" alt={event.lecturer}/>
                  )}
                  <div>
-                   <p className="text-sm text-indigo-600 font-bold mb-1">{event.lecturerTitle}</p>
+                   <p className="text-sm text-indigo-600 font-bold mb-1 whitespace-pre-line">{event.lecturerTitle}</p>
                    <p className="text-lg font-bold text-slate-900 mb-2">{event.lecturer}</p>
                    <p className="text-sm text-slate-600">{event.lecturerProfile}</p>
                  </div>

@@ -170,7 +170,7 @@ if (submitted) {
                       <h3 className="text-lg md:text-xl font-bold text-white mb-1 tracking-wide leading-tight">
               {event.lecturer ? `${event.lecturer} ${event.lecturerSuffix || ""}` : "講師調整中"}
             </h3>
-                      <p className="text-xs font-medium mb-3 tracking-wider" style={{ color: themeColor }}>{event.lecturerTitle}</p>
+                      <p className="text-xs font-medium mb-3 tracking-wider whitespace-pre-line" style={{ color: themeColor }}>{event.lecturerTitle}</p>
                       <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-wrap">{event.lecturerProfile}</p>
                     </div>
                 </div>
