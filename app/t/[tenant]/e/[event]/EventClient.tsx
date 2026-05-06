@@ -12,6 +12,7 @@ import MimosaLayout from "@/components/templates/MimosaLayout";
 import ChameleonLayout from "@/components/templates/ChameleonLayout";
 import LPLayout from "@/components/templates/LPLayout";
 import MedicalLayout from "@/components/templates/MedicalLayout";
+import NatureLayout from "@/components/templates/NatureLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -75,6 +76,11 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
   // ★医療・福祉テーマ
   if (theme === "medical") {
     return <MedicalLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★ナチュラルテーマ
+  if (theme === "nature") {
+    return <NatureLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
 
   // ★デフォルト（Tech / Dark）

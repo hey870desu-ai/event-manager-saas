@@ -1128,6 +1128,27 @@ useEffect(() => {
             {formData.theme === 'medical' && <div className="absolute top-2 right-2 text-teal-500"><CheckCircle size={16}/></div>}
           </label>
 
+          {/* 8. Nature（ヨガ・ウェルネス） */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'nature'
+              ? 'bg-[#faf8f5] border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="nature" checked={formData.theme === 'nature'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-[#faf8f5] border border-stone-200 rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner relative overflow-hidden">
+               <div className="w-2/3 h-1 bg-stone-200 rounded-full"></div>
+               <div className="w-1/2 h-1 bg-stone-200 rounded-full"></div>
+               <div className="absolute top-2 right-2 text-emerald-300 text-lg">🌿</div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'nature' ? 'text-stone-800' : 'text-slate-300'}`}>Nature（ナチュラル）</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">ヨガ・ウェルネス・癒し系</div>
+            </div>
+            {formData.theme === 'nature' && <div className="absolute top-2 right-2 text-emerald-500"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 
