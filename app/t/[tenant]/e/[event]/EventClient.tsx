@@ -10,6 +10,8 @@ import CorporateLayout from "@/components/templates/CorporateLayout";
 import PopLayout from "@/components/templates/PopLayout"; // 👈 これを追加！
 import MimosaLayout from "@/components/templates/MimosaLayout";
 import ChameleonLayout from "@/components/templates/ChameleonLayout";
+import LPLayout from "@/components/templates/LPLayout";
+import MedicalLayout from "@/components/templates/MedicalLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -65,7 +67,16 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
     return <CorporateLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
   
+  // ★LP型テーマ
+  if (theme === "lp") {
+    return <LPLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★医療・福祉テーマ
+  if (theme === "medical") {
+    return <MedicalLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
   // ★デフォルト（Tech / Dark）
-  // タイプミス(evnt)も修正しました！
   return <TechLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
 }

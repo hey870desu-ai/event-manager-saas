@@ -1085,6 +1085,49 @@ useEffect(() => {
     </div>
   </label>
 
+          {/* 6. LP型（集客特化） */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'lp'
+              ? 'bg-blue-50 border-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.3)]'
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="lp" checked={formData.theme === 'lp'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner relative overflow-hidden">
+               <div className="w-2/3 h-1.5 bg-white/30 rounded-full"></div>
+               <div className="w-12 h-5 bg-orange-500 rounded-full mt-1 flex items-center justify-center">
+                 <span className="text-[6px] text-white font-black">CTA</span>
+               </div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'lp' ? 'text-blue-900' : 'text-slate-300'}`}>LP（集客特化）</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">申し込み率UPに最適</div>
+            </div>
+            {formData.theme === 'lp' && <div className="absolute top-2 right-2 text-blue-500"><CheckCircle size={16}/></div>}
+          </label>
+
+          {/* 7. Medical（医療・福祉） */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'medical'
+              ? 'bg-teal-50 border-teal-500 shadow-[0_0_15px_rgba(13,148,136,0.3)]'
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="medical" checked={formData.theme === 'medical'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-gradient-to-br from-teal-50 to-white border border-teal-200 rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner relative overflow-hidden">
+               <div className="w-2/3 h-1.5 bg-teal-200 rounded-full"></div>
+               <div className="w-1/2 h-1.5 bg-teal-200 rounded-full"></div>
+               <div className="absolute top-2 right-2 text-teal-400">♥</div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'medical' ? 'text-teal-900' : 'text-slate-300'}`}>Medical（医療・福祉）</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">介護・医療セミナー向け</div>
+            </div>
+            {formData.theme === 'medical' && <div className="absolute top-2 right-2 text-teal-500"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 
