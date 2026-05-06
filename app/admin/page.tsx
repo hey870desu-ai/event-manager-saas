@@ -1019,6 +1019,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
 <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {filteredEvents.map((ev) => {
             const isPublished = ev.status === 'published';
+            const isClosed = ev.status === 'closed';
             // ★安全装置: テナント名が取れない場合のガード
             const tObj = tenantList.find(t => t.id === ev.tenantId);
             const tenantName = safeStr(tObj?.name) || safeStr(ev.tenantId) || "不明";
@@ -1040,7 +1041,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
               `}
             >
               {/* ▼▼▼ 修正：黄色〜淡いオレンジの優しいグラデーションに変更 ▼▼▼ */}
-<div className={`h-2 w-full absolute top-0 z-10 ${isPublished ? 'bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 shadow-sm' : 'bg-slate-300'}`}/>
+<div className={`h-2 w-full absolute top-0 z-10 ${isPublished ? 'bg-gradient-to-r from-amber-200 via-orange-300 to-orange-400 shadow-sm' : isClosed ? 'bg-gradient-to-r from-blue-300 to-blue-400' : 'bg-slate-300'}`}/>
               
               <div className="p-6 flex-1 relative z-10">
                 <div className="flex justify-between mb-4">
@@ -1048,14 +1049,14 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                     {/* ▼▼▼ 修正：公開中の時だけ btn-fire を適用 ▼▼▼ */}
 <span className={`
   text-xs px-3 py-0.5 rounded-full flex items-center gap-1 font-bold tracking-wide
-  ${isPublished 
-    /* 公開中：メラメラ燃えるエフェクト（枠線なし） */
-    ? "btn-fire text-white shadow-md" 
-    /* 下書き：グレー背景＋枠線あり */
+  ${isPublished
+    ? "btn-fire text-white shadow-md"
+    : isClosed
+    ? "bg-blue-100 text-blue-600 border border-blue-300"
     : "bg-slate-100 text-slate-500 border border-slate-300"
   }
 `}>
-  {isPublished ? '公開中' : '下書き'}
+  {isPublished ? '公開中' : isClosed ? '受付終了' : '下書き'}
 </span>
                     
                     {isSuperAdminMode && (

@@ -5,7 +5,7 @@ import { Metadata } from "next";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import EventClient from "./EventClient";
-import { Lock } from "lucide-react";
+import { Lock, CheckCircle } from "lucide-react";
 
 type Props = {
   params: { tenant: string; event: string };
@@ -112,31 +112,48 @@ export default async function EventPage({ params }: Props) {
     console.error("データ取得エラー:", error);
   }
 
-  // 🔒 下書き状態なら、お客さんには「準備中」の標準的な画面を表示するぞい！
-if (eventData.status !== 'published') {
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
-      <div className="max-w-sm">
-        {/* アイコン */}
-        <div className="w-20 h-20 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Lock size={40} />
-        </div>
-        
-        {/* メッセージ */}
-        <h2 className="text-2xl font-bold text-slate-800 mb-4">ただいま準備中です</h2>
-        <div className="text-slate-500 font-medium leading-relaxed space-y-2">
-          <p>このイベントページは現在、主催者様が公開に向けて準備を進めております。</p>
-          <p>公開まで、今しばらくお待ちください。</p>
-        </div>
-
-        {/* フッター */}
-        <div className="mt-8 pt-8 border-t border-slate-200">
-          <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">BanTaro Event Manager</p>
+  // 🔒 受付終了の場合
+  if (eventData.status === 'closed') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+        <div className="max-w-sm">
+          <div className="w-20 h-20 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">受付は終了しました</h2>
+          <div className="text-slate-500 font-medium leading-relaxed space-y-2">
+            <p className="text-lg font-bold text-slate-700">{eventData.title}</p>
+            <p>このイベントの受付は終了いたしました。</p>
+            <p>たくさんのお申し込み、ありがとうございました。</p>
+          </div>
+          <div className="mt-8 pt-8 border-t border-slate-200">
+            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">BanTaro Event Manager</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
+  // 🔒 下書き状態なら、お客さんには「準備中」の標準的な画面を表示
+  if (eventData.status !== 'published') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
+        <div className="max-w-sm">
+          <div className="w-20 h-20 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">ただいま準備中です</h2>
+          <div className="text-slate-500 font-medium leading-relaxed space-y-2">
+            <p>このイベントページは現在、主催者様が公開に向けて準備を進めております。</p>
+            <p>公開まで、今しばらくお待ちください。</p>
+          </div>
+          <div className="mt-8 pt-8 border-t border-slate-200">
+            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">BanTaro Event Manager</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 4. データを EventClient に渡す
   return (

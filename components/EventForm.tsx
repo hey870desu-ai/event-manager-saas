@@ -675,6 +675,7 @@ useEffect(() => {
            <select name="status" value={formData.status} onChange={handleChange} className={`w-full border border-slate-700 rounded-lg p-3 font-bold outline-none cursor-pointer transition-colors ${formData.status === 'published' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50' : 'bg-slate-950 text-slate-400'}`}>
              <option value="draft">下書き (準備中)</option>
              <option value="published">🚀 公開する</option>
+             <option value="closed">🔒 受付終了</option>
            </select>
         </div>
       </div>
