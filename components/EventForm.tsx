@@ -1634,7 +1634,7 @@ useEffect(() => {
                <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-600">
                  {uploadingOgp ? <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full"/> : <ImageIcon size={32}/>}
                </div>
-               <div><p className="text-sm text-slate-300 font-bold mb-1">SNSでシェアした時に表示される画像</p><p className="text-xs text-slate-500">イベントのチラシ画像などを登録してください (推奨比率 1.91:1)</p></div>
+               <div><p className="text-sm text-slate-300 font-bold mb-1">SNSでシェアした時に表示される画像</p><p className="text-xs text-slate-500">イベントのチラシ画像などを登録してください</p><p className="text-[10px] text-slate-600 mt-1">推奨サイズ: 1200×630px（横長）または 1080×1080px（正方形）</p></div>
                <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 font-bold rounded-lg transition-all"><Upload size={16} /> 画像をアップロード<input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'ogpImage')} /></label>
              </div>
            )}
