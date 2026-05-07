@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     snaps.forEach((snap: any) => {
       const layout = snap.layout || 'full';
 
-      // 🎯 文章(text)や1枚もの(full)は「割り込み」として扱うぞい！
-      if (layout === 'text' || layout === 'full') {
+      // 🎯 独立ブロック（文章・1枚もの・区切り・ボタン・強調）は「割り込み」として扱う
+      if (layout === 'text' || layout === 'full' || layout === 'divider' || layout === 'button' || layout === 'highlight') {
         // 1. もし待機中の写真があれば、先にそれを1行として確定させるっぺ！
         if (currentRow.length > 0) {
           rows.push({ items: [...currentRow], layout: currentRow[0].layout });
@@ -51,7 +51,50 @@ export async function POST(req: Request) {
     const snapsHtml = rows.map((row: any) => {
       const layout = row.layout;
 
-      // 🎯 【編集後記】文章ブロックを100%表示させる！
+      // 区切り線ブロック
+      if (layout === 'divider') {
+        return `
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0;">
+            <tr><td style="padding: 0 30px;"><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 0;" /></td></tr>
+          </table>
+        `;
+      }
+
+      // ボタンブロック
+      if (layout === 'button') {
+        const s = row.items[0];
+        const btnColor = s.buttonColor || '#3b82f6';
+        const btnUrl = s.buttonUrl || '#';
+        const btnText = s.title || 'クリック';
+        return `
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
+            <tr>
+              <td align="center" style="padding: 10px 0;">
+                <a href="${btnUrl}" target="_blank" style="display: inline-block; background-color: ${btnColor}; color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 900; letter-spacing: 1px;">${btnText}</a>
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      // 強調テキストブロック
+      if (layout === 'highlight') {
+        const s = row.items[0];
+        const bgColor = s.blockBgColor || '#eff6ff';
+        const textColor = s.blockTextColor || '#1e40af';
+        return `
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
+            <tr>
+              <td style="background-color: ${bgColor}; padding: 25px; border-radius: 8px;">
+                <p style="color: ${textColor}; margin: 0; font-size: 18px; font-weight: 900;">${s.title || ''}</p>
+                ${s.comment ? `<p style="color: ${textColor}; margin: 10px 0 0 0; font-size: 14px; line-height: 1.8; white-space: pre-wrap; opacity: 0.85;">${s.comment}</p>` : ''}
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      // 文章ブロック
       if (layout === 'text') {
         const s = row.items[0];
         return `

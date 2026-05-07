@@ -26,6 +26,12 @@ interface SnapItem {
   saturate?: number;
   blur?: number;
   filterPreset?: string;
+  // ボタンブロック用
+  buttonUrl?: string;
+  buttonColor?: string;
+  // 背景色付きテキスト用
+  blockBgColor?: string;
+  blockTextColor?: string;
 }
 
 const FILTER_PRESETS = [
@@ -317,8 +323,36 @@ export default function NewsletterStudio() {
     }
   };
 
+  // ボタンブロック追加
+  const addButtonBlock = (insertAt?: number) => {
+    if (snaps.length >= 12) return;
+    const newItem: SnapItem = {
+      id: Date.now(), title: '詳しくはこちら', comment: '', preview: null, file: null,
+      layout: 'button', scale: 1, position: { x: 50, y: 50 },
+      buttonUrl: 'https://', buttonColor: '#3b82f6',
+    };
+    if (insertAt !== undefined) {
+      const newSnaps = [...snaps]; newSnaps.splice(insertAt, 0, newItem); setSnaps(newSnaps);
+    } else { setSnaps([...snaps, newItem]); }
+  };
+
+  // 背景色付きテキストブロック追加
+  const addHighlightBlock = (insertAt?: number) => {
+    if (snaps.length >= 12) return;
+    const newItem: SnapItem = {
+      id: Date.now(), title: '重要なお知らせ', comment: '', preview: null, file: null,
+      layout: 'highlight', scale: 1, position: { x: 50, y: 50 },
+      blockBgColor: '#eff6ff', blockTextColor: '#1e40af',
+    };
+    if (insertAt !== undefined) {
+      const newSnaps = [...snaps]; newSnaps.splice(insertAt, 0, newItem); setSnaps(newSnaps);
+    } else { setSnaps([...snaps, newItem]); }
+  };
+
   // 任意の位置にブロックを挿入
-  const insertBlockAt = (insertAt: number, type: 'text' | 'divider' | 'photo') => {
+  const insertBlockAt = (insertAt: number, type: 'text' | 'divider' | 'photo' | 'button' | 'highlight') => {
+    if (type === 'button') return addButtonBlock(insertAt);
+    if (type === 'highlight') return addHighlightBlock(insertAt);
     if (snaps.length >= 12) return;
     const newItem: SnapItem = {
       id: Date.now(),
@@ -743,7 +777,7 @@ export default function NewsletterStudio() {
               {snaps.map((snap: any, idx) => (
                 <React.Fragment key={snap.id || idx}>
                 {/* ブロック間の挿入ボタン */}
-                {idx === 0 || snap.layout === 'full' || snap.layout === 'text' || snap.layout === 'divider' ? (
+                {idx === 0 || snap.layout === 'full' || snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' ? (
                   <div className="w-full flex justify-center py-1 relative">
                     <button
                       onClick={() => setShowInsertMenu(showInsertMenu === idx ? null : idx)}
@@ -758,6 +792,8 @@ export default function NewsletterStudio() {
                         <button onClick={() => { insertBlockAt(idx, 'text'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">文章</button>
                         <button onClick={() => { insertBlockAt(idx, 'photo'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">写真</button>
                         <button onClick={() => { insertBlockAt(idx, 'divider'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors">区切り</button>
+                        <button onClick={() => { insertBlockAt(idx, 'button'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors">ボタン</button>
+                        <button onClick={() => { insertBlockAt(idx, 'highlight'); setShowInsertMenu(null); }} className="text-[9px] font-bold px-3 py-1.5 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors">強調</button>
                         <button onClick={() => setShowInsertMenu(null)} className="text-[9px] px-1.5 py-1.5 text-slate-400 hover:text-red-400"><X size={12}/></button>
                       </div>
                     )}
@@ -787,7 +823,7 @@ export default function NewsletterStudio() {
                   </div>
 
                   {/* 🎯 写真枠：比率を 4:3 に合わせてギャップを埋めるっぺ！ */}
-                  {snap.layout !== 'text' && snap.layout !== 'divider' && (
+                  {snap.layout !== 'text' && snap.layout !== 'divider' && snap.layout !== 'button' && snap.layout !== 'highlight' && (
                     <>
                       <div className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
@@ -1000,6 +1036,56 @@ export default function NewsletterStudio() {
                       <span className="text-[9px] text-slate-400 font-bold uppercase">区切り線</span>
                       <div className="flex-1 h-px bg-slate-300"></div>
                     </div>
+                  ) : snap.layout === 'button' ? (
+                    <div className="space-y-3 py-2">
+                      <input
+                        type="text" placeholder="ボタンのテキスト" value={snap.title}
+                        onChange={(e) => { const n = [...snaps]; n[idx].title = e.target.value; setSnaps(n); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-xs font-black outline-none text-center"
+                      />
+                      <input
+                        type="url" placeholder="リンクURL（https://...）" value={snap.buttonUrl || ''}
+                        onChange={(e) => { const n = [...snaps]; n[idx].buttonUrl = e.target.value; setSnaps(n); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-xs outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400">ボタン色:</span>
+                        <input type="color" value={snap.buttonColor || '#3b82f6'}
+                          onChange={(e) => { const n = [...snaps]; n[idx].buttonColor = e.target.value; setSnaps(n); }}
+                          className="w-8 h-8 rounded cursor-pointer border-0"
+                        />
+                        <div className="flex-1 text-center py-3 rounded-lg text-white text-xs font-black" style={{ backgroundColor: snap.buttonColor || '#3b82f6' }}>
+                          {snap.title || 'ボタン'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : snap.layout === 'highlight' ? (
+                    <div className="space-y-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400">背景:</span>
+                        <input type="color" value={snap.blockBgColor || '#eff6ff'}
+                          onChange={(e) => { const n = [...snaps]; n[idx].blockBgColor = e.target.value; setSnaps(n); }}
+                          className="w-8 h-8 rounded cursor-pointer border-0"
+                        />
+                        <span className="text-[10px] text-slate-400">文字:</span>
+                        <input type="color" value={snap.blockTextColor || '#1e40af'}
+                          onChange={(e) => { const n = [...snaps]; n[idx].blockTextColor = e.target.value; setSnaps(n); }}
+                          className="w-8 h-8 rounded cursor-pointer border-0"
+                        />
+                      </div>
+                      <div className="rounded-lg p-4" style={{ backgroundColor: snap.blockBgColor || '#eff6ff' }}>
+                        <input
+                          type="text" placeholder="見出し" value={snap.title}
+                          onChange={(e) => { const n = [...snaps]; n[idx].title = e.target.value; setSnaps(n); }}
+                          className="w-full bg-transparent font-black text-sm outline-none mb-2" style={{ color: snap.blockTextColor || '#1e40af' }}
+                        />
+                        <textarea
+                          rows={3} placeholder="本文を入力..." value={snap.comment}
+                          onChange={(e) => { const n = [...snaps]; n[idx].comment = e.target.value; setSnaps(n); }}
+                          className="w-full bg-transparent text-xs outline-none resize-none leading-relaxed" style={{ color: snap.blockTextColor || '#1e40af' }}
+                        />
+                      </div>
+                    </div>
                   ) : (
                   <>
                   <div className="flex gap-2 mb-2">
@@ -1070,6 +1156,16 @@ export default function NewsletterStudio() {
                   {/* 区切り線 */}
                   <button onClick={() => addDividerBlock()} className="h-32 border-2 border-dashed border-slate-200 rounded-none flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 transition-all gap-1 bg-slate-50/30 shadow-sm">
                     <div className="w-12 h-px bg-slate-400"></div><span className="text-[8px] font-black uppercase">区切り線</span>
+                  </button>
+                  {/* ボタン */}
+                  <button onClick={() => addButtonBlock()} className="h-32 border-2 border-dashed border-orange-200 rounded-none flex flex-col items-center justify-center text-orange-500 hover:bg-orange-50 transition-all gap-1 bg-orange-50/30 shadow-sm">
+                    <div className="w-16 h-6 bg-orange-500 rounded-full flex items-center justify-center"><span className="text-[6px] text-white font-black">CLICK</span></div>
+                    <span className="text-[8px] font-black uppercase">ボタン</span>
+                  </button>
+                  {/* 強調テキスト */}
+                  <button onClick={() => addHighlightBlock()} className="h-32 border-2 border-dashed border-violet-200 rounded-none flex flex-col items-center justify-center text-violet-500 hover:bg-violet-50 transition-all gap-1 bg-violet-50/30 shadow-sm">
+                    <div className="w-14 h-8 bg-violet-100 rounded flex items-center justify-center"><span className="text-[7px] text-violet-600 font-black">!</span></div>
+                    <span className="text-[8px] font-black uppercase">強調</span>
                   </button>
                 </div>
               )}
