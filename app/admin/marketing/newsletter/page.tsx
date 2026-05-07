@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Camera, Send, Instagram, MessageCircle, Facebook, 
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw
+  Camera, Send, Instagram, MessageCircle, Facebook,
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw, Copy
 } from 'lucide-react';
 import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -309,6 +309,40 @@ export default function NewsletterStudio() {
     if (targetIdx < 0 || targetIdx >= newSnaps.length) return;
     [newSnaps[idx], newSnaps[targetIdx]] = [newSnaps[targetIdx], newSnaps[idx]];
     setSnaps(newSnaps);
+  };
+
+  // ブロック複製
+  const duplicateSnap = (idx: number) => {
+    if (snaps.length >= 12) return alert("ブロック数の上限（12個）に達しています");
+    const original = snaps[idx];
+    const clone: SnapItem = { ...original, id: Date.now(), file: null };
+    const newSnaps = [...snaps];
+    newSnaps.splice(idx + 1, 0, clone);
+    setSnaps(newSnaps);
+  };
+
+  // ドラッグ&ドロップ並び替え
+  const dragBlock = useRef<number | null>(null);
+  const dragOverBlock = useRef<number | null>(null);
+
+  const handleBlockDragStart = (idx: number) => {
+    dragBlock.current = idx;
+  };
+
+  const handleBlockDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    dragOverBlock.current = idx;
+  };
+
+  const handleBlockDrop = () => {
+    if (dragBlock.current === null || dragOverBlock.current === null) return;
+    if (dragBlock.current === dragOverBlock.current) return;
+    const newSnaps = [...snaps];
+    const dragItem = newSnaps.splice(dragBlock.current, 1)[0];
+    newSnaps.splice(dragOverBlock.current, 0, dragItem);
+    setSnaps(newSnaps);
+    dragBlock.current = null;
+    dragOverBlock.current = null;
   };
 
   const addDividerBlock = (insertAt?: number) => {
@@ -801,11 +835,28 @@ export default function NewsletterStudio() {
                 ) : null}
 
                 <div
-                  className={`bg-white p-5 rounded-none border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm ${
+                  draggable
+                  onDragStart={() => handleBlockDragStart(idx)}
+                  onDragOver={(e) => handleBlockDragOver(e, idx)}
+                  onDrop={handleBlockDrop}
+                  className={`bg-white p-5 rounded-none border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm transition-opacity ${
                     snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' :
                     snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
                   }`}
                 >
+                  {/* ドラッグハンドル */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10">
+                    <div className="flex gap-0.5">
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                    </div>
+                    <div className="flex gap-0.5 mt-0.5">
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                    </div>
+                  </div>
                   <div className="absolute -top-2 -right-2 flex gap-1 z-10">
                     {idx > 0 && (
                       <button onClick={() => moveSnap(idx, 'up')} className="bg-white text-slate-400 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors" title="上に移動">
@@ -817,7 +868,10 @@ export default function NewsletterStudio() {
                         <ChevronRight size={14}/>
                       </button>
                     )}
-                    <button onClick={() => removeSnap(idx)} className="bg-white text-red-500 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors">
+                    <button onClick={() => duplicateSnap(idx)} className="bg-white text-slate-400 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-violet-50 hover:text-violet-500 transition-colors" title="複製">
+                      <Copy size={14} />
+                    </button>
+                    <button onClick={() => removeSnap(idx)} className="bg-white text-red-500 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-red-50 transition-colors" title="削除">
                       <Trash2 size={14} />
                     </button>
                   </div>
