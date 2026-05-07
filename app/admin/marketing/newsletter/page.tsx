@@ -70,6 +70,8 @@ export default function NewsletterStudio() {
   const [tenantData, setTenantData] = useState<any>(null);
   const [isSending, setIsSending] = useState(false); // 送信用
   const [isSaving, setIsSaving] = useState(false);   // 保存用
+  const [previewMode, setPreviewMode] = useState<'pc' | 'sp'>('pc');
+  const [isSendingTest, setIsSendingTest] = useState(false);
   // 🏆 顧客リスト（絆リスト）用のStateを追加だばい！
   const [allRecipients, setAllRecipients] = useState<any[]>([]); 
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]); 
@@ -571,6 +573,37 @@ export default function NewsletterStudio() {
 
 
 // --- 🚀 配信開始ボタン（こだわり調整データを1ミリも漏らさない版！） ---
+  // テスト送信（自分宛）
+  const handleTestSend = async () => {
+    const myEmail = auth.currentUser?.email;
+    if (!myEmail) return alert("ログイン情報が取得できません");
+    if (!confirm(`${myEmail} 宛にテストメールを送信しますか？`)) return;
+
+    setIsSendingTest(true);
+    try {
+      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
+      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
+        let imageUrl = snap.preview || "";
+        if (snap.file) imageUrl = await uploadPhoto(snap.file, "snaps");
+        if (snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
+          return { title: snap.title, comment: snap.comment, imageUrl, layout: snap.layout || 'full', scale: snap.scale || 1, position: snap.position || { x: 50, y: 50 }, buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor };
+        }
+        return null;
+      }));
+      const finalSnaps = uploadedSnaps.filter(s => s !== null);
+
+      const response = await fetch("/api/send-newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: `【テスト】${subject}`, mainTitle, mainMessage, mainImageUrl: finalMainImageUrl, snaps: finalSnaps, tenantData, recipients: [myEmail] }),
+      });
+
+      if (response.ok) { alert("テストメールを送信しました！受信トレイを確認してください。"); }
+      else { alert("テスト送信に失敗しました"); }
+    } catch (e) { console.error(e); alert("テスト送信エラー"); }
+    finally { setIsSendingTest(false); }
+  };
+
   const handleSend = async () => {
     if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください！");
     if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
@@ -587,15 +620,18 @@ export default function NewsletterStudio() {
         if (snap.file) {
           imageUrl = await uploadPhoto(snap.file, "snaps");
         }
-        if (snap.layout === 'text' || imageUrl) {
-          // 🎯 ここ！ scale と position を追加して API に渡すぞい！
-          return { 
-            title: snap.title, 
-            comment: snap.comment, 
-            imageUrl: imageUrl, 
+        if (snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
+          return {
+            title: snap.title,
+            comment: snap.comment,
+            imageUrl: imageUrl,
             layout: snap.layout || 'full',
             scale: snap.scale || 1,
-            position: snap.position || { x: 50, y: 50 }
+            position: snap.position || { x: 50, y: 50 },
+            buttonUrl: snap.buttonUrl,
+            buttonColor: snap.buttonColor,
+            blockBgColor: snap.blockBgColor,
+            blockTextColor: snap.blockTextColor,
           };
         }
         return null;
@@ -1432,8 +1468,23 @@ export default function NewsletterStudio() {
       </div>
 
       {/* 📱 右側：プロフェッショナル・メールプレビュー */}
-      <div className="w-full lg:w-1/2 p-4 lg:p-12 flex justify-center items-start bg-slate-200 overflow-y-auto custom-scrollbar">
-        <div className="w-full max-w-[600px] bg-white shadow-2xl lg:rounded-[3rem] overflow-hidden border border-slate-300 animate-in slide-in-from-right duration-500">
+      <div className="w-full lg:w-1/2 p-4 lg:p-12 flex flex-col items-center bg-slate-200 overflow-y-auto custom-scrollbar">
+        {/* PC/スマホ切替 & テスト送信 */}
+        <div className="w-full max-w-[600px] flex items-center justify-between mb-4">
+          <div className="flex bg-white rounded-full border border-slate-200 shadow-sm p-1 gap-1">
+            <button onClick={() => setPreviewMode('pc')} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${previewMode === 'pc' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}>PC</button>
+            <button onClick={() => setPreviewMode('sp')} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all ${previewMode === 'sp' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}>スマホ</button>
+          </div>
+          <button
+            onClick={handleTestSend}
+            disabled={isSendingTest}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm disabled:opacity-50"
+          >
+            {isSendingTest ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            テスト送信
+          </button>
+        </div>
+        <div className={`bg-white shadow-2xl lg:rounded-[3rem] overflow-hidden border border-slate-300 animate-in slide-in-from-right duration-500 transition-all ${previewMode === 'sp' ? 'w-[375px]' : 'w-full max-w-[600px]'}`}>
           
           {/* Header */}
           <div className="bg-[#1e293b] p-12 text-center border-b-[10px] border-blue-500">
@@ -1532,6 +1583,18 @@ export default function NewsletterStudio() {
                     <div className="flex-1 h-px bg-slate-200"></div>
                     <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
                     <div className="flex-1 h-px bg-slate-200"></div>
+                  </div>
+                ) : snap.layout === 'button' ? (
+                  <div className="w-full text-center py-4">
+                    <a href={snap.buttonUrl || '#'} target="_blank" rel="noreferrer"
+                      className="inline-block px-10 py-4 rounded-lg text-white font-black text-base tracking-wide shadow-lg hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: snap.buttonColor || '#3b82f6' }}
+                    >{snap.title || 'ボタン'}</a>
+                  </div>
+                ) : snap.layout === 'highlight' ? (
+                  <div className="w-full rounded-lg p-8" style={{ backgroundColor: snap.blockBgColor || '#eff6ff' }}>
+                    <h4 className="font-black text-xl mb-2" style={{ color: snap.blockTextColor || '#1e40af' }}>{snap.title || '重要なお知らせ'}</h4>
+                    {snap.comment && <p className="leading-relaxed whitespace-pre-wrap text-base" style={{ color: snap.blockTextColor || '#1e40af', opacity: 0.85 }}>{snap.comment}</p>}
                   </div>
                 ) : (
                 <>
