@@ -95,6 +95,9 @@ export default function NewsletterStudio() {
   const [subject, setSubject] = useState('【絆レター】活動報告をお届けします');
   const [mainTitle, setMainTitle] = useState('今月のトピックス');
   const [mainMessage, setMainMessage] = useState('いつも大変お世話になっております。今月の様子をお伝えします。');
+  const [mainFontFamily, setMainFontFamily] = useState('sans');
+  const [mainTitleFontSize, setMainTitleFontSize] = useState(28);
+  const [mainBodyFontSize, setMainBodyFontSize] = useState(16);
   
   // 📸 メイン写真用
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
@@ -608,7 +611,7 @@ export default function NewsletterStudio() {
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: `【テスト】${subject}`, mainTitle, mainMessage, mainImageUrl: finalMainImageUrl, snaps: finalSnaps, tenantData, recipients: [myEmail] }),
+        body: JSON.stringify({ subject: `【テスト】${subject}`, mainTitle, mainMessage, mainImageUrl: finalMainImageUrl, snaps: finalSnaps, tenantData, recipients: [myEmail], mainFontFamily, mainTitleFontSize, mainBodyFontSize }),
       });
 
       if (response.ok) { alert("テストメールを送信しました！受信トレイを確認してください。"); }
@@ -660,11 +663,12 @@ export default function NewsletterStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject, mainTitle, mainMessage, 
+          subject, mainTitle, mainMessage,
           mainImageUrl: finalMainImageUrl,
           snaps: finalSnaps,
           tenantData,
-          recipients: selectedEmails 
+          recipients: selectedEmails,
+          mainFontFamily, mainTitleFontSize, mainBodyFontSize,
         }),
       });
 
@@ -844,8 +848,39 @@ export default function NewsletterStudio() {
                 </div>
               )}
 
-              <input type="text" placeholder="大きな見出し" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black outline-none shadow-sm" />
-              <textarea rows={4} placeholder="導入の文章..." value={mainMessage} onChange={(e) => setMainMessage(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm leading-relaxed outline-none resize-none shadow-sm" />
+              {/* メインビジュアルのフォント・サイズ設定 */}
+              <div className="flex gap-2 items-center bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <select value={mainFontFamily} onChange={(e) => setMainFontFamily(e.target.value)}
+                  className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] outline-none"
+                  style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css }}
+                >
+                  {FONT_OPTIONS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+                <div className="flex items-center gap-1">
+                  <span className="text-[8px] text-slate-400 font-bold">見出し</span>
+                  <input type="number" min={14} max={48} value={mainTitleFontSize}
+                    onChange={(e) => setMainTitleFontSize(parseInt(e.target.value) || 28)}
+                    className="w-12 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-center outline-none"
+                  />
+                  <span className="text-[8px] text-slate-400">px</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[8px] text-slate-400 font-bold">本文</span>
+                  <input type="number" min={10} max={36} value={mainBodyFontSize}
+                    onChange={(e) => setMainBodyFontSize(parseInt(e.target.value) || 16)}
+                    className="w-12 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-center outline-none"
+                  />
+                  <span className="text-[8px] text-slate-400">px</span>
+                </div>
+              </div>
+              <input type="text" placeholder="大きな見出し" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)}
+                className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-black outline-none shadow-sm"
+                style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}
+              />
+              <textarea rows={4} placeholder="導入の文章..." value={mainMessage} onChange={(e) => setMainMessage(e.target.value)}
+                className="w-full p-4 bg-white border border-slate-200 rounded-2xl leading-relaxed outline-none resize-none shadow-sm"
+                style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}
+              />
             </div>
           </section>
 
@@ -1545,8 +1580,8 @@ export default function NewsletterStudio() {
                 ) : <span className="text-slate-300 font-bold italic">Main Visual Area</span>}
               </div>
               <div className="p-12">
-                <h2 className="text-4xl font-black text-slate-800 mb-8 leading-tight tracking-tight">{mainTitle}</h2>
-                <div className="text-xl text-slate-600 leading-relaxed whitespace-pre-wrap border-l-[12px] border-blue-500 pl-8 py-2 bg-slate-50 rounded-r-2xl">{mainMessage}</div>
+                <h2 className="font-black text-slate-800 mb-8 leading-tight tracking-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
+                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap border-l-[12px] border-blue-500 pl-8 py-2 bg-slate-50 rounded-r-2xl" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
               </div>
             </>
           )}
@@ -1560,8 +1595,8 @@ export default function NewsletterStudio() {
                 ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
               </div>
               <div className="w-1/2 p-8 flex flex-col justify-center bg-slate-50">
-                <h2 className="text-2xl font-black text-slate-800 mb-4 leading-tight">{mainTitle}</h2>
-                <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+                <h2 className="font-black text-slate-800 mb-4 leading-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
+                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
               </div>
             </div>
           )}
@@ -1573,8 +1608,8 @@ export default function NewsletterStudio() {
                   style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
               ) : <div className="w-full h-full bg-slate-200"></div>}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-12">
-                <h2 className="text-4xl font-black text-white mb-4 leading-tight drop-shadow-lg">{mainTitle}</h2>
-                <div className="text-lg text-white/80 leading-relaxed whitespace-pre-wrap drop-shadow">{mainMessage}</div>
+                <h2 className="font-black text-white mb-4 leading-tight drop-shadow-lg" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
+                <div className="text-white/80 leading-relaxed whitespace-pre-wrap drop-shadow" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
               </div>
             </div>
           )}
@@ -1588,8 +1623,8 @@ export default function NewsletterStudio() {
                 ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
               </div>
               <div className="bg-blue-600 p-10 text-center">
-                <h2 className="text-3xl font-black text-white mb-4 leading-tight">{mainTitle}</h2>
-                <div className="text-base text-blue-100 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+                <h2 className="font-black text-white mb-4 leading-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
+                <div className="text-blue-100 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
               </div>
             </>
           )}
@@ -1603,8 +1638,8 @@ export default function NewsletterStudio() {
                 ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Banner</div>}
               </div>
               <div>
-                <h2 className="text-4xl font-black text-slate-800 mb-6 leading-tight tracking-tight">{mainTitle}</h2>
-                <div className="text-xl text-slate-600 leading-relaxed whitespace-pre-wrap">{mainMessage}</div>
+                <h2 className="font-black text-slate-800 mb-6 leading-tight tracking-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
+                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
               </div>
             </div>
           )}

@@ -12,10 +12,13 @@ const FONT_MAP: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData, recipients } = await req.json();
+    const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData, recipients, mainFontFamily, mainTitleFontSize, mainBodyFontSize } = await req.json();
 
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
+    const mainFF = FONT_MAP[mainFontFamily || 'sans'] || FONT_MAP.sans;
+    const mainTFS = `${mainTitleFontSize || 28}px`;
+    const mainBFS = `${mainBodyFontSize || 16}px`;
 
 // 🏆 【超・改良版】文章と写真を完璧にサンドイッチするロジックだばい！
     const rows: any[] = [];
@@ -187,8 +190,8 @@ export async function POST(req: Request) {
                 <img src="${mainImageUrl}" style="width: 100%; display: block;" />
 
                 <div style="padding: 40px 30px;">
-                  <h2 style="font-size: 28px; color: #111827; margin: 0 0 25px 0; line-height: 1.2; font-weight: 900;">${mainTitle}</h2>
-                  <div style="border-left: 8px solid #3b82f6; padding-left: 20px; font-size: 16px; line-height: 1.8; color: #4b5563;">
+                  <h2 style="font-size: ${mainTFS}; color: #111827; margin: 0 0 25px 0; line-height: 1.2; font-weight: 900; font-family: ${mainFF};">${mainTitle}</h2>
+                  <div style="border-left: 8px solid #3b82f6; padding-left: 20px; font-size: ${mainBFS}; line-height: 1.8; color: #4b5563; font-family: ${mainFF};">
                     ${mainMessage.replace(/\n/g, "<br>")}
                   </div>
                 </div>
