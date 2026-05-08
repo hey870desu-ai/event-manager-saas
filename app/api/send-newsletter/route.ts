@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { sendBatchEmail } from '@/lib/mailer';
 
+const FONT_MAP: Record<string, string> = {
+  sans: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif",
+  serif: "'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif",
+  rounded: "'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', sans-serif",
+  mono: "'Courier New', 'SF Mono', monospace",
+  impact: "'Impact', 'Arial Black', sans-serif",
+  cursive: "'Zen Kurenaido', 'Segoe Script', cursive",
+};
+
 export async function POST(req: Request) {
   try {
     const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData, recipients } = await req.json();
@@ -97,12 +106,15 @@ export async function POST(req: Request) {
       // 文章ブロック
       if (layout === 'text') {
         const s = row.items[0];
+        const ff = FONT_MAP[s.fontFamily || 'sans'] || FONT_MAP.sans;
+        const tfs = `${s.titleFontSize || 18}px`;
+        const bfs = `${s.bodyFontSize || 14}px`;
         return `
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
             <tr>
               <td style="background-color: #f8fafc; border-left: 6px solid #3b82f6; padding: 25px;">
-                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 900;">${s.title || '編集後記'}</p>
-                <p style="color: #4b5563; margin: 10px 0 0 0; font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${s.comment || ''}</p>
+                <p style="color: #1e293b; margin: 0; font-size: ${tfs}; font-weight: 900; font-family: ${ff};">${s.title || '編集後記'}</p>
+                <p style="color: #4b5563; margin: 10px 0 0 0; font-size: ${bfs}; line-height: 1.8; white-space: pre-wrap; font-family: ${ff};">${s.comment || ''}</p>
               </td>
             </tr>
           </table>
@@ -116,7 +128,11 @@ export async function POST(req: Request) {
       return `
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; table-layout: fixed;">
           <tr>
-            ${row.items.map((s: any) => `
+            ${row.items.map((s: any) => {
+              const ff = FONT_MAP[s.fontFamily || 'sans'] || FONT_MAP.sans;
+              const tfs = `${s.titleFontSize || 11}px`;
+              const bfs = `${s.bodyFontSize || 11}px`;
+              return `
               <td width="${cellWidth}" valign="top" style="padding: 5px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                   <tr>
@@ -126,13 +142,13 @@ export async function POST(req: Request) {
                   </tr>
                   <tr>
                     <td style="padding: 10px 2px;">
-                      <p style="color: #111827; margin: 0; font-size: 11px; font-weight: 900; line-height: 1.2;">${s.title || ''}</p>
-                      ${s.comment ? `<p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; line-height: 1.6; white-space: pre-wrap;">${s.comment}</p>` : ''}
+                      <p style="color: #111827; margin: 0; font-size: ${tfs}; font-weight: 900; line-height: 1.2; font-family: ${ff};">${s.title || ''}</p>
+                      ${s.comment ? `<p style="color: #6b7280; margin: 4px 0 0 0; font-size: ${bfs}; line-height: 1.6; white-space: pre-wrap; font-family: ${ff};">${s.comment}</p>` : ''}
                     </td>
                   </tr>
                 </table>
               </td>
-            `).join("")}
+            `}).join("")}
             ${layout === 'triple' && row.items.length < 3 ? `<td width="33.3%">&nbsp;</td>`.repeat(3 - row.items.length) : ""}
             ${layout === 'grid' && row.items.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
           </tr>

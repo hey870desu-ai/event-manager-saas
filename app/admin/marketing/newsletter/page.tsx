@@ -32,6 +32,10 @@ interface SnapItem {
   // 背景色付きテキスト用
   blockBgColor?: string;
   blockTextColor?: string;
+  // フォント設定
+  fontFamily?: string;
+  titleFontSize?: number;  // px
+  bodyFontSize?: number;   // px
 }
 
 const FILTER_PRESETS = [
@@ -56,6 +60,15 @@ const buildFilterStyle = (snap: SnapItem) => {
   if (snap.blur !== undefined && snap.blur > 0) parts.push(`blur(${snap.blur}px)`);
   return parts.join(' ');
 };
+
+const FONT_OPTIONS = [
+  { id: 'sans', label: 'ゴシック', css: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif" },
+  { id: 'serif', label: '明朝体', css: "'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif" },
+  { id: 'rounded', label: '丸ゴシック', css: "'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', sans-serif" },
+  { id: 'mono', label: '等幅', css: "'Courier New', 'SF Mono', monospace" },
+  { id: 'impact', label: 'インパクト', css: "'Impact', 'Arial Black', sans-serif" },
+  { id: 'cursive', label: '手書き風', css: "'Zen Kurenaido', 'Segoe Script', cursive" },
+];
 
 const FRAME_TYPES = [
   { id: 'full', label: '全面', desc: '写真を画面幅いっぱいに' },
@@ -586,7 +599,7 @@ export default function NewsletterStudio() {
         let imageUrl = snap.preview || "";
         if (snap.file) imageUrl = await uploadPhoto(snap.file, "snaps");
         if (snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
-          return { title: snap.title, comment: snap.comment, imageUrl, layout: snap.layout || 'full', scale: snap.scale || 1, position: snap.position || { x: 50, y: 50 }, buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor };
+          return { title: snap.title, comment: snap.comment, imageUrl, layout: snap.layout || 'full', scale: snap.scale || 1, position: snap.position || { x: 50, y: 50 }, buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor, fontFamily: snap.fontFamily, titleFontSize: snap.titleFontSize, bodyFontSize: snap.bodyFontSize };
         }
         return null;
       }));
@@ -632,6 +645,9 @@ export default function NewsletterStudio() {
             buttonColor: snap.buttonColor,
             blockBgColor: snap.blockBgColor,
             blockTextColor: snap.blockTextColor,
+            fontFamily: snap.fontFamily,
+            titleFontSize: snap.titleFontSize,
+            bodyFontSize: snap.bodyFontSize,
           };
         }
         return null;
@@ -1178,6 +1194,32 @@ export default function NewsletterStudio() {
                     </div>
                   ) : (
                   <>
+                  {/* フォント・サイズ選択 */}
+                  <div className="flex gap-2 mb-2 items-center">
+                    <select value={snap.fontFamily || 'sans'}
+                      onChange={(e) => { const n = [...snaps]; n[idx].fontFamily = e.target.value; setSnaps(n); }}
+                      className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-none text-[10px] outline-none"
+                      style={{ fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css }}
+                    >
+                      {FONT_OPTIONS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                    </select>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] text-slate-400 font-bold">見出し</span>
+                      <input type="number" min={10} max={48} value={snap.titleFontSize || 18}
+                        onChange={(e) => { const n = [...snaps]; n[idx].titleFontSize = parseInt(e.target.value) || 18; setSnaps(n); }}
+                        className="w-12 p-1.5 bg-slate-50 border border-slate-200 rounded-none text-[10px] text-center outline-none"
+                      />
+                      <span className="text-[8px] text-slate-400">px</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] text-slate-400 font-bold">本文</span>
+                      <input type="number" min={10} max={36} value={snap.bodyFontSize || 14}
+                        onChange={(e) => { const n = [...snaps]; n[idx].bodyFontSize = parseInt(e.target.value) || 14; setSnaps(n); }}
+                        className="w-12 p-1.5 bg-slate-50 border border-slate-200 rounded-none text-[10px] text-center outline-none"
+                      />
+                      <span className="text-[8px] text-slate-400">px</span>
+                    </div>
+                  </div>
                   <div className="flex gap-2 mb-2">
                     <input
                       type="text"
@@ -1189,7 +1231,7 @@ export default function NewsletterStudio() {
                         setSnaps(newSnaps);
                       }}
                       className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-none text-xs font-black outline-none"
-                      style={{ color: snap.titleColor || '#0f172a' }}
+                      style={{ color: snap.titleColor || '#0f172a', fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css }}
                     />
                     <input
                       type="color"
@@ -1212,6 +1254,7 @@ export default function NewsletterStudio() {
                       setSnaps(newSnaps);
                     }}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-[10px] leading-relaxed outline-none resize-none"
+                    style={{ fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css }}
                     rows={snap.layout === 'text' ? 4 : 2}
                   />
                   </>
@@ -1621,12 +1664,20 @@ export default function NewsletterStudio() {
                     ? 'p-10 bg-blue-50/50 rounded-none border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]'
                     : 'px-2'
                 } text-left`}>
-                  <h4 className={`font-black ${snap.layout === 'text' ? 'text-2xl mb-3' : 'text-[14px] mb-2'}`}
-                    style={{ color: snap.titleColor || '#0f172a' }}>
+                  <h4 className="font-black mb-2"
+                    style={{
+                      color: snap.titleColor || '#0f172a',
+                      fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css,
+                      fontSize: `${snap.titleFontSize || 18}px`,
+                    }}>
                     {snap.title || (snap.layout === 'text' ? 'おしらせ' : `SCENE ${idx + 1}`)}
                   </h4>
                   {snap.comment && (
-                    <p className={`text-slate-500 leading-relaxed whitespace-pre-wrap ${snap.layout === 'text' ? 'text-lg' : 'text-[12px]'}`}>
+                    <p className="text-slate-500 leading-relaxed whitespace-pre-wrap"
+                      style={{
+                        fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css,
+                        fontSize: `${snap.bodyFontSize || 14}px`,
+                      }}>
                       {snap.comment}
                     </p>
                   )}
