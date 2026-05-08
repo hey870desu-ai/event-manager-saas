@@ -5,9 +5,6 @@ const FONT_MAP: Record<string, string> = {
   sans: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif",
   serif: "'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif",
   rounded: "'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', sans-serif",
-  mono: "'Courier New', 'SF Mono', monospace",
-  impact: "'Impact', 'Arial Black', sans-serif",
-  cursive: "'Zen Kurenaido', 'Segoe Script', cursive",
 };
 
 export async function POST(req: Request) {

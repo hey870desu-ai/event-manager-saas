@@ -65,9 +65,6 @@ const FONT_OPTIONS = [
   { id: 'sans', label: 'ゴシック', css: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif" },
   { id: 'serif', label: '明朝体', css: "'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif" },
   { id: 'rounded', label: '丸ゴシック', css: "'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', sans-serif" },
-  { id: 'mono', label: '等幅', css: "'Courier New', 'SF Mono', monospace" },
-  { id: 'impact', label: 'インパクト', css: "'Impact', 'Arial Black', sans-serif" },
-  { id: 'cursive', label: '手書き風', css: "'Zen Kurenaido', 'Segoe Script', cursive" },
 ];
 
 const FRAME_TYPES = [
