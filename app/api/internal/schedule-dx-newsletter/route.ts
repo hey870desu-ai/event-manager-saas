@@ -132,42 +132,62 @@ export async function POST(request: Request) {
       ? new Date(scheduledAtOverride)
       : todayAt8AMJST();
 
-    // 重複防止：同じ tenant で同日同件名の scheduled が既にあれば作らない
-    const dupSnap = await adminDb
-      .collection('tenants').doc(tenantId).collection('scheduled_emails')
-      .where('subject', '==', subject)
-      .where('status', '==', 'scheduled')
-      .get();
-    if (!dupSnap.empty) {
-      const existingId = dupSnap.docs[0].id;
+    // 1日1通ルール：JST日付をキーに deterministic docId
+    // 同日の修正版が来たら上書き、既に送信済みなら拒否
+    const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const dateKey = `${jstNow.getUTCFullYear()}-${String(jstNow.getUTCMonth() + 1).padStart(2, '0')}-${String(jstNow.getUTCDate()).padStart(2, '0')}`;
+    const docId = `dx-newsletter-${dateKey}`;
+    const docRef = adminDb.collection('tenants').doc(tenantId).collection('scheduled_emails').doc(docId);
+    const existing = await docRef.get();
+
+    const basePayload = {
+      subject,
+      body,
+      recipients,
+      recipientCount: recipients.length,
+      senderName: tenantData?.name || '絆太郎',
+      replyTo: tenantData?.contactEmail || tenantData?.ownerEmail || 'info@event-manager.app',
+      themeColor: tenantData?.themeColor || '#3b82f6',
+      scheduledAt: scheduledAt.toISOString(),
+      status: 'scheduled',
+      source: 'dx-newsletter-routine',
+      dateKey,
+    };
+
+    if (existing.exists) {
+      const data: any = existing.data();
+      if (data?.status === 'sent') {
+        // 既に送信済み → 触らない
+        return NextResponse.json({
+          ok: true,
+          skipped: true,
+          reason: 'already sent today',
+          scheduledId: docId,
+        });
+      }
+      // 同日のscheduledが残っていたら上書き（修正版対応）
+      await docRef.update({
+        ...basePayload,
+        updatedAt: new Date().toISOString(),
+      });
       return NextResponse.json({
         ok: true,
-        skipped: true,
-        reason: 'same-subject scheduled already exists',
-        scheduledId: existingId,
+        updated: true,
+        scheduledId: docId,
+        recipientCount: recipients.length,
+        scheduledAt: scheduledAt.toISOString(),
       });
     }
 
-    // scheduled_emails 作成
-    const docRef = await adminDb
-      .collection('tenants').doc(tenantId).collection('scheduled_emails')
-      .add({
-        subject,
-        body,
-        recipients,
-        recipientCount: recipients.length,
-        senderName: tenantData?.name || '絆太郎',
-        replyTo: tenantData?.contactEmail || tenantData?.ownerEmail || 'info@event-manager.app',
-        themeColor: tenantData?.themeColor || '#3b82f6',
-        scheduledAt: scheduledAt.toISOString(),
-        status: 'scheduled',
-        source: 'dx-newsletter-routine',
-        createdAt: new Date().toISOString(),
-      });
+    // 新規作成
+    await docRef.set({
+      ...basePayload,
+      createdAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({
       ok: true,
-      scheduledId: docRef.id,
+      scheduledId: docId,
       recipientCount: recipients.length,
       scheduledAt: scheduledAt.toISOString(),
     });
