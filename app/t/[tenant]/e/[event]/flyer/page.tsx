@@ -131,12 +131,12 @@ export default function FlyerPage() {
           </div>
 
           {/* 講師紹介 + 内容：2カラム */}
-          <div className="grid grid-cols-2 gap-4 mb-3">
+          <div className="grid grid-cols-2 gap-5 mb-3">
             {/* 左：講師情報 */}
             <div>
               {lecturers.length > 0 && (
                 <>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                     <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                     講師紹介
                   </h3>
@@ -144,13 +144,13 @@ export default function FlyerPage() {
                     {lecturers.map((lec: any, i: number) => (
                       <div key={i} className="flex items-start gap-2">
                         {lec.image && (
-                          <img src={lec.image} alt={lec.name} className="w-10 h-10 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
+                          <img src={lec.image} alt={lec.name} className="w-12 h-12 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
                         )}
                         <div className="min-w-0">
-                          <p className="font-black text-slate-900 text-xs">{lec.name}</p>
-                          {lec.title && <p className="text-[9px] text-slate-500 leading-snug">{lec.title}</p>}
+                          <p className="font-black text-slate-900 text-sm">{lec.name}</p>
+                          {lec.title && <p className="text-[10px] text-slate-500 leading-snug">{lec.title}</p>}
                           {(lec.profile || lec.lecturerProfile) && (
-                            <p className="text-[9px] text-slate-600 leading-relaxed mt-0.5 line-clamp-4">{lec.profile || lec.lecturerProfile}</p>
+                            <p className="text-[10px] text-slate-600 leading-relaxed mt-0.5">{lec.profile || lec.lecturerProfile}</p>
                           )}
                         </div>
                       </div>
@@ -164,11 +164,11 @@ export default function FlyerPage() {
             <div>
               {event.content && (
                 <>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                     <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                     内容
                   </h3>
-                  <div className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[12]">
+                  <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
                     {event.content}
                   </div>
                 </>
@@ -179,11 +179,11 @@ export default function FlyerPage() {
           {/* タイムスケジュール */}
           {event.timeTable && (
             <div className="mb-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                 <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                 タイムスケジュール
               </h3>
-              <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                 {event.timeTable}
               </div>
             </div>
