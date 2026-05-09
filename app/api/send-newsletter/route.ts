@@ -174,6 +174,14 @@ export async function POST(req: Request) {
         html: `
           <!DOCTYPE html>
           <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="x-apple-disable-message-reformatting">
+              <style>
+                body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+              </style>
+            </head>
             <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: sans-serif;">
               <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb;">
                 

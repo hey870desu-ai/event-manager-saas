@@ -34,6 +34,14 @@ export async function POST(request: Request) {
     const buildHtml = (recipient: any, personalizedBody: string) => `
       <!DOCTYPE html>
       <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta name="x-apple-disable-message-reformatting">
+          <style>
+            body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+          </style>
+        </head>
         <body style="${styles.body}">
           <div style="${styles.container}">
             <div style="${styles.header}">
