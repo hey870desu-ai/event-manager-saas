@@ -169,21 +169,30 @@ export default function FlyerPage() {
             </div>
           )}
 
-          {/* 料金 */}
-          {event.price && (
-            <div className="mb-3 text-center">
-              <span className="inline-block text-xl font-black px-5 py-1.5 rounded-full border-2" style={{ color: themeColor, borderColor: themeColor }}>
-                {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
-              </span>
+          {/* タイムスケジュール */}
+          {event.timeTable && (
+            <div className="mb-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
+                タイムスケジュール
+              </h3>
+              <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                {event.timeTable}
+              </div>
             </div>
           )}
         </div>
 
-        {/* フッター：QRコード + 申し込み案内 */}
+        {/* フッター：QRコード + 参加費 + 申し込み案内 */}
         <div className="absolute bottom-0 left-0 right-0 px-10 pb-4">
           <div className="border-t-2 pt-3 flex items-center justify-between" style={{ borderColor: themeColor }}>
             <div className="flex-1">
               <p className="text-base font-black text-slate-900 mb-0.5">お申し込みはこちら</p>
+              {event.price && (
+                <p className="text-sm font-black mb-1" style={{ color: themeColor }}>
+                  {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
+                </p>
+              )}
               <p className="text-[10px] text-slate-500 mb-1">QRコードを読み取るか、下記URLからお申し込みください。</p>
               <p className="text-[9px] text-slate-400 break-all font-mono">{eventUrl}</p>
               {event.contactEmail && (
