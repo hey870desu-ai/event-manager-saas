@@ -49,12 +49,12 @@ export async function POST(request: Request) {
     const calendarUrl = createGoogleCalendarUrl(`【${headerForEmail}】${eventTitle}`, eventDate || "", "13:00", venueName || "");
 
     const styles = {
-      body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 20px;",
-      container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);",
+      body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;",
+      container: "max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);",
       header: "background-color: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid #3b82f6;",
       logoText: "color: #ffffff; font-size: 20px; font-weight: bold; letter-spacing: 1px;",
-      content: "padding: 40px 30px;",
-      message: "font-size: 16px; line-height: 1.8; color: #334155; white-space: pre-wrap;", 
+      content: "padding: 25px 15px;",
+      message: "font-size: 16px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;",
       card: "background-color: #f1f5f9; border-radius: 8px; padding: 20px; margin-top: 30px;",
       label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;",
       value: "font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px;",
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
       const htmlContent = `
-        <!DOCTYPE html><html><body style="${styles.body}"><div style="${styles.container}">
+        <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="x-apple-disable-message-reformatting"><style>body{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}</style></head><body style="${styles.body}"><div style="${styles.container}">
           <div style="${styles.header}"><span style="${styles.logoText}">${headerForEmail}</span></div>
           <div style="${styles.content}">
             <div style="${styles.message}">${personalBody}</div>

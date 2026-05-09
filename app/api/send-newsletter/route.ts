@@ -182,8 +182,8 @@ export async function POST(req: Request) {
                 body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
               </style>
             </head>
-            <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: sans-serif;">
-              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb;">
+            <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: sans-serif; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+              <div style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb;">
                 
                 <div style="background-color: #1e293b; padding: 40px 20px; text-align: center; border-bottom: 8px solid #3b82f6;">
                   <h1 style="color: #ffffff; letter-spacing: 5px; text-transform: uppercase; margin: 0; font-size: 22px; font-weight: 900;">
@@ -194,14 +194,14 @@ export async function POST(req: Request) {
 
                 <img src="${mainImageUrl}" style="width: 100%; display: block;" />
 
-                <div style="padding: 40px 30px;">
-                  <h2 style="font-size: ${mainTFS}; color: #111827; margin: 0 0 25px 0; line-height: 1.2; font-weight: 900; font-family: ${mainFF};">${mainTitle}</h2>
-                  <div style="border-left: 8px solid #3b82f6; padding-left: 20px; font-size: ${mainBFS}; line-height: 1.8; color: #4b5563; font-family: ${mainFF};">
+                <div style="padding: 25px 15px;">
+                  <h2 style="font-size: ${mainTFS}; color: #111827; margin: 0 0 25px 0; line-height: 1.2; font-weight: 900; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">${mainTitle}</h2>
+                  <div style="border-left: 8px solid #3b82f6; padding-left: 15px; font-size: ${mainBFS}; line-height: 1.8; color: #4b5563; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">
                     ${mainMessage.replace(/\n/g, "<br>")}
                   </div>
                 </div>
 
-                <div style="padding: 0 30px 40px 30px;">
+                <div style="padding: 0 15px 25px 15px;">
                   ${snapsHtml}
                 </div>
 

@@ -21,12 +21,12 @@ export async function POST(request: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
 
     const styles = {
-      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px;",
-      container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);",
+      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;",
+      container: "max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);",
       header: `background: #1e293b; padding: 25px; text-align: center; border-bottom: 4px solid ${brandColor};`,
       logoText: "color: #ffffff; font-size: 20px; font-weight: bold; text-decoration: none;",
-      content: "padding: 40px 30px;",
-      messageBody: "font-size: 15px; line-height: 1.8; color: #334155; white-space: pre-wrap;",
+      content: "padding: 25px 15px;",
+      messageBody: "font-size: 15px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;",
       footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; border-top: 1px solid #e2e8f0;"
     };
 

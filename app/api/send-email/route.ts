@@ -50,13 +50,13 @@ export async function POST(request: Request) {
     const homeUrl = tenantUrl || "#";
     
     const styles = {
-      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 10px;",
-      container: "max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);",
+      body: "font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;",
+      container: "max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);",
       header: "background: #1e293b; padding: 30px 15px; text-align: center; border-bottom: 4px solid " + brandColor + ";",
       headerTitle: "color: #94a3b8; margin: 0; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 600; margin-bottom: 15px;",
       logoText: "color: #ffffff; font-size: 22px; font-weight: bold; display: block; letter-spacing: 1px; text-decoration: none;",
-      content: "padding: 25px 15px;",
-      greeting: "font-size: 16px; margin-bottom: 25px; line-height: 1.8; color: #334155;",
+      content: "padding: 25px 15px; word-break: break-word; overflow-wrap: break-word;",
+      greeting: "font-size: 16px; margin-bottom: 25px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;",
       card: "background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden;",
       cardAccent: "position: absolute; top: 0; left: 0; width: 4px; height: 100%; background-color: " + brandColor + ";",
       label: "font-size: 11px; color: #64748b; letter-spacing: 1px; margin-bottom: 4px; font-weight: 700;",
@@ -231,7 +231,15 @@ mainHtml += `
 
     const finalHtml = `
       <!DOCTYPE html>
-      <html>
+      <html lang="ja">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <style>
+          body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        </style>
+      </head>
       <body style="${styles.body}">
         <div style="${styles.container}">
           <div style="${styles.header}">${logoHtml}</div>
