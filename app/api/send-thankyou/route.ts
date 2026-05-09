@@ -48,19 +48,6 @@ export async function POST(request: Request) {
     // 🅱️ 即時配信ロジック
     const calendarUrl = createGoogleCalendarUrl(`【${headerForEmail}】${eventTitle}`, eventDate || "", "13:00", venueName || "");
 
-    const styles = {
-      body: "font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;",
-      container: "max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);",
-      header: "background-color: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid #3b82f6;",
-      logoText: "color: #ffffff; font-size: 20px; font-weight: bold; letter-spacing: 1px;",
-      content: "padding: 25px 15px;",
-      message: "font-size: 16px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;",
-      card: "background-color: #f1f5f9; border-radius: 8px; padding: 20px; margin-top: 30px;",
-      label: "font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;",
-      value: "font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px;",
-      footer: "background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; border-top: 1px solid #e2e8f0;",
-    };
-
     for (const recipient of recipients) {
       let personalBody = baseBody;
 
@@ -101,24 +88,45 @@ export async function POST(request: Request) {
 
       const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
-      const htmlContent = `
-        <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="x-apple-disable-message-reformatting"><style>body{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}</style></head><body style="${styles.body}"><div style="${styles.container}">
-          <div style="${styles.header}"><span style="${styles.logoText}">${headerForEmail}</span></div>
-          <div style="${styles.content}">
-            <div style="${styles.message}">${personalBody}</div>
+      const htmlContent = `<!DOCTYPE html>
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}</style></head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
+  <tr>
+    <td align="center" style="padding:10px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr>
+          <td style="background-color:#1e293b;padding:30px 20px;text-align:center;border-bottom:4px solid #3b82f6;">
+            <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:1px;">${headerForEmail}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:25px 15px;">
+            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
             ${showEventCard ? `
-              <div style="${styles.card}">
-                <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
-                  <div style="${styles.label}">イベント名</div><div style="${styles.value}">${eventTitle}</div>
-                  <div style="${styles.label}">開催日</div><div style="${styles.value}">${eventDate}</div>
-                  <a href="${calendarUrl}" target="_blank" style="color: #0284c7; font-size: 12px; font-weight: bold; text-decoration: none;">📅 Googleカレンダーに追加</a>
+              <div style="background-color:#f1f5f9;border-radius:8px;padding:20px;margin-top:30px;">
+                <div style="border-left:4px solid #3b82f6;padding-left:15px;">
+                  <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px;">イベント名</div>
+                  <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:12px;">${eventTitle}</div>
+                  <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px;">開催日</div>
+                  <div style="font-size:15px;font-weight:700;color:#0f172a;">${eventDate}</div>
+                  <a href="${calendarUrl}" target="_blank" style="color:#0284c7;font-size:12px;font-weight:bold;text-decoration:none;">📅 Googleカレンダーに追加</a>
                 </div>
               </div>
             ` : ''}
-          </div>
-          <div style="${styles.footer}">© ${new Date().getFullYear()} ${headerForEmail} All rights reserved.</div>
-        </div></body></html>
-      `;
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#f8fafc;color:#94a3b8;padding:25px 15px;text-align:center;font-size:11px;border-top:1px solid #e2e8f0;">
+            © ${new Date().getFullYear()} ${headerForEmail} All rights reserved.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body></html>`;
 
       await sendEmail({
         from: `"${senderForInbox}" <info@event-manager.app>`,

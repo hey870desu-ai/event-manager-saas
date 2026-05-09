@@ -135,29 +135,38 @@ async function sendBatch(data: any) {
         to: recipient.email,
         replyTo: replyTo || "info@event-manager.app",
         subject: subject,
-        html: `
-          <!DOCTYPE html>
-          <html lang="ja">
-            <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="x-apple-disable-message-reformatting"><style>body{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}</style></head>
-            <body style="font-family: sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
-              <div style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <div style="background: #1e293b; padding: 25px; text-align: center; border-bottom: 4px solid ${brandColor};">
-                  <span style="color: #ffffff; font-size: 20px; font-weight: bold;">${displaySender}</span>
-                </div>
-                <div style="padding: 25px 15px;">
-                  <div style="font-size: 15px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalBody}</div>
-                </div>
-                <div style="background-color: #f8fafc; color: #94a3b8; padding: 30px 20px; text-align: center; font-size: 12px; border-top: 1px solid #e2e8f0;">
-                  <p style="margin: 0; font-weight: bold;">${displaySender}</p>
-                  <p style="margin-top: 15px;">
-                    <a href="${appUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}" style="color: #94a3b8; text-decoration: underline; font-size: 11px;">配信停止はこちら</a>
-                  </p>
-                  <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} ${displaySender}</p>
-                </div>
-              </div>
-            </body>
-          </html>
-        `,
+        html: `<!DOCTYPE html>
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}</style></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;">
+  <tr>
+    <td align="center" style="padding:10px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+        <tr>
+          <td style="background:#1e293b;padding:25px;text-align:center;border-bottom:4px solid ${brandColor};">
+            <span style="color:#ffffff;font-size:20px;font-weight:bold;">${displaySender}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:25px 15px;">
+            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#f8fafc;color:#94a3b8;padding:25px 15px;text-align:center;font-size:12px;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-weight:bold;color:#94a3b8;">${displaySender}</p>
+            <p style="margin-top:15px;">
+              <a href="${appUrl}/unsubscribe?email=${encodeURIComponent(recipient.email)}" style="color:#94a3b8;text-decoration:underline;font-size:11px;">配信停止はこちら</a>
+            </p>
+            <p style="margin-top:10px;color:#94a3b8;">&copy; ${new Date().getFullYear()} ${displaySender}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body></html>`,
       };
     });
 
@@ -221,29 +230,43 @@ async function sendEventMail(data: any) {
 
     const showEventCard = venueName && venueName !== "―" && venueName !== "オンライン";
 
-    const html = `
-      <!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="x-apple-disable-message-reformatting"><style>body{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}</style></head><body style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #334155; margin: 0; padding: 10px; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
-        <div style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
-          <div style="background-color: #1e293b; padding: 30px 20px; text-align: center; border-bottom: 4px solid #3b82f6;">
-            <span style="color: #ffffff; font-size: 20px; font-weight: bold;">${headerName}</span>
-          </div>
-          <div style="padding: 25px 15px;">
-            <div style="font-size: 16px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalBody}</div>
+    const html = `<!DOCTYPE html>
+<html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}</style></head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
+  <tr>
+    <td align="center" style="padding:10px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr>
+          <td style="background-color:#1e293b;padding:30px 20px;text-align:center;border-bottom:4px solid #3b82f6;">
+            <span style="color:#ffffff;font-size:20px;font-weight:bold;">${headerName}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:25px 15px;">
+            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
             ${showEventCard ? `
-              <div style="background-color: #f1f5f9; border-radius: 8px; padding: 20px; margin-top: 30px;">
-                <div style="border-left: 4px solid #3b82f6; padding-left: 15px;">
-                  <div style="font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;">イベント名</div>
-                  <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">${eventTitle}</div>
-                  <div style="font-size: 11px; color: #64748b; font-weight: 700; margin-bottom: 4px;">開催日</div>
-                  <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${eventDate}</div>
+              <div style="background-color:#f1f5f9;border-radius:8px;padding:20px;margin-top:30px;">
+                <div style="border-left:4px solid #3b82f6;padding-left:15px;">
+                  <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px;">イベント名</div>
+                  <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:12px;">${eventTitle}</div>
+                  <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:4px;">開催日</div>
+                  <div style="font-size:15px;font-weight:700;color:#0f172a;">${eventDate}</div>
                 </div>
               </div>` : ''}
-          </div>
-          <div style="background-color: #f8fafc; color: #94a3b8; padding: 30px; text-align: center; font-size: 11px; border-top: 1px solid #e2e8f0;">
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#f8fafc;color:#94a3b8;padding:25px 15px;text-align:center;font-size:11px;border-top:1px solid #e2e8f0;">
             © ${new Date().getFullYear()} ${headerName} All rights reserved.
-          </div>
-        </div>
-      </body></html>`;
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body></html>`;
 
     try {
       await sendEmail({
