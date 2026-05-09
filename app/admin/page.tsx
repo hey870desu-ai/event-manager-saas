@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -174,6 +174,8 @@ export default function AdminDashboard() {
 
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [preFeedbacks, setPreFeedbacks] = useState<any[]>([]);
+  const [feedbackTab, setFeedbackTab] = useState<"post" | "pre">("post");
   // ▼▼▼ 追加：複製機能のロジック ▼▼▼
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   // ✨ SNSリンク用のStateを追加だばい！
@@ -430,11 +432,14 @@ useEffect(() => {
     
     // フィードバック（回答）をリアルタイム取得
     const q = query(collection(db, "events", currentEventForList.id, "feedbacks"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-       setFeedbacks(data);
+    const q2 = query(collection(db, "events", currentEventForList.id, "pre_feedbacks"), orderBy("createdAt", "desc"));
+    const unsub1 = onSnapshot(q, (snapshot) => {
+       setFeedbacks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    return () => unsubscribe();
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+       setPreFeedbacks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => { unsub1(); unsub2(); };
   }, [isFeedbackOpen, currentEventForList]);
 
   // Actions
@@ -794,6 +799,37 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `アンケート結果_${currentEventForList?.title || "data"}.csv`;
+    link.click();
+  };
+
+  const downloadPreFeedbackCSV = () => {
+    if (!preFeedbacks || preFeedbacks.length === 0) return alert("データがありません");
+
+    let questionKeys: string[] = [];
+    if (currentEventForList?.preSurveyFields && Array.isArray(currentEventForList.preSurveyFields)) {
+      questionKeys = currentEventForList.preSurveyFields.map((f: any) => f.label);
+    } else {
+      questionKeys = Array.from(new Set(preFeedbacks.flatMap(f => Object.keys(f.answers || {}))));
+    }
+
+    const headers = ["回答日時", ...questionKeys];
+    const csvRows = preFeedbacks.map(fb => {
+      const date = fb.createdAt?.toDate ? fb.createdAt.toDate().toLocaleString() : "";
+      const answerColumns = questionKeys.map(key => {
+        const val = fb.answers?.[key];
+        let cellData = "";
+        if (Array.isArray(val)) cellData = val.join(" / ");
+        else if (val) cellData = String(val);
+        return `"${cellData.replace(/"/g, '""')}"`;
+      });
+      return [`"${date}"`, ...answerColumns].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `事前アンケート結果_${currentEventForList?.title || "data"}.csv`;
     link.click();
   };
 
@@ -1563,33 +1599,100 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
           <div className="relative w-full max-w-5xl h-[85vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             
             {/* ヘッダー */}
-            <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#131625] shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <BarChart3 className="text-indigo-400" size={24}/> 
-                  アンケート集計・分析
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">{currentEventForList.title}</p>
+            <div className="px-6 py-4 border-b border-slate-800 bg-[#131625] shrink-0">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <BarChart3 className="text-indigo-400" size={24}/>
+                    アンケート集計・分析
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">{currentEventForList.title}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isFreePlan && (
+                  <button
+                     onClick={feedbackTab === "pre" ? downloadPreFeedbackCSV : downloadFeedbackCSV}
+                     className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition-colors"
+                   >
+                     <FileText size={16}/> <span className="hidden sm:inline">CSV出力</span>
+                   </button>
+                  )}
+                  <button onClick={() => setIsFeedbackOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                    <X size={24}/>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {!isFreePlan && (
-                <button
-                   onClick={downloadFeedbackCSV}
-                   className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition-colors"
-                 >
-                   <FileText size={16}/> <span className="hidden sm:inline">CSV出力</span>
-                 </button>
-                )}
-                <button onClick={() => setIsFeedbackOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-                  <X size={24}/>
+              {/* タブ */}
+              <div className="flex gap-1 mt-3">
+                <button onClick={() => setFeedbackTab("post")} className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${feedbackTab === "post" ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}>
+                  終了後アンケート ({feedbacks.length})
+                </button>
+                <button onClick={() => setFeedbackTab("pre")} className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${feedbackTab === "pre" ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400 hover:text-white"}`}>
+                  事前アンケート ({preFeedbacks.length})
                 </button>
               </div>
             </div>
 
             {/* メインコンテンツ */}
             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#0f111a]">
-              
-              {feedbacks.length === 0 ? (
+
+              {/* === 事前アンケートタブ === */}
+              {feedbackTab === "pre" && (
+                <div>
+                  {preFeedbacks.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4 opacity-50 py-20">
+                      <ClipboardList size={48} strokeWidth={1} />
+                      <p>まだ回答がありません</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* スコアボード */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex items-center gap-4">
+                          <div className="p-3 bg-purple-500/10 text-purple-400 rounded-lg"><Users size={24}/></div>
+                          <div>
+                            <div className="text-xs text-slate-400 font-bold uppercase">回答数</div>
+                            <div className="text-2xl font-bold text-white">{preFeedbacks.length}<span className="text-sm text-slate-500 ml-1">件</span></div>
+                          </div>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex items-center gap-4">
+                          <div className="p-3 bg-purple-500/10 text-purple-400 rounded-lg"><Clock size={24}/></div>
+                          <div>
+                            <div className="text-xs text-slate-400 font-bold uppercase">最終回答日時</div>
+                            <div className="text-sm font-bold text-white mt-1">{preFeedbacks[0]?.createdAt?.toDate ? preFeedbacks[0].createdAt.toDate().toLocaleString() : "---"}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 質問別の回答一覧 */}
+                      {(() => {
+                        const fields = currentEventForList?.preSurveyFields || [];
+                        const keys = fields.length > 0 ? fields.map((f: any) => f.label) : Array.from(new Set(preFeedbacks.flatMap(f => Object.keys(f.answers || {}))));
+                        return keys.map((key: string, qi: number) => (
+                          <div key={qi} className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
+                            <h4 className="text-sm font-bold text-purple-400 mb-3">Q{qi + 1}. {key}</h4>
+                            <div className="space-y-2">
+                              {preFeedbacks.map((fb, fi) => {
+                                const val = fb.answers?.[key];
+                                const display = Array.isArray(val) ? val.join(", ") : (val || "---");
+                                return (
+                                  <div key={fi} className="flex items-start gap-3 text-sm border-b border-slate-800/50 pb-2">
+                                    <span className="text-slate-500 text-xs shrink-0 mt-0.5">{fi + 1}.</span>
+                                    <span className="text-slate-300">{display}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* === 終了後アンケートタブ === */}
+              {feedbackTab === "post" && (feedbacks.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4 opacity-50">
                   <MessageSquare size={48} strokeWidth={1} />
                   <p>まだ回答がありません</p>
@@ -1804,7 +1907,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                   )}
 
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
