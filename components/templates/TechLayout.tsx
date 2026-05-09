@@ -123,6 +123,14 @@ if (submitted) {
            <div className="text-[9px] text-slate-500 mt-2 font-mono">ID: {reservationId}</div>
         </div>
 
+        {event.preSurveyUrl && (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+            <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>
+            <p className="text-xs text-slate-500 mb-3">イベントをより良いものにするため、ご協力ください。</p>
+            <a href={event.preSurveyUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm">アンケートに回答する</a>
+          </div>
+        )}
+
         <div className="pt-2">
           <button onClick={()=>window.location.reload()} className="text-sm font-bold py-2.5 px-6 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
             イベントページに戻る

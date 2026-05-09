@@ -54,6 +54,13 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
              </div>
              <p className="text-sm font-bold">当日これ見せてね！</p>
           </div>
+          {event.preSurveyUrl && (
+            <div className="bg-purple-50 border-4 border-purple-300 rounded-2xl p-4 text-center">
+              <p className="text-sm font-black text-purple-700 mb-1">📝 事前アンケートよろしくね！</p>
+              <p className="text-xs text-slate-500 mb-3">回答してくれると嬉しいな！</p>
+              <a href={event.preSurveyUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-xl transition-colors text-sm">アンケートに回答する</a>
+            </div>
+          )}
           <button onClick={()=>window.location.reload()} className="text-slate-900 font-black border-b-4 border-pink-400 hover:border-pink-600 transition-colors">
             戻る
           </button>

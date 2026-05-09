@@ -319,6 +319,21 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
            </div>
         </div>
 
+        {event.preSurveyUrl && (
+          <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-4 mb-4">
+            <p className="text-sm font-bold text-purple-300 mb-2">📝 事前アンケートのお願い</p>
+            <p className="text-xs text-slate-400 mb-3">イベントをより良いものにするため、事前アンケートにご協力ください。</p>
+            <a
+              href={event.preSurveyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm"
+            >
+              アンケートに回答する <ExternalLink size={14} />
+            </a>
+          </div>
+        )}
+
         <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-bold transition-colors">閉じる</button>
      </div>
    </div>

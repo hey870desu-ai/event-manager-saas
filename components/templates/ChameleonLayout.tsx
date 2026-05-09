@@ -99,6 +99,13 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
         </div>
         {/* --- ★ ここまで --- */}
 
+          {event.preSurveyUrl && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+              <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>
+              <p className="text-xs text-slate-500 mb-3">イベントをより良いものにするため、ご協力ください。</p>
+              <a href={event.preSurveyUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm">アンケートに回答する</a>
+            </div>
+          )}
           <button onClick={()=>window.location.reload()} className="px-10 py-4 rounded-full text-white font-bold shadow-lg" style={{ backgroundColor: dynamicColor }}>ページに戻る</button>
         </div>
       </div>
