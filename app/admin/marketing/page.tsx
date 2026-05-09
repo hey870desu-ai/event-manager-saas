@@ -263,19 +263,32 @@ useEffect(() => {
   );
 });
 
-const fetchTargets = async () => {
+const fetchTargets = async (overrides?: { branch?: string; eventId?: string }) => {
     if (!tenantData) return;
     setLoadingTargets(true);
     setRecipients([]);
     setExtracted(false);
 
+    const useBranch = overrides?.branch ?? targetBranch;
+    const useEventId = overrides?.eventId ?? targetEventId;
+
     try {
       const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
       const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
 
-      let targetEvents = filteredEvents;
-      if (targetEventId !== "all") {
-        targetEvents = targetEvents.filter(e => e.id === targetEventId);
+      // override対応のローカルフィルタ
+      const localFiltered = events.filter(e => {
+        if (useBranch === "all") return true;
+        return (
+          e.branchTag === useBranch ||
+          e.tenantId === tenantData?.id ||
+          (e.organizer && e.organizer.includes(useBranch))
+        );
+      });
+
+      let targetEvents = localFiltered;
+      if (useEventId !== "all") {
+        targetEvents = targetEvents.filter(e => e.id === useEventId);
       }
 
       // ★ここが進化ポイント！名前だけでなく、会社名・電話番号も覚える箱にするぞい
@@ -671,8 +684,11 @@ const handleSaveMemo = async (email: string, memo: string) => {
     if (d.targetEventId) setTargetEventId(d.targetEventId);
     setSelectedEmails(new Set(d.selectedEmails || []));
     setCurrentDraftId(d.id);
-    // リスト未抽出でも編集できるようオーバーレイを外す（送信ボタンは recipients.length===0 で disabled のままなので安全）
-    setExtracted(true);
+    // 抽出条件も合わせて再抽出 → 送信ボタンが disabled にならない
+    fetchTargets({
+      branch: d.targetBranch || "all",
+      eventId: d.targetEventId || "all",
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -730,6 +746,13 @@ const handleSaveMemo = async (email: string, memo: string) => {
           createdAt: new Date().toISOString(),
         });
         alert(`${new Date(scheduledTime).toLocaleString('ja-JP')} に ${finalRecipients.length}名への配信を予約しました。`);
+        // 予約成功 → 元になった下書きは削除
+        if (currentDraftId) {
+          try {
+            await deleteDoc(doc(db, "tenants", tenantData!.id, "email_drafts", currentDraftId));
+            setDrafts(prev => prev.filter(x => x.id !== currentDraftId));
+          } catch (err) { console.error("draft cleanup failed", err); }
+        }
         setSubject(""); setBody(""); setScheduledTime(""); setExtracted(false); setRecipients([]);
         setCurrentDraftId(null);
         // 一覧を再取得
@@ -813,6 +836,13 @@ const handleSaveMemo = async (email: string, memo: string) => {
         }
         alert(isTest ? "テスト送信完了！メールを確認してください。" : "一斉送信リクエスト完了！順次配信されます。");
         if (!isTest) {
+          // 送信成功 → 元になった下書きは削除
+          if (currentDraftId && tenantData) {
+            try {
+              await deleteDoc(doc(db, "tenants", tenantData.id, "email_drafts", currentDraftId));
+              setDrafts(prev => prev.filter(x => x.id !== currentDraftId));
+            } catch (err) { console.error("draft cleanup failed", err); }
+          }
           setSubject("");
           setBody("");
           setExtracted(false);
@@ -891,7 +921,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                        {filteredEvents.map(e => <option key={e.id} value={e.id}>{e.date} : {e.title}</option>)}
                     </select>
                  </div>
-                 <button onClick={fetchTargets} disabled={loadingTargets} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50">
+                 <button onClick={() => fetchTargets()} disabled={loadingTargets} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-lg transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50">
                    {loadingTargets ? <RefreshCw className="animate-spin" size={20}/> : <Users size={20}/>} リストを抽出・名寄せ
                  </button>
               </div>
@@ -1076,9 +1106,18 @@ const handleSaveMemo = async (email: string, memo: string) => {
                     </button>
                     <button onClick={() => setShowPreview(true)} disabled={!subject && !body} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><Eye size={18}/> プレビュー</button>
                     <button onClick={() => handleSend(true)} disabled={sending} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><PlayCircle size={18}/> テスト送信</button>
-                    <button onClick={() => handleSend(false)} disabled={sending || recipients.length === 0} className={`px-6 py-3 font-black rounded-lg transition-all flex items-center gap-2 shadow-lg w-full md:w-auto justify-center ${scheduledTime ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}>
+                    <button
+                      onClick={() => handleSend(false)}
+                      disabled={sending || recipients.length === 0}
+                      title={recipients.length === 0 ? "左のメニューから「リストを抽出」してください" : ""}
+                      className={`px-6 py-3 font-black rounded-lg transition-all flex items-center gap-2 shadow-lg w-full md:w-auto justify-center disabled:opacity-40 disabled:cursor-not-allowed ${scheduledTime ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}
+                    >
                       {sending ? <RefreshCw className="animate-spin" size={18}/> : scheduledTime ? <Clock size={18}/> : <Send size={18}/>}
-                      {scheduledTime ? "配信予約を確定" : `${selectedEmails.size > 0 ? selectedEmails.size : recipients.length}名に想いを届ける`}
+                      {recipients.length === 0
+                        ? "リスト未抽出"
+                        : scheduledTime
+                          ? "配信予約を確定"
+                          : `${selectedEmails.size > 0 ? selectedEmails.size : recipients.length}名に想いを届ける`}
                     </button>
                  </div>
               </div>
