@@ -4,7 +4,10 @@ import { adminDb } from '@/lib/firebase-admin';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const DEFAULT_TENANT_ID = 'caredesignworks';
+// このエンドポイントは「DXメルマガ自動配信ルーチン用」の専用入口。
+// 配信対象テナントは env で固定する（multi-tenantのうち、この機能を使うテナントだけ）。
+// 他テナントは env が未設定なら何も起きない＝完全に影響なし。
+const TARGET_TENANT_ID = process.env.DX_NEWSLETTER_TENANT_ID || '';
 const INVALID_NAMES = new Set(['仮登録中', '仮登録', '仮', '名前なし', 'ユーザー', 'ゲスト', 'test', 'テスト']);
 
 // 「JSTで本日8:00」を返す（既に過ぎていたら翌日8:00）
@@ -94,11 +97,20 @@ export async function POST(request: Request) {
 
   const subject = (payload?.subject || '').trim();
   const body = (payload?.body || '').trim();
-  const tenantId = (payload?.tenantId || DEFAULT_TENANT_ID).trim();
   const scheduledAtOverride = payload?.scheduledAt; // ISO文字列（任意）
 
   if (!subject || !body) {
     return NextResponse.json({ error: 'subject と body は必須です' }, { status: 400 });
+  }
+
+  // 配信対象テナントは env で完全に固定。request body の tenantId は無視。
+  // env が未設定ならこの機能はオフ（他テナントには絶対影響しない）。
+  const tenantId = TARGET_TENANT_ID;
+  if (!tenantId) {
+    return NextResponse.json(
+      { error: 'DX_NEWSLETTER_TENANT_ID is not configured. This feature is disabled.' },
+      { status: 503 }
+    );
   }
 
   try {
