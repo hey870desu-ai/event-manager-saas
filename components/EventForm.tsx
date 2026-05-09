@@ -15,7 +15,7 @@ const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 type CustomField = {
   id: string;
   label: string;
-  type: "text" | "textarea" | "select" | "checkbox";
+  type: "text" | "textarea" | "select" | "checkbox" | "link";
   optionsString: string;
   options?: string[];
   required: boolean;
