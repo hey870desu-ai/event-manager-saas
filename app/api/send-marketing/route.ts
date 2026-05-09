@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9;">
     <tr>
       <td align="center" style="padding: 10px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           <tr>
             <td style="background: #1e293b; padding: 25px; text-align: center; border-bottom: 4px solid ${brandColor};">
               <span style="color: #ffffff; font-size: 20px; font-weight: bold;">${senderName}</span>

@@ -186,7 +186,7 @@ export async function POST(req: Request) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f4f6;">
                 <tr>
                   <td align="center" style="padding: 10px;">
-                    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #e5e7eb;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e5e7eb;">
                       <tr>
                         <td style="background-color: #1e293b; padding: 40px 20px; text-align: center; border-bottom: 8px solid #3b82f6;">
                           <h1 style="color: #ffffff; letter-spacing: 5px; text-transform: uppercase; margin: 0; font-size: 22px; font-weight: 900;">${senderName.toUpperCase()}</h1>
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
                       </tr>
                       <tr>
                         <td style="padding: 0; font-size: 0; line-height: 0;">
-                          <img src="${mainImageUrl}" width="600" style="width: 100%; display: block;" />
+                          <img src="${mainImageUrl}" style="width: 100%; display: block;" />
                         </td>
                       </tr>
                       <tr>

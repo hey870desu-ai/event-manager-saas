@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
   <tr>
     <td align="center" style="padding:10px;">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
         <tr>
           <td style="background-color:#1e293b;padding:30px 20px;text-align:center;border-bottom:4px solid #3b82f6;">
             <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:1px;">${headerForEmail}</span>
