@@ -561,8 +561,10 @@ useEffect(() => {
 
       // 👇 この3行を挿入してください（これで formatFields が使えるようになります）
       const formatFields = (fields: CustomField[]) => fields.map(f => ({
-        ...f, options: (f.type==="select"||f.type==="checkbox") ? f.optionsString.split(/\n|,|、/).map(s=>s.trim()).filter(s=>s!=="") : []
-      })).filter(f => f.label !== "");
+        ...f,
+        options: (f.type==="select"||f.type==="checkbox") ? f.optionsString.split(/\n|,|、/).map(s=>s.trim()).filter(s=>s!=="") : [],
+        optionsString: f.type==="link" ? (f.optionsString || "") : undefined,
+      })).filter(f => f.label !== "" || f.type === "link");
 
       const savePayload = {
         ...formData,
@@ -1361,6 +1363,7 @@ useEffect(() => {
                      <option value="textarea">自由入力 (複数行)</option>
                      <option value="select">選択肢 (プルダウン)</option>
                      <option value="checkbox">複数選択 (チェックボックス)</option>
+                     <option value="link">リンク (URL)</option>
                    </select>
                 </div>
 
@@ -1368,13 +1371,18 @@ useEffect(() => {
                    {(field.type === "select" || field.type === "checkbox") ? (
                       <div>
                          <label className="text-[10px] text-slate-500 block mb-1">選択肢 (改行で区切ってください)</label>
-                         <textarea 
-                            rows={3} 
-                            value={field.optionsString} 
-                            onChange={(e) => updateCustomField(index, "optionsString", e.target.value)} 
-                            placeholder={`選択肢A\n選択肢B\n選択肢C`} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y" 
+                         <textarea
+                            rows={3}
+                            value={field.optionsString}
+                            onChange={(e) => updateCustomField(index, "optionsString", e.target.value)}
+                            placeholder={`選択肢A\n選択肢B\n選択肢C`}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y"
                          />
+                      </div>
+                   ) : field.type === "link" ? (
+                      <div>
+                         <label className="text-[10px] text-slate-500 block mb-1">リンク先URL</label>
+                         <input type="url" value={field.optionsString || ""} onChange={(e) => updateCustomField(index, "optionsString", e.target.value)} placeholder="https://..." className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
                       </div>
                    ) : (
                       <div className="h-full flex items-end pb-2">
@@ -1385,7 +1393,7 @@ useEffect(() => {
                       </div>
                    )}
                 </div>
-                
+
                 {/* ★修正: 右端のボタンエリア (↑ ↓ 削除) */}
                 <div className="md:col-span-1 flex flex-col justify-center items-center gap-1 mt-auto">
                    {/* ▲ 上へボタン */}
@@ -1489,6 +1497,7 @@ useEffect(() => {
                      <option value="textarea">自由入力 (複数行)</option>
                      <option value="select">選択肢 (プルダウン)</option>
                      <option value="checkbox">複数選択 (チェックボックス)</option>
+                     <option value="link">リンク (URL)</option>
                    </select>
                 </div>
 
@@ -1507,6 +1516,11 @@ useEffect(() => {
                             placeholder={`選択肢A\n選択肢B`}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]"
                          />
+                      </div>
+                   ) : field.type === "link" ? (
+                      <div>
+                         <label className="text-[10px] text-slate-500 block mb-1">リンク先URL</label>
+                         <input type="url" value={field.optionsString || ""} onChange={(e) => { const newFields = [...preSurveyFields]; newFields[index].optionsString = e.target.value; setPreSurveyFields(newFields); }} placeholder="https://..." className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
                       </div>
                    ) : (
                       <div className="h-full flex items-end pb-2">
@@ -1597,6 +1611,7 @@ useEffect(() => {
                      <option value="textarea">自由入力 (複数行)</option>
                      <option value="select">選択肢 (プルダウン)</option>
                      <option value="checkbox">複数選択 (チェックボックス)</option>
+                     <option value="link">リンク (URL)</option>
                    </select>
                 </div>
 
@@ -1605,24 +1620,29 @@ useEffect(() => {
                    {(field.type === "select" || field.type === "checkbox") ? (
                       <div>
                          <label className="text-[10px] text-slate-500 block mb-1">選択肢 (改行区切り)</label>
-                         <textarea 
-                            rows={1} 
-                            value={field.optionsString || ""} 
+                         <textarea
+                            rows={1}
+                            value={field.optionsString || ""}
                             onChange={(e) => {
                                const newFields = [...surveyFields];
                                newFields[index].optionsString = e.target.value;
                                setSurveyFields(newFields);
-                            }} 
-                            placeholder={`選択肢A\n選択肢B`} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]" 
+                            }}
+                            placeholder={`選択肢A\n選択肢B`}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]"
                          />
+                      </div>
+                   ) : field.type === "link" ? (
+                      <div>
+                         <label className="text-[10px] text-slate-500 block mb-1">リンク先URL</label>
+                         <input type="url" value={field.optionsString || ""} onChange={(e) => { const newFields = [...surveyFields]; newFields[index].optionsString = e.target.value; setSurveyFields(newFields); }} placeholder="https://..." className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
                       </div>
                    ) : (
                       <div className="h-full flex items-end pb-2">
                         <label className="flex items-center gap-2 cursor-pointer">
-                           <input 
-                             type="checkbox" 
-                             checked={field.required} 
+                           <input
+                             type="checkbox"
+                             checked={field.required}
                              onChange={(e) => {
                                 const newFields = [...surveyFields];
                                 newFields[index].required = e.target.checked;

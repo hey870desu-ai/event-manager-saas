@@ -160,11 +160,13 @@ function PreSurveyContent() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {preSurveyFields.map((field: any, index: number) => (
             <div key={index} className="space-y-3">
-               <label className="block text-sm font-bold text-slate-300">
-                 <span className="text-purple-400 mr-2">Q{index + 1}.</span>
-                 <span className="whitespace-pre-wrap">{field.label}</span>
-                 {field.required && <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">必須</span>}
-               </label>
+               {field.type !== 'link' && (
+                 <label className="block text-sm font-bold text-slate-300">
+                   <span className="text-purple-400 mr-2">Q{index + 1}.</span>
+                   <span className="whitespace-pre-wrap">{field.label}</span>
+                   {field.required && <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">必須</span>}
+                 </label>
+               )}
 
                {field.type === 'text' && (
                  <input
@@ -210,6 +212,17 @@ function PreSurveyContent() {
                       </label>
                     ))}
                  </div>
+               )}
+
+               {field.type === 'link' && field.optionsString && (
+                 <a
+                   href={field.optionsString}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm"
+                 >
+                   {field.label || 'リンクを開く'} →
+                 </a>
                )}
             </div>
           ))}

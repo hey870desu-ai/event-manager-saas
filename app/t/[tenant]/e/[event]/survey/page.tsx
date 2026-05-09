@@ -161,15 +161,17 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* 2. カスタム質問エリア */}
           {surveyFields.map((field: any, index: number) => (
             <div key={index} className="space-y-3">
-               <label className="block text-sm font-bold text-slate-300">
-                 <span className="text-emerald-400 mr-2">Q{index + 1}.</span>
-                 <span className="whitespace-pre-wrap">{field.label}</span>
-                 {field.required && <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">必須</span>}
-               </label>
+               {field.type !== 'link' && (
+                 <label className="block text-sm font-bold text-slate-300">
+                   <span className="text-emerald-400 mr-2">Q{index + 1}.</span>
+                   <span className="whitespace-pre-wrap">{field.label}</span>
+                   {field.required && <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">必須</span>}
+                 </label>
+               )}
 
                {field.type === 'text' && (
-                 <input 
-                   type="text" 
+                 <input
+                   type="text"
                    required={field.required}
                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none"
                    onChange={(e) => handleAnswerChange(field.label, e.target.value)}
@@ -177,7 +179,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                )}
 
                {field.type === 'textarea' && (
-                 <textarea 
+                 <textarea
                    rows={3}
                    required={field.required}
                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none"
@@ -186,7 +188,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                )}
 
                {field.type === 'select' && (
-                 <select 
+                 <select
                    required={field.required}
                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 outline-none"
                    onChange={(e) => handleAnswerChange(field.label, e.target.value)}
@@ -202,8 +204,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                  <div className="space-y-2">
                     {field.options?.map((opt: string) => (
                       <label key={opt} className="flex items-center gap-3 p-3 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="w-5 h-5 rounded border-slate-600 bg-slate-800 accent-emerald-500"
                           onChange={(e) => handleCheckboxChange(field.label, opt, e.target.checked)}
                         />
@@ -211,6 +213,17 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </label>
                     ))}
                  </div>
+               )}
+
+               {field.type === 'link' && field.optionsString && (
+                 <a
+                   href={field.optionsString}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors text-sm"
+                 >
+                   {field.label || 'リンクを開く'} →
+                 </a>
                )}
             </div>
           ))}
