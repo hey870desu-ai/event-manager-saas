@@ -94,16 +94,16 @@ export async function POST(request: Request) {
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
   <tr>
-    <td align="center" style="padding:10px;">
+    <td align="center" style="padding:0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
         <tr>
-          <td style="background-color:#1e293b;padding:30px 20px;text-align:center;border-bottom:4px solid #3b82f6;">
-            <span style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:1px;">${headerForEmail}</span>
+          <td style="background-color:#1e293b;padding:15px 5px;text-align:center;border-bottom:4px solid #3b82f6;">
+            <span style="color:#ffffff;font-size:16px;font-weight:bold;letter-spacing:1px;">${headerForEmail}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:25px 15px;">
-            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+          <td style="padding:15px 5px;">
+            <div style="font-size:11px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
             ${showEventCard ? `
               <div style="background-color:#f1f5f9;border-radius:8px;padding:20px;margin-top:30px;">
                 <div style="border-left:4px solid #3b82f6;padding-left:15px;">
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
           </td>
         </tr>
         <tr>
-          <td style="background-color:#f8fafc;color:#94a3b8;padding:25px 15px;text-align:center;font-size:11px;border-top:1px solid #e2e8f0;">
+          <td style="background-color:#f8fafc;color:#94a3b8;padding:15px 5px;text-align:center;font-size:10px;border-top:1px solid #e2e8f0;">
             © ${new Date().getFullYear()} ${headerForEmail} All rights reserved.
           </td>
         </tr>

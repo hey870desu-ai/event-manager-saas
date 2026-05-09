@@ -244,19 +244,19 @@ mainHtml += `
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f5f9;">
     <tr>
-      <td align="center" style="padding: 10px;">
+      <td align="center" style="padding: 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <tr>
-            <td style="background: #1e293b; padding: 30px 15px; text-align: center; border-bottom: 4px solid ${brandColor};">${logoHtml}</td>
+            <td style="background: #1e293b; padding: 15px 5px; text-align: center; border-bottom: 4px solid ${brandColor};">${logoHtml}</td>
           </tr>
           <tr>
-            <td style="padding: 25px 15px;">
-              <div style="font-size: 14px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${mainHtml}</div>
+            <td style="padding: 15px 5px;">
+              <div style="font-size: 11px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${mainHtml}</div>
             </td>
           </tr>
           <tr>
-            <td style="background-color: #f8fafc; color: #94a3b8; padding: 25px 15px; text-align: center; font-size: 11px; line-height: 1.6; border-top: 1px solid #e2e8f0;">
-              <p style="margin: 0; font-weight: bold; font-size: 14px; color: #475569;">${senderName}</p>
+            <td style="background-color: #f8fafc; color: #94a3b8; padding: 15px 5px; text-align: center; font-size: 10px; line-height: 1.6; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; font-weight: bold; font-size: 12px; color: #475569;">${senderName}</p>
               <p style="margin-top: 4px; color: #94a3b8;">${senderName} 事務局</p>
               ${tenantUrl ? `
                 <p style="margin-top: 10px;">

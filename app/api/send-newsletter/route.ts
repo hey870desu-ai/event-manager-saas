@@ -185,12 +185,12 @@ export async function POST(req: Request) {
             <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f4f6;">
                 <tr>
-                  <td align="center" style="padding: 10px;">
+                  <td align="center" style="padding: 0;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e5e7eb;">
                       <tr>
-                        <td style="background-color: #1e293b; padding: 40px 20px; text-align: center; border-bottom: 8px solid #3b82f6;">
-                          <h1 style="color: #ffffff; letter-spacing: 5px; text-transform: uppercase; margin: 0; font-size: 22px; font-weight: 900;">${senderName.toUpperCase()}</h1>
-                          <p style="color: #60a5fa; font-size: 10px; margin-top: 10px; letter-spacing: 3px; font-weight: bold;">OFFICIAL DIGITAL NEWSLETTER</p>
+                        <td style="background-color: #1e293b; padding: 20px 5px; text-align: center; border-bottom: 8px solid #3b82f6;">
+                          <h1 style="color: #ffffff; letter-spacing: 5px; text-transform: uppercase; margin: 0; font-size: 18px; font-weight: 900;">${senderName.toUpperCase()}</h1>
+                          <p style="color: #60a5fa; font-size: 9px; margin-top: 8px; letter-spacing: 3px; font-weight: bold;">OFFICIAL DIGITAL NEWSLETTER</p>
                         </td>
                       </tr>
                       <tr>
@@ -199,15 +199,15 @@ export async function POST(req: Request) {
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 25px 15px;">
-                          <h2 style="font-size: ${mainTFS}; color: #111827; margin: 0 0 25px 0; line-height: 1.2; font-weight: 900; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">${mainTitle}</h2>
-                          <div style="border-left: 8px solid #3b82f6; padding-left: 15px; font-size: ${mainBFS}; line-height: 1.8; color: #4b5563; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">
+                        <td style="padding: 15px 5px;">
+                          <h2 style="font-size: ${mainTFS}; color: #111827; margin: 0 0 15px 0; line-height: 1.2; font-weight: 900; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">${mainTitle}</h2>
+                          <div style="border-left: 6px solid #3b82f6; padding-left: 10px; font-size: ${mainBFS}; line-height: 1.8; color: #4b5563; font-family: ${mainFF}; word-break: break-word; overflow-wrap: break-word;">
                             ${mainMessage.replace(/\n/g, "<br>")}
                           </div>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 0 15px 25px 15px;">${snapsHtml}</td>
+                        <td style="padding: 0 5px 15px 5px;">${snapsHtml}</td>
                       </tr>
                       ${snsIcons.length > 0 ? `
                       <tr>
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
                       </tr>
                       ` : ''}
                       <tr>
-                        <td style="background-color: #111827; padding: 50px 15px; text-align: center; color: #9ca3af;">
+                        <td style="background-color: #111827; padding: 30px 5px; text-align: center; color: #9ca3af;">
                           <p style="font-size: 10px; line-height: 1.8; margin-bottom: 30px; opacity: 0.6;">※本メールは送信専用のため、ご返信いただいてもお答えできません。</p>
                           <div style="height: 1px; background-color: #374151; width: 40px; margin: 0 auto 30px auto;"></div>
                           <p style="color: #ffffff; font-weight: bold; font-size: 14px; margin-bottom: 8px;">${senderName.toUpperCase()}</p>
