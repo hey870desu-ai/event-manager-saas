@@ -428,11 +428,19 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
                         {customFields.map((field) => (
                           <div key={field.id} className="space-y-3">
-                            <label className="text-sm font-medium text-slate-300 flex items-start gap-1.5">
-                              <span style={{color: themeColor}} className="mt-0.5">■</span>
-                              <span className="whitespace-pre-line">{field.label}</span>
-                              {field.required && <span className="text-red-400 mt-0.5">*</span>}
-                            </label>
+                            {field.type !== "link" && (
+                              <label className="text-sm font-medium text-slate-300 flex items-start gap-1.5">
+                                <span style={{color: themeColor}} className="mt-0.5">■</span>
+                                <span className="whitespace-pre-line">{field.label}</span>
+                                {field.required && <span className="text-red-400 mt-0.5">*</span>}
+                              </label>
+                            )}
+
+                            {field.type === "link" && (field as any).optionsString && (
+                              <a href={(field as any).optionsString} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold transition-colors text-sm" style={{backgroundColor: themeColor}}>
+                                {field.label || 'リンクを開く'} →
+                              </a>
+                            )}
 
                             {field.type === "text" && (
                               <input type="text" name={field.id} required={field.required} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
