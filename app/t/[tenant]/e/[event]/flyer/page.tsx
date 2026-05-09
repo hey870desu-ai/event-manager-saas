@@ -178,12 +178,13 @@ export default function FlyerPage() {
 
           {/* タイムスケジュール */}
           {event.timeTable && (
-            <div className="mb-3">
-              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <div className="mb-3 text-center">
+              <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
                 <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                 タイムスケジュール
+                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
               </h3>
-              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap inline-block text-left">
                 {event.timeTable}
               </div>
             </div>
@@ -210,6 +211,7 @@ export default function FlyerPage() {
 
               {/* 中央：料金 */}
               <div className="text-center flex flex-col justify-center">
+                <p className="text-sm font-black text-slate-900 mb-1">料金</p>
                 {event.tickets && event.tickets.length > 0 ? (
                   <div className="space-y-0.5">
                     {event.tickets.map((t: any, i: number) => (
