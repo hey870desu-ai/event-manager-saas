@@ -56,11 +56,11 @@ export default function NatureLayout({ event, tenant, eventId, tenantId }: Props
               【当日受付用】<br/>この画面をスクリーンショットで保存し、<br/>受付で提示してください。
             </p>
           </div>
-          {event.preSurveyUrl && (
+          {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
               <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>
               <p className="text-xs text-slate-500 mb-3">イベントをより良いものにするため、ご協力ください。</p>
-              <a href={event.preSurveyUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm">アンケートに回答する</a>
+              <a href={event.preSurveyFields?.length > 0 ? `/t/${tenantId}/e/${eventId}/pre-survey?rid=${reservationId}` : event.preSurveyUrl} target="_blank" rel="noopener noreferrer" className="inline-block px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm">アンケートに回答する</a>
             </div>
           )}
           <button onClick={() => window.location.reload()} className="px-10 py-4 rounded-full bg-emerald-700 text-white font-bold shadow-md hover:bg-emerald-800 transition-colors">ページに戻る</button>

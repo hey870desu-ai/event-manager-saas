@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       reservationId,eventId, planName,
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
       contactName, contactEmail, contactPhone, eventPrice,
-      inviteUrl, replyMessage, preSurveyUrl,
+      inviteUrl, replyMessage, preSurveyUrl, hasPreSurveyFields,
       subject: customSubject
     } = body;
 
@@ -200,12 +200,15 @@ export async function POST(request: Request) {
         }
 
         // 事前アンケートリンク
-        if (preSurveyUrl) {
+        const preSurveyLink = hasPreSurveyFields
+          ? `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.event-manager.app'}/t/${tenantId}/e/${eventId}/pre-survey?rid=${reservationId}`
+          : preSurveyUrl;
+        if (preSurveyLink) {
           mainHtml += `
             <div style="background-color: #faf5ff; border: 1px dashed #c084fc; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px;">
               <p style="font-size: 14px; font-weight: bold; color: #7c3aed; margin: 0 0 12px 0;">📝 事前アンケートのお願い</p>
               <p style="font-size: 13px; color: #6b7280; margin: 0 0 16px 0;">イベントをより良いものにするため、事前アンケートにご協力ください。</p>
-              <a href="${preSurveyUrl}" target="_blank" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">アンケートに回答する</a>
+              <a href="${preSurveyLink}" target="_blank" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">アンケートに回答する</a>
             </div>`;
         }
 

@@ -250,6 +250,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               contactPhone: event.contactPhone || "",
               replyMessage: event.replyMessage || "",
               preSurveyUrl: event.preSurveyUrl || "",
+              hasPreSurveyFields: !!(event.preSurveyFields?.length > 0),
               eventPrice: isPaid ? `${priceAmount}円（当日会場にてお支払い）` : "無料"
             }),
           });
@@ -319,12 +320,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
            </div>
         </div>
 
-        {event.preSurveyUrl && (
+        {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
           <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-4 mb-4">
             <p className="text-sm font-bold text-purple-300 mb-2">📝 事前アンケートのお願い</p>
             <p className="text-xs text-slate-400 mb-3">イベントをより良いものにするため、事前アンケートにご協力ください。</p>
             <a
-              href={event.preSurveyUrl}
+              href={event.preSurveyFields?.length > 0
+                ? `/t/${safeTenantId}/e/${safeEventId}/pre-survey?rid=${newReservationId}`
+                : event.preSurveyUrl
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-sm"
