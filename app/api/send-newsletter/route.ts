@@ -25,6 +25,7 @@ export async function POST(req: Request) {
       const layout = snap.layout || 'full';
 
       // 🎯 独立ブロック（文章・1枚もの・区切り・ボタン・強調）は「割り込み」として扱う
+      // ※ text-half は「ペア前提」なので独立扱いにしない
       if (layout === 'text' || layout === 'full' || layout === 'divider' || layout === 'button' || layout === 'highlight') {
         // 1. もし待機中の写真があれば、先にそれを1行として確定させるっぺ！
         if (currentRow.length > 0) {
@@ -34,13 +35,13 @@ export async function POST(req: Request) {
         // 2. 文章やフルサイズを、独立した「1行」として追加するぞい！
         rows.push({ items: [snap], layout: layout });
       } else {
-        // 🎯 3連(triple)や2連(grid)の時
+        // 🎯 3連(triple) / 2連(grid / text-half) の時
         // もし違うレイアウトが混ざりそうなら、一旦区切る
         if (currentRow.length > 0 && currentRow[0].layout !== layout) {
           rows.push({ items: [...currentRow], layout: currentRow[0].layout });
           currentRow = [];
         }
-        
+
         currentRow.push(snap);
 
         // 🎯 3枚または2枚たまったら1行確定！
@@ -121,10 +122,37 @@ export async function POST(req: Request) {
         `;
       }
 
+      // 🎯 文章2カラム（text-half）：写真なし・テキストだけのカード2列
+      if (layout === 'text-half') {
+        return `
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 25px; table-layout: fixed;">
+            <tr>
+              ${row.items.map((s: any) => {
+                const ff = FONT_MAP[s.fontFamily || 'sans'] || FONT_MAP.sans;
+                const tfs = `${s.titleFontSize || 16}px`;
+                const bfs = `${s.bodyFontSize || 13}px`;
+                return `
+                <td width="50%" valign="top" style="padding: 5px;">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 18px;">
+                        <p style="color: #1e293b; margin: 0; font-size: ${tfs}; font-weight: 900; font-family: ${ff};">${s.title || ''}</p>
+                        ${s.comment ? `<p style="color: #4b5563; margin: 8px 0 0 0; font-size: ${bfs}; line-height: 1.7; white-space: pre-wrap; font-family: ${ff};">${s.comment}</p>` : ''}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              `}).join("")}
+              ${row.items.length < 2 ? `<td width="50%">&nbsp;</td>` : ""}
+            </tr>
+          </table>
+        `;
+      }
+
       // 🎯 写真ブロック：サイズ固定で読み込み中のガタつきを防ぐ！
       const cellWidth = layout === 'triple' ? "33.3%" : layout === 'grid' ? "50%" : "100%";
       const imgHeight = layout === 'triple' ? "120" : layout === 'grid' ? "180" : "auto";
-      
+
       return `
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; table-layout: fixed;">
           <tr>

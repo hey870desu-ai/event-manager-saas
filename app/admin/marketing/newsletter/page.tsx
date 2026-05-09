@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
+import {
   Camera, Send, Instagram, MessageCircle, Facebook,
-  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw, Copy
+  Link as LinkIcon, PlusCircle, Trash2, Sparkles, Loader2, X ,CheckCircle2,Users,Clock,ChevronLeft,ChevronRight,ChevronsLeft, ChevronsRight,FileText, RotateCcw, Copy, Undo2, Redo2, GripVertical
 } from 'lucide-react';
 import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -109,11 +109,112 @@ export default function NewsletterStudio() {
   
   // 🎯 <SnapItem[]> を書き足して、初期値にも scale と position を入れる
   const [snaps, setSnaps] = useState<SnapItem[]>([
-    { 
+    {
       id: 1, title: '', comment: '', preview: null, file: null, layout: 'full',
-      scale: 1, position: { x: 50, y: 50 } 
+      scale: 1, position: { x: 50, y: 50 }
     },
   ]);
+
+  // ===== Undo / Redo =====
+  type EditorSnapshot = {
+    subject: string; mainTitle: string; mainMessage: string;
+    mainImagePreview: string | null;
+    mainScale: number; mainPosition: { x: number; y: number };
+    mainFilter: string; mainBrightness: number; mainContrast: number; mainSaturate: number;
+    mainFrameType: string; mainFontFamily: string;
+    mainTitleFontSize: number; mainBodyFontSize: number;
+    snaps: SnapItem[];
+  };
+  const [history, setHistory] = useState<{ past: EditorSnapshot[]; future: EditorSnapshot[] }>({ past: [], future: [] });
+  const isRestoringRef = useRef(false);
+  const lastSnapshotRef = useRef<string>('');
+
+  // --- 現在の編集状態をスナップショット化（mainFileなどの非シリアライズ値は除外） ---
+  const buildSnapshot = useCallback((): EditorSnapshot => ({
+    subject, mainTitle, mainMessage,
+    mainImagePreview,
+    mainScale, mainPosition,
+    mainFilter, mainBrightness, mainContrast, mainSaturate,
+    mainFrameType, mainFontFamily,
+    mainTitleFontSize, mainBodyFontSize,
+    snaps: snaps.map(s => ({ ...s, file: null })),
+  }), [subject, mainTitle, mainMessage, mainImagePreview, mainScale, mainPosition, mainFilter, mainBrightness, mainContrast, mainSaturate, mainFrameType, mainFontFamily, mainTitleFontSize, mainBodyFontSize, snaps]);
+
+  // --- スナップショットを画面に復元（useState の setter は安定なので deps 空でOK） ---
+  const applySnapshot = useCallback((s: EditorSnapshot) => {
+    isRestoringRef.current = true;
+    setSubject(s.subject);
+    setMainTitle(s.mainTitle);
+    setMainMessage(s.mainMessage);
+    setMainImagePreview(s.mainImagePreview);
+    setMainScale(s.mainScale);
+    setMainPosition(s.mainPosition);
+    setMainFilter(s.mainFilter);
+    setMainBrightness(s.mainBrightness);
+    setMainContrast(s.mainContrast);
+    setMainSaturate(s.mainSaturate);
+    setMainFrameType(s.mainFrameType);
+    setMainFontFamily(s.mainFontFamily);
+    setMainTitleFontSize(s.mainTitleFontSize);
+    setMainBodyFontSize(s.mainBodyFontSize);
+    setSnaps(s.snaps.map(x => ({ ...x, file: null })));
+  }, []);
+
+  // --- 編集が止まって 500ms 経ったら履歴に積む（連続入力を1ステップに集約）---
+  useEffect(() => {
+    if (isRestoringRef.current) {
+      isRestoringRef.current = false;
+      lastSnapshotRef.current = JSON.stringify(buildSnapshot());
+      return;
+    }
+    const t = setTimeout(() => {
+      const snap = buildSnapshot();
+      const key = JSON.stringify(snap);
+      if (key === lastSnapshotRef.current) return;
+      lastSnapshotRef.current = key;
+      setHistory(h => ({
+        past: [...h.past.slice(-49), snap],
+        future: [],
+      }));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [buildSnapshot]);
+
+  const undo = useCallback(() => {
+    setHistory(h => {
+      if (h.past.length < 2) return h;
+      const prev = h.past[h.past.length - 2];
+      const current = h.past[h.past.length - 1];
+      applySnapshot(prev);
+      return { past: h.past.slice(0, -1), future: [current, ...h.future].slice(0, 50) };
+    });
+  }, [applySnapshot]);
+
+  const redo = useCallback(() => {
+    setHistory(h => {
+      if (h.future.length === 0) return h;
+      const next = h.future[0];
+      applySnapshot(next);
+      return { past: [...h.past, next].slice(-50), future: h.future.slice(1) };
+    });
+  }, [applySnapshot]);
+
+  // --- キーボードショートカット（Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z） ---
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      if (e.key === 'z' || e.key === 'Z') {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+      } else if (e.key === 'y' || e.key === 'Y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
 
   // 🏆 過去の履歴を保存しておくための箱だばい！
   const [totalCount, setTotalCount] = useState(0); // 🎯 全データ数を覚える箱
@@ -336,28 +437,50 @@ export default function NewsletterStudio() {
     setSnaps(newSnaps);
   };
 
-  // ドラッグ&ドロップ並び替え
+  // ドラッグ&ドロップ並び替え（ハンドル経由のみ起動）
   const dragBlock = useRef<number | null>(null);
   const dragOverBlock = useRef<number | null>(null);
+  const [handleArmedIdx, setHandleArmedIdx] = useState<number | null>(null);   // ハンドルmousedown中
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);          // ドラッグ中の発信元
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);          // 落下先候補
 
   const handleBlockDragStart = (idx: number) => {
     dragBlock.current = idx;
+    setDraggingIdx(idx);
   };
 
   const handleBlockDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
     dragOverBlock.current = idx;
+    if (dragOverIdx !== idx) setDragOverIdx(idx);
   };
 
   const handleBlockDrop = () => {
-    if (dragBlock.current === null || dragOverBlock.current === null) return;
-    if (dragBlock.current === dragOverBlock.current) return;
+    if (dragBlock.current === null || dragOverBlock.current === null) {
+      setDraggingIdx(null); setDragOverIdx(null); setHandleArmedIdx(null);
+      return;
+    }
+    if (dragBlock.current === dragOverBlock.current) {
+      setDraggingIdx(null); setDragOverIdx(null); setHandleArmedIdx(null);
+      return;
+    }
     const newSnaps = [...snaps];
     const dragItem = newSnaps.splice(dragBlock.current, 1)[0];
     newSnaps.splice(dragOverBlock.current, 0, dragItem);
     setSnaps(newSnaps);
     dragBlock.current = null;
     dragOverBlock.current = null;
+    setDraggingIdx(null);
+    setDragOverIdx(null);
+    setHandleArmedIdx(null);
+  };
+
+  const handleBlockDragEnd = () => {
+    dragBlock.current = null;
+    dragOverBlock.current = null;
+    setDraggingIdx(null);
+    setDragOverIdx(null);
+    setHandleArmedIdx(null);
   };
 
   const addDividerBlock = (insertAt?: number) => {
@@ -598,7 +721,7 @@ export default function NewsletterStudio() {
       const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
         let imageUrl = snap.preview || "";
         if (snap.file) imageUrl = await uploadPhoto(snap.file, "snaps");
-        if (snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
+        if (snap.layout === 'text' || snap.layout === 'text-half' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
           return { title: snap.title, comment: snap.comment, imageUrl, layout: snap.layout || 'full', scale: snap.scale || 1, position: snap.position || { x: 50, y: 50 }, buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor, fontFamily: snap.fontFamily, titleFontSize: snap.titleFontSize, bodyFontSize: snap.bodyFontSize };
         }
         return null;
@@ -633,7 +756,7 @@ export default function NewsletterStudio() {
         if (snap.file) {
           imageUrl = await uploadPhoto(snap.file, "snaps");
         }
-        if (snap.layout === 'text' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
+        if (snap.layout === 'text' || snap.layout === 'text-half' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
           return {
             title: snap.title,
             comment: snap.comment,
@@ -707,8 +830,25 @@ export default function NewsletterStudio() {
             </h1>
             <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Premium Newsletter Creator</p>
           </div>
-          <div className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-[10px] font-black border border-blue-100 shadow-sm">
-            <Sparkles size={12} /> SUBSCRIPTION ACTIVE
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-full p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={history.past.length < 2}
+              title="元に戻す（⌘Z）"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            >
+              <Undo2 size={12} /> UNDO
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={history.future.length === 0}
+              title="やり直し（⌘⇧Z）"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-black text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            >
+              <Redo2 size={12} /> REDO
+            </button>
           </div>
         </div>
 
@@ -919,28 +1059,28 @@ export default function NewsletterStudio() {
                 ) : null}
 
                 <div
-                  draggable
+                  draggable={handleArmedIdx === idx}
                   onDragStart={() => handleBlockDragStart(idx)}
                   onDragOver={(e) => handleBlockDragOver(e, idx)}
+                  onDragLeave={() => { if (dragOverIdx === idx) setDragOverIdx(null); }}
+                  onDragEnd={handleBlockDragEnd}
                   onDrop={handleBlockDrop}
-                  className={`bg-white p-5 rounded-none border border-slate-200 relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm transition-opacity ${
+                  className={`bg-white p-5 rounded-none border relative group animate-in fade-in zoom-in-95 duration-300 shadow-sm transition-all ${
                     snap.layout === 'triple' ? 'w-full md:w-[calc(33.333%-16px)]' :
-                    snap.layout === 'grid' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
-                  }`}
+                    snap.layout === 'grid' || snap.layout === 'text-half' ? 'w-full md:w-[calc(50%-12px)]' : 'w-full'
+                  } ${draggingIdx === idx ? 'opacity-40' : ''} ${dragOverIdx === idx && draggingIdx !== null && draggingIdx !== idx ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200'}`}
                 >
-                  {/* ドラッグハンドル */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10">
-                    <div className="flex gap-0.5">
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                    </div>
-                    <div className="flex gap-0.5 mt-0.5">
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                    </div>
-                  </div>
+                  {/* ドラッグハンドル（明示・タッチでも視認） */}
+                  <button
+                    type="button"
+                    onMouseDown={() => setHandleArmedIdx(idx)}
+                    onMouseUp={() => setHandleArmedIdx(null)}
+                    onMouseLeave={() => { if (draggingIdx === null) setHandleArmedIdx(null); }}
+                    title="ドラッグして並び替え"
+                    className={`absolute top-2 left-2 p-1.5 rounded-md bg-white border shadow-sm z-10 transition-all ${handleArmedIdx === idx ? 'border-blue-400 text-blue-500 cursor-grabbing' : 'border-slate-200 text-slate-300 hover:text-slate-700 hover:border-slate-300 cursor-grab opacity-60 group-hover:opacity-100'}`}
+                  >
+                    <GripVertical size={14}/>
+                  </button>
                   <div className="absolute -top-2 -right-2 flex gap-1 z-10">
                     {idx > 0 && (
                       <button onClick={() => moveSnap(idx, 'up')} className="bg-white text-slate-400 p-1.5 rounded-full shadow-lg border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors" title="上に移動">
@@ -960,8 +1100,59 @@ export default function NewsletterStudio() {
                     </button>
                   </div>
 
+                  {/* 🎯 幅セレクタ：写真ブロックは全幅/半幅/1/3幅から選べる（連続する同幅ブロックは横並びになる） */}
+                  {(snap.layout === 'full' || snap.layout === 'grid' || snap.layout === 'triple') && (
+                    <div className="flex items-center gap-2 mb-3 pl-8">
+                      <span className="text-[8px] font-black text-slate-400 uppercase">幅</span>
+                      <div className="flex gap-1 bg-slate-50 rounded-lg p-1 border border-slate-200">
+                        {[
+                          { id: 'full',   label: '全幅' },
+                          { id: 'grid',   label: '半幅' },
+                          { id: 'triple', label: '1/3' },
+                        ].map(opt => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => { const n = [...snaps]; n[idx].layout = opt.id; setSnaps(n); }}
+                            className={`text-[9px] font-black px-2.5 py-1 rounded-md transition-all ${snap.layout === opt.id ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:bg-white'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {(snap.layout === 'grid' || snap.layout === 'triple') && (
+                        <span className="text-[9px] text-slate-400">※ 同じ幅のブロックを連続で並べると横並びになります</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 🎯 文章ブロックの幅セレクタ：全幅 / 半幅（連続する半幅で横並び） */}
+                  {(snap.layout === 'text' || snap.layout === 'text-half') && (
+                    <div className="flex items-center gap-2 mb-3 pl-8">
+                      <span className="text-[8px] font-black text-slate-400 uppercase">幅</span>
+                      <div className="flex gap-1 bg-slate-50 rounded-lg p-1 border border-slate-200">
+                        {[
+                          { id: 'text',      label: '全幅' },
+                          { id: 'text-half', label: '半幅' },
+                        ].map(opt => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => { const n = [...snaps]; n[idx].layout = opt.id; setSnaps(n); }}
+                            className={`text-[9px] font-black px-2.5 py-1 rounded-md transition-all ${snap.layout === opt.id ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 hover:bg-white'}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {snap.layout === 'text-half' && (
+                        <span className="text-[9px] text-slate-400">※ 半幅の文章を2つ並べると横並びになります</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* 🎯 写真枠：比率を 4:3 に合わせてギャップを埋めるっぺ！ */}
-                  {snap.layout !== 'text' && snap.layout !== 'divider' && snap.layout !== 'button' && snap.layout !== 'highlight' && (
+                  {snap.layout !== 'text' && snap.layout !== 'text-half' && snap.layout !== 'divider' && snap.layout !== 'button' && snap.layout !== 'highlight' && (
                     <>
                       <div className="w-full aspect-[4/3] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center mb-4 overflow-hidden rounded-none relative shadow-inner">
                         {snap.preview ? (
@@ -1287,7 +1478,7 @@ export default function NewsletterStudio() {
                     }}
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-none text-[10px] leading-relaxed outline-none resize-none"
                     style={{ fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css }}
-                    rows={snap.layout === 'text' ? 4 : 2}
+                    rows={(snap.layout === 'text' || snap.layout === 'text-half') ? 4 : 2}
                   />
                   </>
                   )}
@@ -1647,8 +1838,8 @@ export default function NewsletterStudio() {
               <div 
                 key={idx} 
                 className={`space-y-4 ${
-                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' : 
-                  snap.layout === 'grid' ? 'w-[calc(50%-8px)]' : 
+                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' :
+                  snap.layout === 'grid' || snap.layout === 'text-half' ? 'w-[calc(50%-8px)]' :
                   'w-full'
                 }`}
               >
@@ -1673,7 +1864,7 @@ export default function NewsletterStudio() {
                   </div>
                 ) : (
                 <>
-                {snap.layout !== 'text' && (
+                {snap.layout !== 'text' && snap.layout !== 'text-half' && (
                   <div className="w-full aspect-[4/3] bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center relative">
                     {snap.preview ? (
                       <img
@@ -1690,10 +1881,12 @@ export default function NewsletterStudio() {
                     )}
                   </div>
                 )}
-                
+
                 <div className={`${
                   snap.layout === 'text'
-                    ? 'p-10 bg-blue-50/50 rounded-none border border-blue-100 shadow-inner w-full flex flex-col justify-center min-h-[160px]'
+                    ? 'p-10 bg-blue-50/50 rounded-none border-l-4 border-blue-500 shadow-inner w-full flex flex-col justify-center min-h-[160px]'
+                    : snap.layout === 'text-half'
+                    ? 'p-5 bg-blue-50/50 rounded-none border-l-4 border-blue-500 shadow-inner w-full flex flex-col justify-center min-h-[120px]'
                     : 'px-2'
                 } text-left`}>
                   <h4 className="font-black mb-2"
@@ -1702,7 +1895,7 @@ export default function NewsletterStudio() {
                       fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css,
                       fontSize: `${snap.titleFontSize || 18}px`,
                     }}>
-                    {snap.title || (snap.layout === 'text' ? 'おしらせ' : `SCENE ${idx + 1}`)}
+                    {snap.title || (snap.layout === 'text' || snap.layout === 'text-half' ? 'おしらせ' : `SCENE ${idx + 1}`)}
                   </h4>
                   {snap.comment && (
                     <p className="text-slate-500 leading-relaxed whitespace-pre-wrap"
