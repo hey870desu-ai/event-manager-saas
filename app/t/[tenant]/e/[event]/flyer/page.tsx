@@ -140,19 +140,21 @@ export default function FlyerPage() {
                     <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                     講師紹介
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {lecturers.map((lec: any, i: number) => (
-                      <div key={i} className="flex items-start gap-2">
-                        {lec.image && (
-                          <img src={lec.image} alt={lec.name} className="w-12 h-12 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-black text-slate-900 text-sm">{lec.name}</p>
-                          {lec.title && <p className="text-[10px] text-slate-500 leading-snug">{lec.title}</p>}
-                          {(lec.profile || lec.lecturerProfile) && (
-                            <p className="text-[10px] text-slate-600 leading-relaxed mt-0.5">{lec.profile || lec.lecturerProfile}</p>
+                      <div key={i}>
+                        <div className="flex items-center gap-3 mb-1">
+                          {lec.image && (
+                            <img src={lec.image} alt={lec.name} className="w-16 h-16 rounded-lg object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
                           )}
+                          <div className="min-w-0">
+                            <p className="font-black text-slate-900 text-sm">{lec.name}</p>
+                            {lec.title && <p className="text-[10px] text-slate-500 leading-snug">{lec.title}</p>}
+                          </div>
                         </div>
+                        {(lec.profile || lec.lecturerProfile) && (
+                          <p className="text-[10px] text-slate-600 leading-relaxed">{lec.profile || lec.lecturerProfile}</p>
+                        )}
                       </div>
                     ))}
                   </div>
