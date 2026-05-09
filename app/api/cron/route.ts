@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, sendEmail } from '@/lib/mailer';
+import { fetchReadyDxPages, fetchPagePlainText, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
+import { upsertScheduledDxNewsletter } from '@/lib/dx-newsletter';
 
 const BATCH_SIZE = 100;
 
@@ -87,6 +89,51 @@ async function processCron() {
           result,
         });
         totalProcessed++;
+      }
+    }
+
+    // ============================================================
+    // 3. Notion DXレターDB → 配信予約への自動投入
+    // ============================================================
+    const notionToken = process.env.NOTION_API_KEY;
+    const dxTenantId = process.env.DX_NEWSLETTER_TENANT_ID;
+    if (notionToken && dxTenantId) {
+      try {
+        const readyPages = await fetchReadyDxPages(notionToken);
+        for (const page of readyPages) {
+          try {
+            const { title, body } = await fetchPagePlainText(notionToken, page);
+            if (!title || !body) {
+              await updatePageStatus(notionToken, page.id, StatusValues.FAILED,
+                `⚠ 配信予約失敗：タイトル or 本文が空です`);
+              continue;
+            }
+            const result = await upsertScheduledDxNewsletter({
+              tenantId: dxTenantId,
+              subject: title,
+              body,
+              source: 'dx-newsletter-notion-bridge',
+              notionPageId: page.id,
+            });
+
+            const note = result.alreadySent
+              ? `✓ 既に本日分は送信済み（修正不可）`
+              : result.updated
+                ? `✏ 配信予約を更新（修正版・${result.recipientCount}名宛・予約: ${result.scheduledAt}）`
+                : `✉ 絆太郎配信予約済み（${result.recipientCount}名宛・予約: ${result.scheduledAt}・ID: ${result.scheduledId}）`;
+
+            await updatePageStatus(notionToken, page.id, StatusValues.SCHEDULED, note);
+            totalProcessed++;
+          } catch (perPageErr: any) {
+            console.error(`Notion bridge per-page error (${page.id}):`, perPageErr);
+            try {
+              await updatePageStatus(notionToken, page.id, StatusValues.FAILED,
+                `⚠ 配信予約失敗：${perPageErr?.message || 'unknown error'}`);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (notionErr: any) {
+        console.error('Notion bridge fetch error:', notionErr);
       }
     }
 
