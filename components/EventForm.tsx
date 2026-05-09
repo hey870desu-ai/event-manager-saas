@@ -560,11 +560,15 @@ useEffect(() => {
       }).filter(f => f.label !== "");
 
       // 👇 この3行を挿入してください（これで formatFields が使えるようになります）
-      const formatFields = (fields: CustomField[]) => fields.map(f => ({
-        ...f,
-        options: (f.type==="select"||f.type==="checkbox") ? f.optionsString.split(/\n|,|、/).map(s=>s.trim()).filter(s=>s!=="") : [],
-        optionsString: f.type==="link" ? (f.optionsString || "") : undefined,
-      })).filter(f => f.label !== "" || f.type === "link");
+      const formatFields = (fields: CustomField[]) => fields.map(f => {
+        const base: any = { id: f.id, label: f.label, type: f.type, required: f.required };
+        if (f.type === "select" || f.type === "checkbox") {
+          base.options = f.optionsString.split(/\n|,|、/).map((s: string) => s.trim()).filter((s: string) => s !== "");
+        } else if (f.type === "link") {
+          base.optionsString = f.optionsString || "";
+        }
+        return base;
+      }).filter((f: any) => f.label !== "" || f.type === "link");
 
       const savePayload = {
         ...formData,
