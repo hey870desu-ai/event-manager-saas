@@ -186,9 +186,9 @@ export default function FlyerPage() {
         {/* フッター：3カラム */}
         <div className="px-10 pb-4 mt-auto shrink-0">
           <div className="border-t-2 pt-3" style={{ borderColor: themeColor }}>
-            <div className="flex items-start justify-between gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {/* 左：お問い合わせ */}
-              <div className="flex-1">
+              <div>
                 <p className="text-sm font-black text-slate-900 mb-1">お問い合わせ</p>
                 {event.contactName && (
                   <p className="text-xs text-slate-700 font-bold">{event.contactName}</p>
@@ -202,7 +202,7 @@ export default function FlyerPage() {
               </div>
 
               {/* 中央：料金 */}
-              <div className="flex-1 text-center">
+              <div className="text-center flex flex-col justify-center">
                 {event.tickets && event.tickets.length > 0 ? (
                   <div className="space-y-0.5">
                     {event.tickets.map((t: any, i: number) => (
@@ -219,10 +219,10 @@ export default function FlyerPage() {
               </div>
 
               {/* 右：申し込み + QR */}
-              <div className="shrink-0 flex flex-col items-center">
+              <div className="text-center flex flex-col items-center justify-center">
                 <p className="text-xs font-black text-slate-900 mb-1">お申し込みはこちら</p>
-                <div className="bg-white p-1.5 border border-slate-200 rounded-lg mb-1">
-                  <img src={qrUrl} alt="QR" width={75} height={75} />
+                <div className="bg-white p-1.5 border border-slate-200 rounded-lg">
+                  <img src={qrUrl} alt="QR" width={70} height={70} />
                 </div>
               </div>
             </div>
