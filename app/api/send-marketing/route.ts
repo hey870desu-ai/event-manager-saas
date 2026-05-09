@@ -46,8 +46,8 @@ export async function POST(request: Request) {
             </td>
           </tr>
           <tr>
-            <td style="padding: 25px 15px; font-size: 15px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">
-              ${personalizedBody}
+            <td style="padding: 25px 15px;">
+              <div style="font-size: 14px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
             </td>
           </tr>
           <tr>
