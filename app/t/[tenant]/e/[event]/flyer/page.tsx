@@ -74,56 +74,56 @@ export default function FlyerPage() {
 
         {/* バナー画像 */}
         {event.ogpImage && (
-          <div className="w-full h-[360px] overflow-hidden">
+          <div className="w-full h-[380px] overflow-hidden">
             <img src={event.ogpImage} alt="" className="w-full h-full object-cover" />
           </div>
         )}
 
         {/* メインコンテンツ */}
-        <div className="px-10 py-6">
+        <div className="px-10 py-4">
 
           {/* 主催者名 */}
           {orgName && (
-            <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: themeColor }}>
+            <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: themeColor }}>
               {orgName}
             </p>
           )}
 
           {/* タイトル */}
-          <h1 className="text-3xl font-black text-slate-900 leading-tight mb-6" style={{ borderLeft: `6px solid ${themeColor}`, paddingLeft: "16px" }}>
+          <h1 className="text-2xl font-black text-slate-900 leading-tight mb-4" style={{ borderLeft: `5px solid ${themeColor}`, paddingLeft: "14px" }}>
             {event.title}
           </h1>
 
           {/* イベント情報カード */}
-          <div className="bg-slate-50 rounded-xl p-5 mb-6 border border-slate-200">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <Calendar size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+          <div className="bg-slate-50 rounded-lg p-3 mb-4 border border-slate-200">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
+                <Calendar size={14} style={{ color: themeColor }} className="shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">開催日</p>
-                  <p className="text-sm font-bold text-slate-800">{formatDate(event.date)}</p>
+                  <p className="text-[8px] text-slate-400 font-bold uppercase leading-none">開催日</p>
+                  <p className="text-xs font-bold text-slate-800">{formatDate(event.date)}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Clock size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+              <div className="flex items-center gap-2">
+                <Clock size={14} style={{ color: themeColor }} className="shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">時間</p>
-                  <p className="text-sm font-bold text-slate-800">{event.startTime} - {event.endTime}</p>
+                  <p className="text-[8px] text-slate-400 font-bold uppercase leading-none">時間</p>
+                  <p className="text-xs font-bold text-slate-800">{event.startTime} - {event.endTime}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <MapPin size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+              <div className="flex items-center gap-2">
+                <MapPin size={14} style={{ color: themeColor }} className="shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">会場</p>
-                  <p className="text-sm font-bold text-slate-800">{event.venueName || "オンライン"}</p>
+                  <p className="text-[8px] text-slate-400 font-bold uppercase leading-none">会場</p>
+                  <p className="text-xs font-bold text-slate-800">{event.venueName || "オンライン"}</p>
                 </div>
               </div>
               {event.capacity && (
-                <div className="flex items-start gap-3">
-                  <Users size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+                <div className="flex items-center gap-2">
+                  <Users size={14} style={{ color: themeColor }} className="shrink-0" />
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">定員</p>
-                    <p className="text-sm font-bold text-slate-800">{event.capacity}名</p>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase leading-none">定員</p>
+                    <p className="text-xs font-bold text-slate-800">{event.capacity}名</p>
                   </div>
                 </div>
               )}
@@ -132,20 +132,23 @@ export default function FlyerPage() {
 
           {/* 講師情報 */}
           {lecturers.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <span className="w-8 h-px" style={{ backgroundColor: themeColor }} />
+            <div className="mb-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                 講師紹介
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {lecturers.map((lec: any, i: number) => (
-                  <div key={i} className="flex items-center gap-4">
+                  <div key={i} className="flex items-start gap-3">
                     {lec.image && (
-                      <img src={lec.image} alt={lec.name} className="w-16 h-16 rounded-full object-cover border-2" style={{ borderColor: themeColor }} />
+                      <img src={lec.image} alt={lec.name} className="w-12 h-12 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
                     )}
-                    <div>
-                      <p className="font-black text-slate-900 text-lg">{lec.name}</p>
-                      {lec.title && <p className="text-xs text-slate-500">{lec.title}</p>}
+                    <div className="min-w-0">
+                      <p className="font-black text-slate-900 text-sm">{lec.name}</p>
+                      {lec.title && <p className="text-[10px] text-slate-500 leading-snug">{lec.title}</p>}
+                      {(lec.profile || lec.lecturerProfile) && (
+                        <p className="text-[10px] text-slate-600 leading-relaxed mt-1 line-clamp-3">{lec.profile || lec.lecturerProfile}</p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -155,12 +158,12 @@ export default function FlyerPage() {
 
           {/* 概要テキスト */}
           {event.content && (
-            <div className="mb-6">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <span className="w-8 h-px" style={{ backgroundColor: themeColor }} />
+            <div className="mb-3">
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
                 内容
               </h3>
-              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[12]">
+              <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[8]">
                 {event.content}
               </div>
             </div>
@@ -168,8 +171,8 @@ export default function FlyerPage() {
 
           {/* 料金 */}
           {event.price && (
-            <div className="mb-6 text-center">
-              <span className="inline-block text-2xl font-black px-6 py-2 rounded-full border-2" style={{ color: themeColor, borderColor: themeColor }}>
+            <div className="mb-3 text-center">
+              <span className="inline-block text-xl font-black px-5 py-1.5 rounded-full border-2" style={{ color: themeColor, borderColor: themeColor }}>
                 {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
               </span>
             </div>
@@ -177,19 +180,19 @@ export default function FlyerPage() {
         </div>
 
         {/* フッター：QRコード + 申し込み案内 */}
-        <div className="absolute bottom-0 left-0 right-0 px-10 pb-6">
-          <div className="border-t-2 pt-5 flex items-end justify-between" style={{ borderColor: themeColor }}>
+        <div className="absolute bottom-0 left-0 right-0 px-10 pb-4">
+          <div className="border-t-2 pt-3 flex items-center justify-between" style={{ borderColor: themeColor }}>
             <div className="flex-1">
-              <p className="text-lg font-black text-slate-900 mb-1">お申し込みはこちら</p>
-              <p className="text-xs text-slate-500 mb-2">QRコードを読み取るか、下記URLからお申し込みください。</p>
-              <p className="text-[10px] text-slate-400 break-all font-mono">{eventUrl}</p>
+              <p className="text-base font-black text-slate-900 mb-0.5">お申し込みはこちら</p>
+              <p className="text-[10px] text-slate-500 mb-1">QRコードを読み取るか、下記URLからお申し込みください。</p>
+              <p className="text-[9px] text-slate-400 break-all font-mono">{eventUrl}</p>
               {event.contactEmail && (
-                <p className="text-[10px] text-slate-400 mt-2">お問い合わせ: {event.contactEmail}</p>
+                <p className="text-[9px] text-slate-400 mt-1">お問い合わせ: {event.contactEmail}</p>
               )}
             </div>
-            <div className="shrink-0 ml-6">
-              <div className="bg-white p-2 border border-slate-200 rounded-lg shadow-sm">
-                <img src={qrUrl} alt="QR" width={100} height={100} />
+            <div className="shrink-0 ml-4">
+              <div className="bg-white p-1.5 border border-slate-200 rounded-lg">
+                <img src={qrUrl} alt="QR" width={80} height={80} />
               </div>
             </div>
           </div>
