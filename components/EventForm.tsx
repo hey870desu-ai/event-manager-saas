@@ -7,7 +7,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase, MessageSquare, ArrowUp, ArrowDown,Palette, 
-  CheckCircle, Building2, Smile, Sparkles, RefreshCcw } from "lucide-react";
+  CheckCircle, Building2, Smile, Sparkles, RefreshCcw, ClipboardList } from "lucide-react";
 import { fetchTenantData, type Tenant } from "../lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -56,6 +56,7 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
   const [currentEventId, setCurrentEventId] = useState<string | null>(event?.id || null);
   // ★追加: アンケート用の質問箱を作る
   const [surveyFields, setSurveyFields] = useState<CustomField[]>(event?.surveyFields || []);
+  const [preSurveyFields, setPreSurveyFields] = useState<CustomField[]>(event?.preSurveyFields || []);
   const [uploadingOgp, setUploadingOgp] = useState(false);
   
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -356,6 +357,13 @@ useEffect(() => {
           optionsString: f.options ? f.options.join("\n") : ""
         })));
       }
+      if (event.preSurveyFields && Array.isArray(event.preSurveyFields) && event.preSurveyFields.length > 0) {
+        setPreSurveyFields(event.preSurveyFields.map((f: any) => ({
+          ...f,
+          id: /^[a-zA-Z0-9_-]+$/.test(f.id) ? f.id : Math.random().toString(36).substring(2, 9),
+          optionsString: f.options ? f.options.join("\n") : ""
+        })));
+      }
       // ▲▲▲ 修正ここまで ▲▲▲
 
     }
@@ -427,6 +435,17 @@ useEffect(() => {
       [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
     }
     setSurveyFields(newFields);
+  };
+  const movePreSurveyField = (index: number, direction: 'up' | 'down') => {
+    const newFields = [...preSurveyFields];
+    if (direction === 'up') {
+      if (index === 0) return;
+      [newFields[index], newFields[index - 1]] = [newFields[index - 1], newFields[index]];
+    } else {
+      if (index === newFields.length - 1) return;
+      [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+    }
+    setPreSurveyFields(newFields);
   };
   const updateCustomField = (index: number, field: keyof CustomField, value: any) => {
     const updated = [...customFields];
@@ -550,6 +569,7 @@ useEffect(() => {
         timeTable: formattedTimeTable,
         customFields: formatFields(customFields),
         surveyFields: formatFields(surveyFields),
+        preSurveyFields: formatFields(preSurveyFields),
         time: `${formData.startTime} - ${formData.endTime}`,
         location: formData.venueName,
         updatedAt: new Date(),
@@ -928,25 +948,13 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 編集可能: 事前アンケート */}
-      <div>
-        <label className="block text-[10px] text-purple-500 font-bold mb-1 uppercase">事前アンケート（URLを入力するとメールに表示されます）</label>
-        <div className="border border-dashed border-purple-300 bg-purple-50 rounded-lg p-3">
-          <input
-            type="url"
-            name="preSurveyUrl"
-            value={formData.preSurveyUrl}
-            onChange={handleChange}
-            className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-            placeholder="https://forms.google.com/... など"
-          />
-          {formData.preSurveyUrl && (
-            <div className="mt-2 text-center">
-              <span className="inline-block bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg">アンケートに回答する</span>
-            </div>
-          )}
+      {/* 事前アンケートがある場合のプレビュー */}
+      {preSurveyFields.length > 0 && (
+        <div className="border border-dashed border-purple-300 bg-purple-50 rounded-lg p-3 text-center">
+          <p className="text-xs text-purple-600 font-bold mb-1">📝 事前アンケート（{preSurveyFields.length}問）が設定されています</p>
+          <span className="inline-block bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg">アンケートに回答する</span>
         </div>
-      </div>
+      )}
 
       {/* 固定部分: QR・キャンセルリンク */}
       <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs text-slate-400 text-center space-y-1">
@@ -1431,7 +1439,111 @@ useEffect(() => {
       </div>
 
       {/* ================================================================= */}
-      {/* ★追加: アンケート設定エリア (申し込みフォーム設定の下に追加) */}
+      {/* 事前アンケート設定エリア */}
+      {/* ================================================================= */}
+      <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800 mt-6">
+        <h3 className="text-white font-bold flex items-center gap-2 mb-2 text-lg">
+          <ClipboardList size={20} className="text-purple-400"/> 事前アンケート
+        </h3>
+        <p className="text-xs text-slate-500 mb-6">申し込み完了後・メールから回答してもらう事前アンケートを設定できます。</p>
+
+        <div className="space-y-4">
+          {preSurveyFields.length === 0 && (
+             <div className="text-center py-8 text-slate-600 text-sm border border-dashed border-slate-800 rounded-lg">
+                事前アンケートは設定されていません
+             </div>
+          )}
+
+          {preSurveyFields.map((field, index) => (
+            <div key={index} className="bg-slate-950 border border-slate-700 rounded-lg p-4 flex flex-col md:flex-row gap-4 items-start md:items-center relative group">
+              <div className="flex items-center text-slate-600 cursor-move"><GripVertical size={16}/></div>
+
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
+                <div className="md:col-span-5">
+                   <label className="text-[10px] text-slate-500 block mb-1">質問文</label>
+                   <textarea
+                     rows={2}
+                     value={field.label}
+                     onChange={(e) => {
+                        const newFields = [...preSurveyFields];
+                        newFields[index].label = e.target.value;
+                        setPreSurveyFields(newFields);
+                     }}
+                     placeholder="例: 本セミナーに期待することは何ですか？"
+                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]"
+                   />
+                </div>
+
+                <div className="md:col-span-3">
+                   <label className="text-[10px] text-slate-500 block mb-1">回答タイプ</label>
+                   <select
+                     value={field.type}
+                     onChange={(e) => {
+                        const newFields = [...preSurveyFields];
+                        newFields[index].type = e.target.value as any;
+                        setPreSurveyFields(newFields);
+                     }}
+                     className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none"
+                   >
+                     <option value="text">自由入力 (1行)</option>
+                     <option value="textarea">自由入力 (複数行)</option>
+                     <option value="select">選択肢 (プルダウン)</option>
+                     <option value="checkbox">複数選択 (チェックボックス)</option>
+                   </select>
+                </div>
+
+                <div className="md:col-span-3">
+                   {(field.type === "select" || field.type === "checkbox") ? (
+                      <div>
+                         <label className="text-[10px] text-slate-500 block mb-1">選択肢 (改行区切り)</label>
+                         <textarea
+                            rows={1}
+                            value={field.optionsString || ""}
+                            onChange={(e) => {
+                               const newFields = [...preSurveyFields];
+                               newFields[index].optionsString = e.target.value;
+                               setPreSurveyFields(newFields);
+                            }}
+                            placeholder={`選択肢A\n選択肢B`}
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-purple-500 outline-none resize-y min-h-[38px]"
+                         />
+                      </div>
+                   ) : (
+                      <div className="h-full flex items-end pb-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                           <input
+                             type="checkbox"
+                             checked={field.required}
+                             onChange={(e) => {
+                                const newFields = [...preSurveyFields];
+                                newFields[index].required = e.target.checked;
+                                setPreSurveyFields(newFields);
+                             }}
+                             className="rounded bg-slate-800 border-slate-600 text-purple-500 focus:ring-purple-500"
+                           />
+                           <span className="text-xs text-slate-400">必須にする</span>
+                        </label>
+                      </div>
+                   )}
+                </div>
+
+                <div className="md:col-span-1 flex flex-col justify-center items-center gap-1 mt-auto">
+                   <button type="button" onClick={() => movePreSurveyField(index, 'up')} disabled={index === 0} className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ArrowUp size={14}/></button>
+                   <button type="button" onClick={() => movePreSurveyField(index, 'down')} disabled={index === preSurveyFields.length - 1} className="p-1.5 text-slate-500 hover:text-white bg-slate-900 hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"><ArrowDown size={14}/></button>
+                   <button type="button" onClick={() => { const newFields = [...preSurveyFields]; newFields.splice(index, 1); setPreSurveyFields(newFields); }} className="p-1.5 mt-1 text-slate-600 hover:text-red-400 bg-slate-900 hover:bg-slate-800 rounded transition-colors"><Trash2 size={16}/></button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button type="button" onClick={() => setPreSurveyFields([...preSurveyFields, { id: Math.random().toString(36), label: "", type: "text", options: [], optionsString: "", required: false }])} className="w-full py-3 border-2 border-dashed border-slate-800 rounded-xl text-slate-400 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all flex items-center justify-center gap-2 text-sm font-bold">
+             <Plus size={16}/> 事前アンケート質問を追加
+          </button>
+        </div>
+      </div>
+
+      {/* ================================================================= */}
+      {/* 終了後アンケート設定エリア */}
       {/* ================================================================= */}
       <div className="bg-slate-900/30 p-6 rounded-xl border border-slate-800 mt-6">
         <h3 className="text-white font-bold flex items-center gap-2 mb-2 text-lg">
