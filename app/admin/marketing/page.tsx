@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, addDoc, deleteDoc } from "firebase/firestore";
-import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2, Link2, Copy } from "lucide-react";
+import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2, Link2, Copy, Save, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
 
@@ -161,6 +161,11 @@ export default function MarketingPage() {
   // 予約配信一覧
   const [scheduledList, setScheduledList] = useState<any[]>([]);
   const [previewScheduled, setPreviewScheduled] = useState<any | null>(null);
+
+  // 下書き
+  const [drafts, setDrafts] = useState<any[]>([]);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   
 
 useEffect(() => {
@@ -207,6 +212,12 @@ useEffect(() => {
             query(collection(db, "tenants", currentId, "scheduled_emails"), orderBy("scheduledAt", "desc"))
           );
           setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+          // 下書き一覧を取得
+          const draftSnap = await getDocs(
+            query(collection(db, "tenants", currentId, "email_drafts"), orderBy("updatedAt", "desc"))
+          );
+          setDrafts(draftSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
         } catch (e) {
           console.error("Load Error:", e);
@@ -610,6 +621,82 @@ const handleSaveMemo = async (email: string, memo: string) => {
     }
   };
 
+  // ===== 下書き保存・読込・削除 =====
+  const handleSaveDraft = async () => {
+    if (!tenantData) return;
+    if (!subject && !body) return alert("件名か本文のどちらかは入力してください。");
+    setIsSavingDraft(true);
+    try {
+      const now = new Date().toISOString();
+      const payload = {
+        subject,
+        body,
+        scheduledTime,
+        targetBranch,
+        targetEventId,
+        selectedEmails: Array.from(selectedEmails),
+        updatedAt: now,
+      };
+      if (currentDraftId) {
+        // 既存の下書きを更新
+        await setDoc(doc(db, "tenants", tenantData.id, "email_drafts", currentDraftId), payload, { merge: true });
+      } else {
+        // 新規作成
+        const ref = await addDoc(collection(db, "tenants", tenantData.id, "email_drafts"), {
+          ...payload,
+          createdAt: now,
+        });
+        setCurrentDraftId(ref.id);
+      }
+      // 一覧を再取得
+      const draftSnap = await getDocs(
+        query(collection(db, "tenants", tenantData.id, "email_drafts"), orderBy("updatedAt", "desc"))
+      );
+      setDrafts(draftSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      alert(currentDraftId ? "下書きを更新しました。" : "下書きを保存しました。");
+    } catch (e) {
+      console.error(e);
+      alert("下書き保存に失敗しました。");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleLoadDraft = (d: any) => {
+    if ((subject || body) && !confirm("現在の入力を破棄して下書きを読み込みますか？")) return;
+    setSubject(d.subject || "");
+    setBody(d.body || "");
+    setScheduledTime(d.scheduledTime || "");
+    if (d.targetBranch) setTargetBranch(d.targetBranch);
+    if (d.targetEventId) setTargetEventId(d.targetEventId);
+    setSelectedEmails(new Set(d.selectedEmails || []));
+    setCurrentDraftId(d.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteDraft = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!tenantData) return;
+    if (!confirm("この下書きを削除します。よろしいですか？")) return;
+    try {
+      await deleteDoc(doc(db, "tenants", tenantData.id, "email_drafts", id));
+      setDrafts(prev => prev.filter(d => d.id !== id));
+      if (currentDraftId === id) setCurrentDraftId(null);
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました。");
+    }
+  };
+
+  const handleNewEmail = () => {
+    if ((subject || body) && !confirm("現在の入力を破棄して新規作成にしますか？")) return;
+    setSubject("");
+    setBody("");
+    setScheduledTime("");
+    setSelectedEmails(new Set());
+    setCurrentDraftId(null);
+  };
+
   const handleSend = async (isTest: boolean = false) => {
     if (!subject || !body) return alert("件名と本文を入力してください。");
     // ★ ここで「チェックされた人」がいるか判定するだっぺ！
@@ -642,6 +729,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
         });
         alert(`${new Date(scheduledTime).toLocaleString('ja-JP')} に ${finalRecipients.length}名への配信を予約しました。`);
         setSubject(""); setBody(""); setScheduledTime(""); setExtracted(false); setRecipients([]);
+        setCurrentDraftId(null);
         // 一覧を再取得
         const schedSnap = await getDocs(query(collection(db, "tenants", tenantData!.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
         setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -727,6 +815,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
           setBody("");
           setExtracted(false);
           setRecipients([]);
+          setCurrentDraftId(null);
         }
       } else {
         alert("送信エラーが発生しました。");
@@ -920,8 +1009,18 @@ const handleSaveMemo = async (email: string, memo: string) => {
                  </div>
               )}
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-white font-bold flex items-center gap-2"><Mail size={18} className="text-indigo-400"/> メール作成</h2>
+                <h2 className="text-white font-bold flex items-center gap-2">
+                  <Mail size={18} className="text-indigo-400"/> メール作成
+                  {currentDraftId && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 ml-2">下書き編集中</span>
+                  )}
+                </h2>
                 <div className="flex items-center gap-2">
+                   {currentDraftId && (
+                     <button onClick={handleNewEmail} className="text-[10px] font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1 rounded-lg transition-colors">
+                       新規作成
+                     </button>
+                   )}
                    <FileText size={14} className="text-slate-500"/>
                    <select className="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1 outline-none cursor-pointer" onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
                      <option value="" disabled>テンプレート読込</option>
@@ -968,7 +1067,11 @@ const handleSaveMemo = async (email: string, memo: string) => {
                  <div className="text-xs text-slate-500 flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
                     <AlertTriangle size={14} className="text-amber-500"/>{scheduledTime ? "予約後の変更・キャンセルは管理画面から可能です" : "一度送信すると取り消しはできません"}
                  </div>
-                 <div className="flex gap-3 w-full md:w-auto">
+                 <div className="flex gap-3 w-full md:w-auto flex-wrap">
+                    <button onClick={handleSaveDraft} disabled={isSavingDraft || (!subject && !body)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-lg border border-amber-500/30 w-full md:w-auto justify-center flex items-center gap-2 disabled:opacity-40">
+                      {isSavingDraft ? <RefreshCw className="animate-spin" size={18}/> : <Save size={18}/>}
+                      {currentDraftId ? "下書き更新" : "下書き保存"}
+                    </button>
                     <button onClick={() => setShowPreview(true)} disabled={!subject && !body} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><Eye size={18}/> プレビュー</button>
                     <button onClick={() => handleSend(true)} disabled={sending} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg border border-slate-700 w-full md:w-auto justify-center flex items-center gap-2"><PlayCircle size={18}/> テスト送信</button>
                     <button onClick={() => handleSend(false)} disabled={sending || recipients.length === 0} className={`px-6 py-3 font-black rounded-lg transition-all flex items-center gap-2 shadow-lg w-full md:w-auto justify-center ${scheduledTime ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white"}`}>
@@ -979,6 +1082,59 @@ const handleSaveMemo = async (email: string, memo: string) => {
               </div>
            </div>
         </div>
+
+        {/* 下書き一覧 */}
+        {drafts.length > 0 && (
+          <div className="lg:col-span-3 mt-2">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-white font-bold flex items-center gap-2">
+                  <Edit3 size={18} className="text-amber-400"/> 下書き一覧
+                  <span className="text-[10px] font-bold text-slate-500">（{drafts.length}件）</span>
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {drafts.map(d => (
+                  <div
+                    key={d.id}
+                    className={`bg-slate-950/50 border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 ${currentDraftId === d.id ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-800'}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">下書き</span>
+                        {currentDraftId === d.id && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/30 text-amber-300">編集中</span>
+                        )}
+                        <span className="text-xs text-slate-400">
+                          {d.updatedAt ? new Date(d.updatedAt).toLocaleString('ja-JP') : ""}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-white truncate">{d.subject || "(無題)"}</p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {(d.selectedEmails?.length || 0) > 0 ? `選択中 ${d.selectedEmails.length} 名 / ` : ""}
+                        {d.body ? d.body.replace(/\n/g, " ").slice(0, 60) + (d.body.length > 60 ? "..." : "") : "（本文なし）"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleLoadDraft(d)}
+                        className="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-amber-500/30"
+                      >
+                        <Edit3 size={12}/> 読み込む
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteDraft(d.id, e)}
+                        className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
+                      >
+                        <Trash2 size={12}/> 削除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 配信履歴 */}
         {scheduledList.length > 0 && (
