@@ -283,19 +283,19 @@ const fetchTargets = async () => {
         });
       });
 
-      await Promise.all(targetEvents.map(async (event) => {
+      for (const event of targetEvents) {
         const resSnap = await getDocs(collection(db, "events", event.id, "reservations"));
-        resSnap.forEach(doc => {
-          const data = doc.data();
-          if (data.email && data.name) {
-            if (blockedEmails.has(data.email)) {
+        resSnap.forEach(d => {
+          const data = d.data();
+          const email = data.email?.trim()?.toLowerCase();
+          if (email && data.name) {
+            if (blockedEmails.has(email)) {
               blockedCount++;
             } else {
               const createdAt = data.createdAt?.toDate?.()?.getTime?.() || 0;
-              const existing = customerMap.get(data.email);
-              // 新しい予約データを優先（登録日が新しい or まだ登録なし）
+              const existing = customerMap.get(email);
               if (!existing || createdAt > (existing._createdAt || 0)) {
-                customerMap.set(data.email, {
+                customerMap.set(email, {
                   name: data.name,
                   company: data.company || data.department || "",
                   phone: data.phone || "",
@@ -305,7 +305,7 @@ const fetchTargets = async () => {
             }
           }
         });
-      }));
+      }
 
       // メモを合体させて、最終的なリストを作るぞい
       const uniqueList = await Promise.all(
