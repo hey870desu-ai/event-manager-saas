@@ -41,17 +41,17 @@ export async function POST(request: Request) {
       <td align="center" style="padding: 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff;">
           <tr>
-            <td style="background: #1e293b; padding: 20px 10px; text-align: center; border-bottom: 4px solid ${brandColor};">
-              <span style="color: #ffffff; font-size: 18px; font-weight: bold;">${senderName}</span>
+            <td style="background: #1e293b; padding: 15px 5px; text-align: center; border-bottom: 4px solid ${brandColor};">
+              <span style="color: #ffffff; font-size: 16px; font-weight: bold;">${senderName}</span>
             </td>
           </tr>
           <tr>
-            <td style="padding: 20px 10px;">
-              <div style="font-size: 13px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
+            <td style="padding: 15px 5px;">
+              <div style="font-size: 11px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
             </td>
           </tr>
           <tr>
-            <td style="background-color: #f8fafc; color: #94a3b8; padding: 20px 10px; text-align: center; font-size: 11px; border-top: 1px solid #e2e8f0;">
+            <td style="background-color: #f8fafc; color: #94a3b8; padding: 15px 5px; text-align: center; font-size: 10px; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; font-weight: bold; color: #94a3b8;">${senderName}</p>
               <p style="margin-top: 10px; opacity: 0.6; color: #94a3b8;">
                 ※このメールは ${senderName} より大切なお知らせとしてお届けしています。
