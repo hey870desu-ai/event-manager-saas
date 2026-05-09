@@ -17,7 +17,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList, Printer } from "lucide-react"; 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -1212,11 +1212,22 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                        {downloadingId===ev.id?<div className="animate-spin w-4 h-4 border-2 border-blue-500 rounded-full border-t-transparent"/>:<FileDown size={18}/>}
                        <span className="hidden lg:inline">CSV</span>
                    </button>
-                   
-                   <button 
+
+                   <a
+                     href={`/t/${ev.tenantId}/e/${ev.id}/flyer`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     onClick={(e) => e.stopPropagation()}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
+                   >
+                       <Printer size={18}/>
+                       <span className="hidden lg:inline">チラシ</span>
+                   </a>
+
+                   <button
                      onClick={(e) => {
   e.stopPropagation();
-  
+
   navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}`);
   setCopiedId(ev.id);
   setTimeout(() => setCopiedId(null), 2000);

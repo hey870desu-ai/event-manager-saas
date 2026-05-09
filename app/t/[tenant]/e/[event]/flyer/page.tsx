@@ -1,0 +1,213 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Calendar, Clock, MapPin, Users, Printer } from "lucide-react";
+
+function formatDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${weekdays[d.getDay()]})`;
+  } catch {
+    return dateStr;
+  }
+}
+
+export default function FlyerPage() {
+  const params = useParams();
+  const tenantId = (Array.isArray(params?.tenant) ? params.tenant[0] : params?.tenant) || "";
+  const eventId = (Array.isArray(params?.event) ? params.event[0] : params?.event) || "";
+
+  const [event, setEvent] = useState<any>(null);
+  const [tenant, setTenant] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!eventId || !tenantId) return;
+      try {
+        const [eventSnap, tenantSnap] = await Promise.all([
+          getDoc(doc(db, "events", eventId)),
+          getDoc(doc(db, "tenants", tenantId)),
+        ]);
+        if (eventSnap.exists()) setEvent({ id: eventSnap.id, ...eventSnap.data() });
+        if (tenantSnap.exists()) setTenant({ id: tenantSnap.id, ...tenantSnap.data() });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [eventId, tenantId]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">読み込み中...</div>;
+  if (!event) return <div className="min-h-screen flex items-center justify-center text-slate-400">イベントが見つかりません</div>;
+
+  const themeColor = tenant?.themeColor || "#3b82f6";
+  const orgName = tenant?.orgName || tenant?.name || "";
+  const eventUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/t/${tenantId}/e/${eventId}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(eventUrl)}`;
+
+  const lecturers = event.lecturers || (event.lecturer ? [{ name: event.lecturer, title: event.lecturerTitle, image: event.lecturerImage }] : []);
+
+  return (
+    <>
+      {/* 印刷ボタン（印刷時は非表示） */}
+      <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-colors"
+        >
+          <Printer size={18} /> 印刷 / PDF保存
+        </button>
+      </div>
+
+      {/* チラシ本体 */}
+      <div className="flyer-page w-[210mm] min-h-[297mm] mx-auto bg-white relative overflow-hidden print:shadow-none shadow-2xl font-sans" style={{ fontFamily: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif" }}>
+
+        {/* ヘッダーバー */}
+        <div className="h-2" style={{ backgroundColor: themeColor }} />
+
+        {/* バナー画像 */}
+        {event.ogpImage && (
+          <div className="w-full h-[200px] overflow-hidden">
+            <img src={event.ogpImage} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {/* メインコンテンツ */}
+        <div className="px-10 py-6">
+
+          {/* 主催者名 */}
+          {orgName && (
+            <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: themeColor }}>
+              {orgName}
+            </p>
+          )}
+
+          {/* タイトル */}
+          <h1 className="text-3xl font-black text-slate-900 leading-tight mb-6" style={{ borderLeft: `6px solid ${themeColor}`, paddingLeft: "16px" }}>
+            {event.title}
+          </h1>
+
+          {/* イベント情報カード */}
+          <div className="bg-slate-50 rounded-xl p-5 mb-6 border border-slate-200">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <Calendar size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">開催日</p>
+                  <p className="text-sm font-bold text-slate-800">{formatDate(event.date)}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">時間</p>
+                  <p className="text-sm font-bold text-slate-800">{event.startTime} - {event.endTime}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <MapPin size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">会場</p>
+                  <p className="text-sm font-bold text-slate-800">{event.venueName || "オンライン"}</p>
+                </div>
+              </div>
+              {event.capacity && (
+                <div className="flex items-start gap-3">
+                  <Users size={18} style={{ color: themeColor }} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">定員</p>
+                    <p className="text-sm font-bold text-slate-800">{event.capacity}名</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 講師情報 */}
+          {lecturers.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="w-8 h-px" style={{ backgroundColor: themeColor }} />
+                講師紹介
+              </h3>
+              <div className="space-y-3">
+                {lecturers.map((lec: any, i: number) => (
+                  <div key={i} className="flex items-center gap-4">
+                    {lec.image && (
+                      <img src={lec.image} alt={lec.name} className="w-16 h-16 rounded-full object-cover border-2" style={{ borderColor: themeColor }} />
+                    )}
+                    <div>
+                      <p className="font-black text-slate-900 text-lg">{lec.name}</p>
+                      {lec.title && <p className="text-xs text-slate-500">{lec.title}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 概要テキスト */}
+          {event.content && (
+            <div className="mb-6">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="w-8 h-px" style={{ backgroundColor: themeColor }} />
+                内容
+              </h3>
+              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[12]">
+                {event.content}
+              </div>
+            </div>
+          )}
+
+          {/* 料金 */}
+          {event.price && (
+            <div className="mb-6 text-center">
+              <span className="inline-block text-2xl font-black px-6 py-2 rounded-full border-2" style={{ color: themeColor, borderColor: themeColor }}>
+                {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* フッター：QRコード + 申し込み案内 */}
+        <div className="absolute bottom-0 left-0 right-0 px-10 pb-6">
+          <div className="border-t-2 pt-5 flex items-end justify-between" style={{ borderColor: themeColor }}>
+            <div className="flex-1">
+              <p className="text-lg font-black text-slate-900 mb-1">お申し込みはこちら</p>
+              <p className="text-xs text-slate-500 mb-2">QRコードを読み取るか、下記URLからお申し込みください。</p>
+              <p className="text-[10px] text-slate-400 break-all font-mono">{eventUrl}</p>
+              {event.contactEmail && (
+                <p className="text-[10px] text-slate-400 mt-2">お問い合わせ: {event.contactEmail}</p>
+              )}
+            </div>
+            <div className="shrink-0 ml-6">
+              <div className="bg-white p-2 border border-slate-200 rounded-lg shadow-sm">
+                <img src={qrUrl} alt="QR" width={100} height={100} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 印刷用CSS */}
+      <style jsx global>{`
+        @media print {
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .flyer-page { width: 210mm; min-height: 297mm; margin: 0; padding: 0; box-shadow: none; }
+          @page { size: A4; margin: 0; }
+        }
+        @media screen {
+          body { background-color: #e2e8f0; }
+          .flyer-page { margin-top: 40px; margin-bottom: 40px; }
+        }
+      `}</style>
+    </>
+  );
+}
