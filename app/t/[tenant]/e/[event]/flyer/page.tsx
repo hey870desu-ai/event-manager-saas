@@ -201,17 +201,8 @@ export default function FlyerPage() {
                 )}
               </div>
 
-              {/* 中央：QR */}
-              <div className="shrink-0 flex flex-col items-center">
-                <div className="bg-white p-1.5 border border-slate-200 rounded-lg mb-1">
-                  <img src={qrUrl} alt="QR" width={75} height={75} />
-                </div>
-                <p className="text-[9px] text-slate-400">QRからお申し込み</p>
-              </div>
-
-              {/* 右：料金・申し込み */}
-              <div className="flex-1 text-right">
-                <p className="text-sm font-black text-slate-900 mb-1">お申し込みはこちら</p>
+              {/* 中央：料金 */}
+              <div className="flex-1 text-center">
                 {event.tickets && event.tickets.length > 0 ? (
                   <div className="space-y-0.5">
                     {event.tickets.map((t: any, i: number) => (
@@ -225,6 +216,14 @@ export default function FlyerPage() {
                     {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
                   </p>
                 ) : null}
+              </div>
+
+              {/* 右：申し込み + QR */}
+              <div className="shrink-0 flex flex-col items-center">
+                <p className="text-xs font-black text-slate-900 mb-1">お申し込みはこちら</p>
+                <div className="bg-white p-1.5 border border-slate-200 rounded-lg mb-1">
+                  <img src={qrUrl} alt="QR" width={75} height={75} />
+                </div>
               </div>
             </div>
           </div>
