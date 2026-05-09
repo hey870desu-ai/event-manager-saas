@@ -835,9 +835,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
                   </div>
                   {/* 📂 名簿リストを表示するスクロールエリア */}
                   <div className="max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-950/50 rounded-xl p-4 border border-slate-800/50 shadow-inner">
-                    {displayedRecipients.map((r, i) => (
+                    {displayedRecipients.map((r) => (
                       <div
-                        key={i}
+                        key={r.email}
                         className={`p-3 rounded-lg border-b border-slate-800/30 last:border-0 hover:bg-slate-900/80 ${selectedEmails.has(r.email) ? 'bg-indigo-500/10' : ''}`}
                       >
                         <div className="flex items-start gap-3">
