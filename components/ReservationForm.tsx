@@ -23,8 +23,9 @@ type TenantData = {
 type CustomField = {
   id: string;
   label: string;
-  type: "text" | "textarea" | "select" | "checkbox";
+  type: "text" | "textarea" | "select" | "checkbox" | "link";
   options?: string[];
+  optionsString?: string;
   required: boolean;
 };
 
@@ -436,8 +437,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                               </label>
                             )}
 
-                            {field.type === "link" && (field as any).optionsString && (
-                              <a href={(field as any).optionsString} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold transition-colors text-sm" style={{backgroundColor: themeColor}}>
+                            {field.type === "link" && field.optionsString && (
+                              <a href={field.optionsString} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold transition-colors text-sm" style={{backgroundColor: themeColor}}>
                                 {field.label || 'リンクを開く'} →
                               </a>
                             )}
