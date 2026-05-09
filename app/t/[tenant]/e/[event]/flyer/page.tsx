@@ -183,25 +183,36 @@ export default function FlyerPage() {
           )}
         </div>
 
-        {/* フッター：QRコード + 参加費 + 申し込み案内 */}
+        {/* フッター */}
         <div className="absolute bottom-0 left-0 right-0 px-10 pb-4">
-          <div className="border-t-2 pt-3 flex items-center justify-between" style={{ borderColor: themeColor }}>
-            <div className="flex-1">
-              <p className="text-base font-black text-slate-900 mb-0.5">お申し込みはこちら</p>
-              {event.price && (
-                <p className="text-sm font-black mb-1" style={{ color: themeColor }}>
-                  {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
-                </p>
-              )}
-              <p className="text-[10px] text-slate-500 mb-1">QRコードを読み取るか、下記URLからお申し込みください。</p>
-              <p className="text-[9px] text-slate-400 break-all font-mono">{eventUrl}</p>
-              {event.contactEmail && (
-                <p className="text-[9px] text-slate-400 mt-1">お問い合わせ: {event.contactEmail}</p>
-              )}
-            </div>
-            <div className="shrink-0 ml-4">
-              <div className="bg-white p-1.5 border border-slate-200 rounded-lg">
-                <img src={qrUrl} alt="QR" width={80} height={80} />
+          <div className="border-t-2 pt-3" style={{ borderColor: themeColor }}>
+            <div className="flex items-start justify-between gap-4">
+              {/* 左：お問い合わせ */}
+              <div className="flex-1">
+                <p className="text-sm font-black text-slate-900 mb-1">お問い合わせ</p>
+                {event.contactName && (
+                  <p className="text-xs text-slate-700 font-bold">{event.contactName}</p>
+                )}
+                {event.contactPhone && (
+                  <p className="text-xs text-slate-600">TEL: {event.contactPhone}</p>
+                )}
+                {event.contactEmail && (
+                  <p className="text-xs text-slate-600">MAIL: {event.contactEmail}</p>
+                )}
+              </div>
+
+              {/* 右：申し込み + QR */}
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-black text-slate-900 mb-0.5">お申し込みはこちら</p>
+                {event.price && (
+                  <p className="text-sm font-black mb-1" style={{ color: themeColor }}>
+                    {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-500 mb-1">QRコードからお申し込みください</p>
+                <div className="inline-block bg-white p-1.5 border border-slate-200 rounded-lg">
+                  <img src={qrUrl} alt="QR" width={80} height={80} />
+                </div>
               </div>
             </div>
           </div>
