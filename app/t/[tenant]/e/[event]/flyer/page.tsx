@@ -67,7 +67,7 @@ export default function FlyerPage() {
       </div>
 
       {/* チラシ本体 */}
-      <div className="flyer-page w-[210mm] min-h-[297mm] mx-auto bg-white overflow-hidden print:shadow-none shadow-2xl font-sans flex flex-col" style={{ fontFamily: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif" }}>
+      <div className="flyer-page w-[210mm] h-[297mm] mx-auto bg-white overflow-hidden print:shadow-none shadow-2xl font-sans flex flex-col" style={{ fontFamily: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif" }}>
 
         {/* ヘッダーバー */}
         <div className="h-2" style={{ backgroundColor: themeColor }} />
@@ -80,7 +80,7 @@ export default function FlyerPage() {
         )}
 
         {/* メインコンテンツ */}
-        <div className="px-10 py-4">
+        <div className="px-10 py-4 flex-1 overflow-hidden">
 
           {/* 主催者名 */}
           {orgName && (
@@ -183,10 +183,10 @@ export default function FlyerPage() {
           )}
         </div>
 
-        {/* フッター */}
-        <div className="px-10 pb-4 mt-auto">
+        {/* フッター：3カラム */}
+        <div className="px-10 pb-4 mt-auto shrink-0">
           <div className="border-t-2 pt-3" style={{ borderColor: themeColor }}>
-            <div className="flex items-start justify-between gap-6">
+            <div className="flex items-start justify-between gap-3">
               {/* 左：お問い合わせ */}
               <div className="flex-1">
                 <p className="text-sm font-black text-slate-900 mb-1">お問い合わせ</p>
@@ -201,12 +201,19 @@ export default function FlyerPage() {
                 )}
               </div>
 
-              {/* 右：申し込み + 料金 + QR */}
-              <div className="shrink-0 text-right">
+              {/* 中央：QR */}
+              <div className="shrink-0 flex flex-col items-center">
+                <div className="bg-white p-1.5 border border-slate-200 rounded-lg mb-1">
+                  <img src={qrUrl} alt="QR" width={75} height={75} />
+                </div>
+                <p className="text-[9px] text-slate-400">QRからお申し込み</p>
+              </div>
+
+              {/* 右：料金・申し込み */}
+              <div className="flex-1 text-right">
                 <p className="text-sm font-black text-slate-900 mb-1">お申し込みはこちら</p>
-                {/* チケット複数対応 */}
                 {event.tickets && event.tickets.length > 0 ? (
-                  <div className="mb-1 space-y-0.5">
+                  <div className="space-y-0.5">
                     {event.tickets.map((t: any, i: number) => (
                       <p key={i} className="text-xs font-bold" style={{ color: themeColor }}>
                         {t.name}: {t.price === 0 ? "無料" : `¥${Number(t.price).toLocaleString()}`}
@@ -214,14 +221,10 @@ export default function FlyerPage() {
                     ))}
                   </div>
                 ) : event.price ? (
-                  <p className="text-sm font-black mb-1" style={{ color: themeColor }}>
+                  <p className="text-sm font-black" style={{ color: themeColor }}>
                     {event.price === "0" || event.price === "無料" ? "参加無料" : `参加費 ${Number(event.price).toLocaleString()}円`}
                   </p>
                 ) : null}
-                <p className="text-[10px] text-slate-500 mb-1">QRコードからお申し込みください</p>
-                <div className="inline-block bg-white p-1.5 border border-slate-200 rounded-lg">
-                  <img src={qrUrl} alt="QR" width={80} height={80} />
-                </div>
               </div>
             </div>
           </div>
