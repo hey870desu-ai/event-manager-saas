@@ -671,6 +671,8 @@ const handleSaveMemo = async (email: string, memo: string) => {
     if (d.targetEventId) setTargetEventId(d.targetEventId);
     setSelectedEmails(new Set(d.selectedEmails || []));
     setCurrentDraftId(d.id);
+    // リスト未抽出でも編集できるようオーバーレイを外す（送信ボタンは recipients.length===0 で disabled のままなので安全）
+    setExtracted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
