@@ -130,44 +130,51 @@ export default function FlyerPage() {
             </div>
           </div>
 
-          {/* 講師情報 */}
-          {lecturers.length > 0 && (
-            <div className="mb-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
-                講師紹介
-              </h3>
-              <div className="space-y-2">
-                {lecturers.map((lec: any, i: number) => (
-                  <div key={i} className="flex items-start gap-3">
-                    {lec.image && (
-                      <img src={lec.image} alt={lec.name} className="w-12 h-12 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-black text-slate-900 text-sm">{lec.name}</p>
-                      {lec.title && <p className="text-[10px] text-slate-500 leading-snug">{lec.title}</p>}
-                      {(lec.profile || lec.lecturerProfile) && (
-                        <p className="text-[10px] text-slate-600 leading-relaxed mt-1 line-clamp-3">{lec.profile || lec.lecturerProfile}</p>
-                      )}
-                    </div>
+          {/* 講師紹介 + 内容：2カラム */}
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            {/* 左：講師情報 */}
+            <div>
+              {lecturers.length > 0 && (
+                <>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
+                    講師紹介
+                  </h3>
+                  <div className="space-y-2">
+                    {lecturers.map((lec: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2">
+                        {lec.image && (
+                          <img src={lec.image} alt={lec.name} className="w-10 h-10 rounded-full object-cover border-2 shrink-0" style={{ borderColor: themeColor }} />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-900 text-xs">{lec.name}</p>
+                          {lec.title && <p className="text-[9px] text-slate-500 leading-snug">{lec.title}</p>}
+                          {(lec.profile || lec.lecturerProfile) && (
+                            <p className="text-[9px] text-slate-600 leading-relaxed mt-0.5 line-clamp-4">{lec.profile || lec.lecturerProfile}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </div>
-          )}
 
-          {/* 概要テキスト */}
-          {event.content && (
-            <div className="mb-3">
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
-                内容
-              </h3>
-              <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[8]">
-                {event.content}
-              </div>
+            {/* 右：内容 */}
+            <div>
+              {event.content && (
+                <>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <span className="w-6 h-px" style={{ backgroundColor: themeColor }} />
+                    内容
+                  </h3>
+                  <div className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap line-clamp-[12]">
+                    {event.content}
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* タイムスケジュール */}
           {event.timeTable && (
