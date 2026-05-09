@@ -74,7 +74,7 @@ export default function FlyerPage() {
 
         {/* バナー画像 */}
         {event.ogpImage && (
-          <div className="w-full h-[200px] overflow-hidden">
+          <div className="w-full h-[320px] overflow-hidden">
             <img src={event.ogpImage} alt="" className="w-full h-full object-cover" />
           </div>
         )}
