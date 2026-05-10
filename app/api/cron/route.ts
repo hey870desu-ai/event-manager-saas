@@ -177,25 +177,17 @@ async function processCron() {
     // ============================================================
     // 4. はなひろHPブログ：Notion → WordPress 自動投稿
     // ============================================================
+    // env で設定された場合のみ動作。
+    // HANAHIRO_BLOG_AUTO_PUBLISH=true のときは即公開、未設定 or false で下書き保存
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
     const wpSite = process.env.WP_SITE_URL;
     const wpUser = process.env.WP_USERNAME;
     const wpPass = process.env.WP_APP_PASSWORD;
     const blogNotionToken = process.env.NOTION_API_KEY;
-    const blogDebug: any = {
-      blogDbIdSet: !!blogDbId,
-      wpSiteSet: !!wpSite,
-      wpUserSet: !!wpUser,
-      wpPassSet: !!wpPass,
-      blogNotionTokenSet: !!blogNotionToken,
-      readyBlogPageCount: 0,
-      notionError: null,
-      wpError: null,
-    };
+    const autoPublish = process.env.HANAHIRO_BLOG_AUTO_PUBLISH === 'true';
     if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
       try {
         const readyBlogPages = await fetchPagesByStatus(blogNotionToken, blogDbId, '🟠 公開準備完了');
-        blogDebug.readyBlogPageCount = readyBlogPages.length;
         for (const page of readyBlogPages) {
           try {
             const { title, html } = await fetchPageHtml(blogNotionToken, page);
@@ -206,12 +198,14 @@ async function processCron() {
             }
             const wpResult = await createWpPost(
               { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
-              { title, content: html, status: 'draft' }
+              { title, content: html, status: autoPublish ? 'publish' : 'draft' }
             );
-            // Notionに公開URLとステータス更新
-            await updatePageStatus(blogNotionToken, page.id, '🔵 投稿予約済み',
-              `📝 WordPress下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${wpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`);
-            // 公開URLプロパティも更新（WordPressのlinkはdraft時はpreview URLになる場合がある）
+            const newStatus = autoPublish ? '🟢 公開済み' : '🔵 投稿予約済み';
+            const note = autoPublish
+              ? `🌐 WordPress公開済み（ID: ${wpResult.id}）\n公開URL: ${wpResult.link}`
+              : `📝 WordPress下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${wpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`;
+            await updatePageStatus(blogNotionToken, page.id, newStatus, note);
+            // 公開URLプロパティ更新
             try {
               await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
                 method: 'PATCH',
@@ -238,12 +232,11 @@ async function processCron() {
         }
       } catch (blogErr: any) {
         console.error('はなひろブログfetch error:', blogErr);
-        blogDebug.notionError = blogErr?.message || String(blogErr);
       }
     }
 
     console.log(`✅ CRON完了: ${totalProcessed}件処理`);
-    return NextResponse.json({ success: true, processed: totalProcessed, blogDebug });
+    return NextResponse.json({ success: true, processed: totalProcessed });
 
   } catch (error: any) {
     console.error("🔥 CRON Error:", error);
