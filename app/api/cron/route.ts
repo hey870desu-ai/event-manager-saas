@@ -4,7 +4,7 @@ import { sendBatchEmail, sendEmail } from '@/lib/mailer';
 import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatus, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
-import { createWpPost } from '@/lib/wordpress-bridge';
+import { createWpPost, findCategoryIdBySlug } from '@/lib/wordpress-bridge';
 
 const BATCH_SIZE = 100;
 
@@ -186,6 +186,22 @@ async function processCron() {
     const blogNotionToken = process.env.NOTION_API_KEY;
     const autoPublish = process.env.HANAHIRO_BLOG_AUTO_PUBLISH === 'true';
     if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
+      // WordPress 投稿時に割り当てるカテゴリ（slugで指定 / 1回だけ解決してキャッシュ）
+      const categorySlug = process.env.HANAHIRO_BLOG_CATEGORY_SLUG;
+      let categoryIds: number[] | undefined = undefined;
+      if (categorySlug) {
+        try {
+          const id = await findCategoryIdBySlug(
+            { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
+            categorySlug
+          );
+          if (id) categoryIds = [id];
+          else console.warn(`HANAHIRO_BLOG_CATEGORY_SLUG=${categorySlug} に該当するカテゴリが見つかりません`);
+        } catch (e: any) {
+          console.error('カテゴリ取得失敗:', e?.message || e);
+        }
+      }
+
       try {
         const readyBlogPages = await fetchPagesByStatus(blogNotionToken, blogDbId, '🟠 公開準備完了');
         for (const page of readyBlogPages) {
@@ -198,7 +214,7 @@ async function processCron() {
             }
             const wpResult = await createWpPost(
               { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
-              { title, content: html, status: autoPublish ? 'publish' : 'draft' }
+              { title, content: html, status: autoPublish ? 'publish' : 'draft', categories: categoryIds }
             );
             const newStatus = autoPublish ? '🟢 公開済み' : '🔵 投稿予約済み';
             const note = autoPublish
