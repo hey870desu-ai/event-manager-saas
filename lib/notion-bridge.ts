@@ -10,9 +10,10 @@ const NOTION_VERSION = '2022-06-28';
 
 const DX_DATA_SOURCE_ID = '38cb4cb4-e535-49a1-8d78-0bcf4fed4274';
 
-const STATUS_READY = '配信準備完了';
-const STATUS_SCHEDULED = '配信予約済み';
-const STATUS_FAILED = '配信失敗';
+// Notion DB「ステータス」プロパティのオプション名（絵文字含む）
+const STATUS_READY = '🟠 配信準備完了';
+const STATUS_SCHEDULED = '🔵 配信予約済み';
+const STATUS_FAILED = '🔴 配信失敗';
 
 type NotionRichText = { plain_text?: string; href?: string | null };
 
