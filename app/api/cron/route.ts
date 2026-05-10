@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, sendEmail } from '@/lib/mailer';
-import { fetchReadyDxPages, fetchPagePlainText, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
+import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatus, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
+import { createWpPost } from '@/lib/wordpress-bridge';
 
 const BATCH_SIZE = 100;
 
@@ -170,6 +171,63 @@ async function processCron() {
         }
       } catch (notionErr: any) {
         console.error(`Notion bridge fetch error (tenant=${tenantId}):`, notionErr);
+      }
+    }
+
+    // ============================================================
+    // 4. はなひろHPブログ：Notion → WordPress 自動投稿
+    // ============================================================
+    // env で設定された場合のみ動作。塙さん専用の自社ブログ自動化機能。
+    const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
+    const wpSite = process.env.WP_SITE_URL;
+    const wpUser = process.env.WP_USERNAME;
+    const wpPass = process.env.WP_APP_PASSWORD;
+    const blogNotionToken = process.env.NOTION_API_KEY; // 塙さんの個人Integration tokenを流用
+    if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
+      try {
+        const readyBlogPages = await fetchPagesByStatus(blogNotionToken, blogDbId, '🟠 公開準備完了');
+        for (const page of readyBlogPages) {
+          try {
+            const { title, html } = await fetchPageHtml(blogNotionToken, page);
+            if (!title || !html) {
+              await updatePageStatus(blogNotionToken, page.id, '🔴 公開失敗',
+                `⚠ 公開失敗：タイトル or 本文が空です`);
+              continue;
+            }
+            const wpResult = await createWpPost(
+              { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
+              { title, content: html, status: 'draft' }
+            );
+            // Notionに公開URLとステータス更新
+            await updatePageStatus(blogNotionToken, page.id, '🔵 投稿予約済み',
+              `📝 WordPress下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${wpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`);
+            // 公開URLプロパティも更新（WordPressのlinkはdraft時はpreview URLになる場合がある）
+            try {
+              await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+                method: 'PATCH',
+                headers: {
+                  Authorization: `Bearer ${blogNotionToken}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  properties: {
+                    '公開URL': { url: wpResult.link },
+                  },
+                }),
+              });
+            } catch { /* ignore */ }
+            totalProcessed++;
+          } catch (perPageErr: any) {
+            console.error(`はなひろブログ投稿失敗 (page=${page.id}):`, perPageErr);
+            try {
+              await updatePageStatus(blogNotionToken, page.id, '🔴 公開失敗',
+                `⚠ 投稿失敗：${perPageErr?.message || 'unknown error'}`);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (blogErr: any) {
+        console.error('はなひろブログfetch error:', blogErr);
       }
     }
 

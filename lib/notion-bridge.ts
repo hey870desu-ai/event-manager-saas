@@ -26,17 +26,17 @@ function notionHeaders(token: string): HeadersInit {
   };
 }
 
-// 「配信準備完了」のページを取得（指定テナントのDBから）
-export async function fetchReadyDxPages(token: string, databaseId: string): Promise<NotionPage[]> {
+// 指定ステータスのページを取得（汎用版）
+export async function fetchPagesByStatus(token: string, databaseId: string, statusName: string, pageSize = 5): Promise<NotionPage[]> {
   const res = await fetch(`${NOTION_API}/databases/${databaseId}/query`, {
     method: 'POST',
     headers: notionHeaders(token),
     body: JSON.stringify({
       filter: {
         property: 'ステータス',
-        select: { equals: STATUS_READY },
+        select: { equals: statusName },
       },
-      page_size: 5,
+      page_size: pageSize,
     }),
   });
   if (!res.ok) {
@@ -45,6 +45,11 @@ export async function fetchReadyDxPages(token: string, databaseId: string): Prom
   }
   const data: any = await res.json();
   return data.results || [];
+}
+
+// 旧API互換：DXメルマガ用
+export async function fetchReadyDxPages(token: string, databaseId: string): Promise<NotionPage[]> {
+  return fetchPagesByStatus(token, databaseId, STATUS_READY);
 }
 
 async function fetchPageBlocks(token: string, pageId: string): Promise<any[]> {
@@ -74,6 +79,98 @@ function richTextToPlain(rt: NotionRichText[] | undefined): string {
       return text;
     })
     .join('');
+}
+
+// rich textをHTMLに変換（リンク・太字・斜体・コード等を維持）
+function richTextToHtml(rt: NotionRichText[] | undefined): string {
+  if (!rt || rt.length === 0) return '';
+  return rt
+    .map((r: any) => {
+      let text = (r.plain_text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const ann = r.annotations || {};
+      if (ann.code) text = `<code>${text}</code>`;
+      if (ann.bold) text = `<strong>${text}</strong>`;
+      if (ann.italic) text = `<em>${text}</em>`;
+      if (ann.underline) text = `<u>${text}</u>`;
+      if (ann.strikethrough) text = `<s>${text}</s>`;
+      if (r.href) text = `<a href="${r.href}">${text}</a>`;
+      return text;
+    })
+    .join('');
+}
+
+// Notionブロック配列をHTMLに変換（WordPress投稿用）
+export function blocksToHtml(blocks: any[]): string {
+  const out: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+
+  const closeList = () => {
+    if (listType) {
+      out.push(`</${listType}>`);
+      listType = null;
+    }
+  };
+
+  for (const block of blocks) {
+    const type = block.type;
+    const data = block[type] || {};
+    const html = richTextToHtml(data.rich_text);
+
+    if (type === 'bulleted_list_item') {
+      if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; }
+      out.push(`<li>${html}</li>`);
+      continue;
+    }
+    if (type === 'numbered_list_item') {
+      if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; }
+      out.push(`<li>${html}</li>`);
+      continue;
+    }
+    closeList();
+
+    switch (type) {
+      case 'paragraph':
+        if (html.trim()) out.push(`<p>${html}</p>`);
+        break;
+      case 'heading_1':
+        out.push(`<h1>${html}</h1>`);
+        break;
+      case 'heading_2':
+        out.push(`<h2>${html}</h2>`);
+        break;
+      case 'heading_3':
+        out.push(`<h3>${html}</h3>`);
+        break;
+      case 'quote':
+        out.push(`<blockquote>${html}</blockquote>`);
+        break;
+      case 'divider':
+        out.push('<hr/>');
+        break;
+      case 'callout':
+        out.push(`<aside class="callout">${html}</aside>`);
+        break;
+      case 'code':
+        out.push(`<pre><code>${html}</code></pre>`);
+        break;
+      case 'to_do':
+        out.push(`<p>${data.checked ? '☑' : '☐'} ${html}</p>`);
+        break;
+      default:
+        if (html.trim()) out.push(`<p>${html}</p>`);
+        break;
+    }
+  }
+  closeList();
+  return out.join('\n');
+}
+
+// ページのHTML本文を取得（WordPress投稿用）
+export async function fetchPageHtml(token: string, page: NotionPage): Promise<{ title: string; html: string }> {
+  const title = extractTitle(page);
+  const blocks = await fetchPageBlocks(token, page.id);
+  const html = blocksToHtml(blocks);
+  return { title, html };
 }
 
 function blocksToPlainText(blocks: any[]): string {
