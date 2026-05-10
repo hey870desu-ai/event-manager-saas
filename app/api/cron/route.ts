@@ -177,15 +177,25 @@ async function processCron() {
     // ============================================================
     // 4. はなひろHPブログ：Notion → WordPress 自動投稿
     // ============================================================
-    // env で設定された場合のみ動作。塙さん専用の自社ブログ自動化機能。
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
     const wpSite = process.env.WP_SITE_URL;
     const wpUser = process.env.WP_USERNAME;
     const wpPass = process.env.WP_APP_PASSWORD;
-    const blogNotionToken = process.env.NOTION_API_KEY; // 塙さんの個人Integration tokenを流用
+    const blogNotionToken = process.env.NOTION_API_KEY;
+    const blogDebug: any = {
+      blogDbIdSet: !!blogDbId,
+      wpSiteSet: !!wpSite,
+      wpUserSet: !!wpUser,
+      wpPassSet: !!wpPass,
+      blogNotionTokenSet: !!blogNotionToken,
+      readyBlogPageCount: 0,
+      notionError: null,
+      wpError: null,
+    };
     if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
       try {
         const readyBlogPages = await fetchPagesByStatus(blogNotionToken, blogDbId, '🟠 公開準備完了');
+        blogDebug.readyBlogPageCount = readyBlogPages.length;
         for (const page of readyBlogPages) {
           try {
             const { title, html } = await fetchPageHtml(blogNotionToken, page);
@@ -228,11 +238,12 @@ async function processCron() {
         }
       } catch (blogErr: any) {
         console.error('はなひろブログfetch error:', blogErr);
+        blogDebug.notionError = blogErr?.message || String(blogErr);
       }
     }
 
     console.log(`✅ CRON完了: ${totalProcessed}件処理`);
-    return NextResponse.json({ success: true, processed: totalProcessed });
+    return NextResponse.json({ success: true, processed: totalProcessed, blogDebug });
 
   } catch (error: any) {
     console.error("🔥 CRON Error:", error);
