@@ -1,18 +1,12 @@
 // ============================================================
 // Notion → 絆太郎 メルマガ配信ブリッジ
 // ============================================================
-// Notion DXレターDBの「ステータス=配信準備完了」を拾って
-// scheduled_emails に投入する処理。
-// Notion API は NOTION_API_KEY を使う（Notion Integrationのトークン）。
+// テナントごとに渡される Notion API token / database ID を使って
+// 「ステータス=配信準備完了」のページを拾って scheduled_emails に投入する。
 
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
-// Notion REST API でクエリする「データベースID」
-// （Notion URL https://www.notion.so/5b51d786c1bb42f0b8c9a917008eae2d より）
-const DX_DATABASE_ID = '5b51d786-c1bb-42f0-b8c9-a917008eae2d';
-
-// Notion DB「ステータス」プロパティのオプション名（絵文字含む）
 const STATUS_READY = '🟠 配信準備完了';
 const STATUS_SCHEDULED = '🔵 配信予約済み';
 const STATUS_FAILED = '🔴 配信失敗';
@@ -32,9 +26,9 @@ function notionHeaders(token: string): HeadersInit {
   };
 }
 
-// 「配信準備完了」のページを取得
-export async function fetchReadyDxPages(token: string): Promise<NotionPage[]> {
-  const res = await fetch(`${NOTION_API}/databases/${DX_DATABASE_ID}/query`, {
+// 「配信準備完了」のページを取得（指定テナントのDBから）
+export async function fetchReadyDxPages(token: string, databaseId: string): Promise<NotionPage[]> {
+  const res = await fetch(`${NOTION_API}/databases/${databaseId}/query`, {
     method: 'POST',
     headers: notionHeaders(token),
     body: JSON.stringify({
@@ -42,7 +36,7 @@ export async function fetchReadyDxPages(token: string): Promise<NotionPage[]> {
         property: 'ステータス',
         select: { equals: STATUS_READY },
       },
-      page_size: 5, // 念のため上限
+      page_size: 5,
     }),
   });
   if (!res.ok) {
@@ -53,7 +47,6 @@ export async function fetchReadyDxPages(token: string): Promise<NotionPage[]> {
   return data.results || [];
 }
 
-// ページの本文ブロックを取得（最初の100ブロックまで・通常はこれで十分）
 async function fetchPageBlocks(token: string, pageId: string): Promise<any[]> {
   const blocks: any[] = [];
   let cursor: string | undefined = undefined;
@@ -77,15 +70,12 @@ function richTextToPlain(rt: NotionRichText[] | undefined): string {
   return rt
     .map((r) => {
       const text = r.plain_text || '';
-      if (r.href) {
-        return `${text}（${r.href}）`;
-      }
+      if (r.href) return `${text}（${r.href}）`;
       return text;
     })
     .join('');
 }
 
-// ブロック配列をプレーンテキストに
 function blocksToPlainText(blocks: any[]): string {
   const lines: string[] = [];
   let numberedCounter = 0;
@@ -147,14 +137,12 @@ function blocksToPlainText(blocks: any[]): string {
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-// ページのタイトルを抽出
 function extractTitle(page: NotionPage): string {
   const titleProp: any = page.properties?.['タイトル'] || page.properties?.title;
   const rt = titleProp?.title || [];
   return richTextToPlain(rt).trim();
 }
 
-// ページ全体（タイトル+本文）を取得
 export async function fetchPagePlainText(token: string, page: NotionPage): Promise<{ title: string; body: string }> {
   const title = extractTitle(page);
   const blocks = await fetchPageBlocks(token, page.id);
@@ -162,7 +150,7 @@ export async function fetchPagePlainText(token: string, page: NotionPage): Promi
   return { title, body };
 }
 
-// ページのステータスを更新
+// ステータス更新＋本文末尾にコメント追記
 export async function updatePageStatus(token: string, pageId: string, status: string, note?: string): Promise<void> {
   await fetch(`${NOTION_API}/pages/${pageId}`, {
     method: 'PATCH',
@@ -175,7 +163,6 @@ export async function updatePageStatus(token: string, pageId: string, status: st
   });
 
   if (note) {
-    // 末尾にコメント追記（block追加）
     await fetch(`${NOTION_API}/blocks/${pageId}/children`, {
       method: 'PATCH',
       headers: notionHeaders(token),
@@ -191,6 +178,24 @@ export async function updatePageStatus(token: string, pageId: string, status: st
         ],
       }),
     });
+  }
+}
+
+// データベース接続テスト（管理画面の「接続テスト」ボタン用）
+export async function testNotionConnection(token: string, databaseId: string): Promise<{ ok: boolean; title?: string; error?: string }> {
+  try {
+    const res = await fetch(`${NOTION_API}/databases/${databaseId}`, {
+      headers: notionHeaders(token),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { ok: false, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data: any = await res.json();
+    const title = (data.title || []).map((t: any) => t.plain_text || '').join('') || '(無題)';
+    return { ok: true, title };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || String(e) };
   }
 }
 

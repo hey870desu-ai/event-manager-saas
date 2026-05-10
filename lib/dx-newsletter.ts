@@ -2,16 +2,24 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export const INVALID_NAMES = new Set(['仮登録中', '仮登録', '仮', '名前なし', 'ユーザー', 'ゲスト', 'test', 'テスト']);
 
-// JSTで本日8:00を返す（過去ならば翌日8:00）
-export function todayAt8AMJST(): Date {
+// JSTで「本日 hh:mm」を返す（過去ならば翌日）。HH:MM形式で渡す
+export function todayAtJST(timeHHMM: string = '08:00'): Date {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(timeHHMM.trim());
+  const hour = m ? Math.min(23, parseInt(m[1], 10)) : 8;
+  const minute = m ? Math.min(59, parseInt(m[2], 10)) : 0;
   const now = new Date();
   const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const target = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), 8, 0, 0));
+  const target = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), hour, minute, 0));
   let scheduledUtc = new Date(target.getTime() - 9 * 60 * 60 * 1000);
   if (scheduledUtc <= now) {
     scheduledUtc = new Date(scheduledUtc.getTime() + 24 * 60 * 60 * 1000);
   }
   return scheduledUtc;
+}
+
+// 旧API互換
+export function todayAt8AMJST(): Date {
+  return todayAtJST('08:00');
 }
 
 export function dateKeyJST(date?: Date): string {
@@ -74,17 +82,17 @@ export async function buildKizunaList(tenantId: string): Promise<Recipient[]> {
   }));
 }
 
-// scheduled_emails ドキュメント作成（または同日があれば更新）
 export async function upsertScheduledDxNewsletter(opts: {
   tenantId: string;
   subject: string;
   body: string;
   scheduledAt?: Date;
+  scheduledTimeJST?: string; // "HH:MM"
   source?: string;
   notionPageId?: string;
 }): Promise<{ scheduledId: string; recipientCount: number; scheduledAt: string; updated?: boolean; alreadySent?: boolean }> {
   const { tenantId, subject, body, source = 'dx-newsletter', notionPageId } = opts;
-  const scheduledAt = opts.scheduledAt || todayAt8AMJST();
+  const scheduledAt = opts.scheduledAt || todayAtJST(opts.scheduledTimeJST || '08:00');
 
   const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
   if (!tenantSnap.exists) throw new Error(`tenant not found: ${tenantId}`);
@@ -124,4 +132,30 @@ export async function upsertScheduledDxNewsletter(opts: {
 
   await docRef.set({ ...basePayload, createdAt: new Date().toISOString() });
   return { scheduledId: docId, recipientCount: recipients.length, scheduledAt: scheduledAt.toISOString() };
+}
+
+// テナントの dx_newsletter integration 設定を取得
+export type DxIntegration = {
+  enabled: boolean;
+  notionApiKey: string; // 暗号化されたまま
+  notionDatabaseId: string;
+  scheduledTime: string; // "HH:MM"
+  status?: string;
+  stripeSubscriptionItemId?: string;
+};
+
+export async function getDxIntegration(tenantId: string): Promise<DxIntegration | null> {
+  const snap = await adminDb
+    .collection('tenants').doc(tenantId)
+    .collection('integrations').doc('dx_newsletter')
+    .get();
+  if (!snap.exists) return null;
+  return snap.data() as DxIntegration;
+}
+
+export async function saveDxIntegration(tenantId: string, data: Partial<DxIntegration>): Promise<void> {
+  await adminDb
+    .collection('tenants').doc(tenantId)
+    .collection('integrations').doc('dx_newsletter')
+    .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
 }
