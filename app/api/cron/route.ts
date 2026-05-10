@@ -97,16 +97,9 @@ async function processCron() {
     // ============================================================
     const notionToken = process.env.NOTION_API_KEY;
     const dxTenantId = process.env.DX_NEWSLETTER_TENANT_ID;
-    const debug: any = {
-      notionTokenSet: !!notionToken,
-      dxTenantIdSet: !!dxTenantId,
-      readyPageCount: 0,
-      notionError: null,
-    };
     if (notionToken && dxTenantId) {
       try {
         const readyPages = await fetchReadyDxPages(notionToken);
-        debug.readyPageCount = readyPages.length;
         for (const page of readyPages) {
           try {
             const { title, body } = await fetchPagePlainText(notionToken, page);
@@ -141,12 +134,11 @@ async function processCron() {
         }
       } catch (notionErr: any) {
         console.error('Notion bridge fetch error:', notionErr);
-        debug.notionError = notionErr?.message || String(notionErr);
       }
     }
 
     console.log(`✅ CRON完了: ${totalProcessed}件処理`);
-    return NextResponse.json({ success: true, processed: totalProcessed, debug });
+    return NextResponse.json({ success: true, processed: totalProcessed });
 
   } catch (error: any) {
     console.error("🔥 CRON Error:", error);
