@@ -912,13 +912,21 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
         <CreditCard size={16}/> <span>契約</span>
       </button>
       {/* 2.8 営業ツール（リッチメール） ✨新登場だばい！ */}
-      <button 
-        onClick={() => router.push("/admin/marketing/newsletter")} 
+      <button
+        onClick={() => router.push("/admin/marketing/newsletter")}
         className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex gap-1.5 items-center hover:shadow-md transition-all shadow-blue-200/50 border-none"
       >
         <Sparkles size={16}/> <span>営業ツール</span>
       </button>
-      
+
+      {/* 2.9 AIメルマガ自動配信（NEW・オプション機能） */}
+      <button
+        onClick={() => router.push("/admin/settings/dx-newsletter")}
+        className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex gap-1.5 items-center hover:shadow-md transition-all shadow-emerald-200/50 border-none"
+      >
+        <Megaphone size={16}/> <span>AIメルマガ</span>
+      </button>
+
       <div className="w-px h-4 bg-slate-200 mx-1" /> {/* 仕切り線 */}
       
       {/* 6. 設定 / 7. ログアウト */}
@@ -946,11 +954,19 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
   <ScanLine size={24} /> <span className="text-base">名刺スキャン</span>
 </button>
 {/* 営業ツール（スマホでは目立つように一番上に！） */}
-        <button 
-          onClick={() => { router.push("/admin/marketing/newsletter"); setIsMobileMenuOpen(false); }} 
+        <button
+          onClick={() => { router.push("/admin/marketing/newsletter"); setIsMobileMenuOpen(false); }}
           className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-2xl font-black border border-blue-100 shadow-sm"
         >
           <Sparkles size={22} className="text-blue-600" /> <span className="text-base">営業ツール（リッチメール）</span>
+        </button>
+
+        {/* AIメルマガ自動配信（NEW・オプション機能） */}
+        <button
+          onClick={() => { router.push("/admin/settings/dx-newsletter"); setIsMobileMenuOpen(false); }}
+          className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 rounded-2xl font-black border border-emerald-100 shadow-sm"
+        >
+          <Megaphone size={22} className="text-emerald-600" /> <span className="text-base">AIメルマガ自動配信</span>
         </button>
 
         <div className="grid grid-cols-1 gap-2 mt-1">
