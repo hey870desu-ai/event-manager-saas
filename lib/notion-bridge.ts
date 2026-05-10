@@ -8,7 +8,9 @@
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2022-06-28';
 
-const DX_DATA_SOURCE_ID = '38cb4cb4-e535-49a1-8d78-0bcf4fed4274';
+// Notion REST API でクエリする「データベースID」
+// （Notion URL https://www.notion.so/5b51d786c1bb42f0b8c9a917008eae2d より）
+const DX_DATABASE_ID = '5b51d786-c1bb-42f0-b8c9-a917008eae2d';
 
 // Notion DB「ステータス」プロパティのオプション名（絵文字含む）
 const STATUS_READY = '🟠 配信準備完了';
@@ -32,7 +34,7 @@ function notionHeaders(token: string): HeadersInit {
 
 // 「配信準備完了」のページを取得
 export async function fetchReadyDxPages(token: string): Promise<NotionPage[]> {
-  const res = await fetch(`${NOTION_API}/databases/${DX_DATA_SOURCE_ID}/query`, {
+  const res = await fetch(`${NOTION_API}/databases/${DX_DATABASE_ID}/query`, {
     method: 'POST',
     headers: notionHeaders(token),
     body: JSON.stringify({
