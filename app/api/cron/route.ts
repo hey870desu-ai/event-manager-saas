@@ -5,6 +5,7 @@ import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatu
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
 import { createWpPost, findCategoryIdBySlug } from '@/lib/wordpress-bridge';
+import { createWpPostXmlRpc } from '@/lib/wordpress-xmlrpc';
 
 const BATCH_SIZE = 100;
 
@@ -285,10 +286,12 @@ async function processCron() {
     const fukuWpPass = process.env.WP_FUKUHIROBA_APP_PASSWORD;
     const fukuNotionToken = process.env.NOTION_API_KEY;
     const fukuAutoPublish = process.env.FUKUHIROBA_BLOG_AUTO_PUBLISH === 'true';
+    // REST APIが書き込み拒否される環境向け：XML-RPCにフォールバック
+    const fukuUseXmlRpc = process.env.WP_FUKUHIROBA_USE_XMLRPC === 'true';
     if (fukuBlogDbId && fukuWpSite && fukuWpUser && fukuWpPass && fukuNotionToken) {
       const fukuCategorySlug = process.env.FUKUHIROBA_BLOG_CATEGORY_SLUG;
       let fukuCategoryIds: number[] | undefined = undefined;
-      if (fukuCategorySlug) {
+      if (fukuCategorySlug && !fukuUseXmlRpc) {
         try {
           const id = await findCategoryIdBySlug(
             { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
@@ -311,14 +314,29 @@ async function processCron() {
                 `⚠ 公開失敗：タイトル or 本文が空です`);
               continue;
             }
-            const wpResult = await createWpPost(
-              { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
-              { title, content: html, status: fukuAutoPublish ? 'publish' : 'draft', categories: fukuCategoryIds }
-            );
+            let wpResult: { id: number; link: string };
+            if (fukuUseXmlRpc) {
+              const r = await createWpPostXmlRpc(
+                { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
+                {
+                  title,
+                  content: html,
+                  status: fukuAutoPublish ? 'publish' : 'draft',
+                  categoryNames: fukuCategorySlug ? [fukuCategorySlug] : undefined,
+                }
+              );
+              wpResult = r;
+            } else {
+              const r = await createWpPost(
+                { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
+                { title, content: html, status: fukuAutoPublish ? 'publish' : 'draft', categories: fukuCategoryIds }
+              );
+              wpResult = { id: r.id, link: r.link };
+            }
             const newStatus = fukuAutoPublish ? '🟢 公開済み' : '🔵 投稿予約済み';
             const note = fukuAutoPublish
               ? `🌐 fukuhiroba.com 公開済み（ID: ${wpResult.id}）\n公開URL: ${wpResult.link}`
-              : `📝 fukuhiroba.com 下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${fukuWpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`;
+              : `📝 fukuhiroba.com 下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${fukuWpSite}/wp/wp-admin/post.php?post=${wpResult.id}&action=edit`;
             await updatePageStatus(fukuNotionToken, page.id, newStatus, note);
             try {
               await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
