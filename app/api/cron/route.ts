@@ -91,6 +91,29 @@ async function processCron() {
           result,
         });
         totalProcessed++;
+
+        // Notion 元ページがあれば 配信済み に更新（DXメルマガ用）
+        if (data.notionPageId) {
+          try {
+            let notionToken: string | undefined;
+            const integration = await getDxIntegration(tenantDoc.id);
+            if (integration?.enabled) {
+              notionToken = decrypt(integration.notionApiKey);
+            } else if (
+              process.env.DX_NEWSLETTER_TENANT_ID === tenantDoc.id &&
+              process.env.NOTION_API_KEY
+            ) {
+              notionToken = process.env.NOTION_API_KEY;
+            }
+            if (notionToken) {
+              const sentAtJst = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+              const note = `✅ 配信完了（${data.recipientCount ?? '?'}名宛・${sentAtJst}）`;
+              await updatePageStatus(notionToken, data.notionPageId, StatusValues.SENT, note);
+            }
+          } catch (notionErr: any) {
+            console.error(`⚠ Notion配信済み更新失敗 (${tenantDoc.id}):`, notionErr?.message || notionErr);
+          }
+        }
       }
     }
 

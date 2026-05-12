@@ -10,6 +10,7 @@ const NOTION_VERSION = '2022-06-28';
 const STATUS_READY = '🟠 配信準備完了';
 const STATUS_SCHEDULED = '🔵 配信予約済み';
 const STATUS_FAILED = '🔴 配信失敗';
+const STATUS_SENT = '配信済み';
 
 type NotionRichText = { plain_text?: string; href?: string | null };
 
@@ -296,4 +297,4 @@ export async function testNotionConnection(token: string, databaseId: string): P
   }
 }
 
-export const StatusValues = { READY: STATUS_READY, SCHEDULED: STATUS_SCHEDULED, FAILED: STATUS_FAILED };
+export const StatusValues = { READY: STATUS_READY, SCHEDULED: STATUS_SCHEDULED, FAILED: STATUS_FAILED, SENT: STATUS_SENT };
