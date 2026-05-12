@@ -2,7 +2,9 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export const INVALID_NAMES = new Set(['仮登録中', '仮登録', '仮', '名前なし', 'ユーザー', 'ゲスト', 'test', 'テスト']);
 
-// JSTで「本日 hh:mm」を返す（過去ならば翌日）。HH:MM形式で渡す
+// JSTで「本日 hh:mm」を返す。過去スロットでも当日中なら過去日時のまま返す
+// （cron送信側が scheduledAt <= now で即送信するため、遅延でも当日中に配信される）。
+// ただし JST 18:00 以降の遅延ピックアップは「営業時間外」とみなし翌日に繰り越す。
 export function todayAtJST(timeHHMM: string = '08:00'): Date {
   const m = /^(\d{1,2}):(\d{2})$/.exec(timeHHMM.trim());
   const hour = m ? Math.min(23, parseInt(m[1], 10)) : 8;
@@ -11,7 +13,8 @@ export function todayAtJST(timeHHMM: string = '08:00'): Date {
   const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const target = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate(), hour, minute, 0));
   let scheduledUtc = new Date(target.getTime() - 9 * 60 * 60 * 1000);
-  if (scheduledUtc <= now) {
+  const CUTOFF_HOUR_JST = 18;
+  if (scheduledUtc <= now && jstNow.getUTCHours() >= CUTOFF_HOUR_JST) {
     scheduledUtc = new Date(scheduledUtc.getTime() + 24 * 60 * 60 * 1000);
   }
   return scheduledUtc;
