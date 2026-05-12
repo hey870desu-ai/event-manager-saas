@@ -274,6 +274,81 @@ async function processCron() {
       }
     }
 
+    // ============================================================
+    // 5. 福ひろばブログ：Notion → fukuhiroba.com WordPress 自動投稿
+    // ============================================================
+    // 仕組みはセクション4（はなひろHPブログ）と同じパターン。
+    // i-pocket 佐々木さんの対応で Application Passwords 有効化済み（2026-05-12）。
+    const fukuBlogDbId = process.env.FUKUHIROBA_BLOG_DATABASE_ID;
+    const fukuWpSite = process.env.WP_FUKUHIROBA_SITE_URL;
+    const fukuWpUser = process.env.WP_FUKUHIROBA_USERNAME;
+    const fukuWpPass = process.env.WP_FUKUHIROBA_APP_PASSWORD;
+    const fukuNotionToken = process.env.NOTION_API_KEY;
+    const fukuAutoPublish = process.env.FUKUHIROBA_BLOG_AUTO_PUBLISH === 'true';
+    if (fukuBlogDbId && fukuWpSite && fukuWpUser && fukuWpPass && fukuNotionToken) {
+      const fukuCategorySlug = process.env.FUKUHIROBA_BLOG_CATEGORY_SLUG;
+      let fukuCategoryIds: number[] | undefined = undefined;
+      if (fukuCategorySlug) {
+        try {
+          const id = await findCategoryIdBySlug(
+            { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
+            fukuCategorySlug
+          );
+          if (id) fukuCategoryIds = [id];
+          else console.warn(`FUKUHIROBA_BLOG_CATEGORY_SLUG=${fukuCategorySlug} に該当するカテゴリが見つかりません`);
+        } catch (e: any) {
+          console.error('福ひろばカテゴリ取得失敗:', e?.message || e);
+        }
+      }
+
+      try {
+        const readyFukuPages = await fetchPagesByStatus(fukuNotionToken, fukuBlogDbId, '🟠 公開準備完了');
+        for (const page of readyFukuPages) {
+          try {
+            const { title, html } = await fetchPageHtml(fukuNotionToken, page);
+            if (!title || !html) {
+              await updatePageStatus(fukuNotionToken, page.id, '🔴 公開失敗',
+                `⚠ 公開失敗：タイトル or 本文が空です`);
+              continue;
+            }
+            const wpResult = await createWpPost(
+              { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
+              { title, content: html, status: fukuAutoPublish ? 'publish' : 'draft', categories: fukuCategoryIds }
+            );
+            const newStatus = fukuAutoPublish ? '🟢 公開済み' : '🔵 投稿予約済み';
+            const note = fukuAutoPublish
+              ? `🌐 fukuhiroba.com 公開済み（ID: ${wpResult.id}）\n公開URL: ${wpResult.link}`
+              : `📝 fukuhiroba.com 下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${fukuWpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`;
+            await updatePageStatus(fukuNotionToken, page.id, newStatus, note);
+            try {
+              await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+                method: 'PATCH',
+                headers: {
+                  Authorization: `Bearer ${fukuNotionToken}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  properties: {
+                    '公開URL': { url: wpResult.link },
+                  },
+                }),
+              });
+            } catch { /* ignore */ }
+            totalProcessed++;
+          } catch (perPageErr: any) {
+            console.error(`福ひろばブログ投稿失敗 (page=${page.id}):`, perPageErr);
+            try {
+              await updatePageStatus(fukuNotionToken, page.id, '🔴 公開失敗',
+                `⚠ 投稿失敗：${perPageErr?.message || 'unknown error'}`);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (fukuErr: any) {
+        console.error('福ひろばブログfetch error:', fukuErr);
+      }
+    }
+
     console.log(`✅ CRON完了: ${totalProcessed}件処理`);
     return NextResponse.json({ success: true, processed: totalProcessed });
 
