@@ -414,7 +414,7 @@ async function sendBatch(data: any) {
         subject: subject,
         html: `<!DOCTYPE html>
 <html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}@media screen and (min-width:600px){.email-body{font-size:16px !important;}}</style></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}@supports (-webkit-touch-callout:none){.email-body{font-size:14px !important;}}@media screen and (min-width:600px){.email-body{font-size:16px !important;}}</style></head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;">
   <tr>
@@ -427,7 +427,7 @@ async function sendBatch(data: any) {
         </tr>
         <tr>
           <td style="padding:15px 5px;">
-            <div class="email-body" style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+            <div class="email-body" style="font-size:12px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
           </td>
         </tr>
         <tr>
@@ -509,7 +509,7 @@ async function sendEventMail(data: any) {
 
     const html = `<!DOCTYPE html>
 <html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}@media screen and (min-width:600px){.email-body{font-size:16px !important;}}</style></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}@supports (-webkit-touch-callout:none){.email-body{font-size:14px !important;}}@media screen and (min-width:600px){.email-body{font-size:16px !important;}}</style></head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
   <tr>
@@ -522,7 +522,7 @@ async function sendEventMail(data: any) {
         </tr>
         <tr>
           <td style="padding:15px 5px;">
-            <div class="email-body" style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+            <div class="email-body" style="font-size:12px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
             ${showEventCard ? `
               <div style="background-color:#f1f5f9;border-radius:8px;padding:20px;margin-top:30px;">
                 <div style="border-left:4px solid #3b82f6;padding-left:15px;">

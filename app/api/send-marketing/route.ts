@@ -33,6 +33,11 @@ export async function POST(request: Request) {
     body, table, td { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; }
+    /* iPhone / iPad Apple Mail（WebKit touch環境）: 14px */
+    @supports (-webkit-touch-callout: none) {
+      .email-body { font-size: 14px !important; }
+    }
+    /* Mac / PC Gmail Web / 横長端末: 16px */
     @media screen and (min-width: 600px) {
       .email-body { font-size: 16px !important; }
     }
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
           </tr>
           <tr>
             <td style="padding: 15px 5px;">
-              <div class="email-body" style="font-size: 14px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
+              <div class="email-body" style="font-size: 12px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
             </td>
           </tr>
           <tr>
