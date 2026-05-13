@@ -427,7 +427,7 @@ async function sendBatch(data: any) {
         </tr>
         <tr>
           <td style="padding:15px 5px;">
-            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+            <div style="font-size:15px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
           </td>
         </tr>
         <tr>
@@ -522,7 +522,7 @@ async function sendEventMail(data: any) {
         </tr>
         <tr>
           <td style="padding:15px 5px;">
-            <div style="font-size:14px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
+            <div style="font-size:15px;line-height:1.8;color:#334155;word-break:break-word;overflow-wrap:break-word;">${personalBody}</div>
             ${showEventCard ? `
               <div style="background-color:#f1f5f9;border-radius:8px;padding:20px;margin-top:30px;">
                 <div style="border-left:4px solid #3b82f6;padding-left:15px;">
