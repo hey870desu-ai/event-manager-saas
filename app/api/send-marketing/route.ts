@@ -33,6 +33,9 @@ export async function POST(request: Request) {
     body, table, td { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; }
+    @media screen and (min-width: 600px) {
+      .email-body { font-size: 16px !important; }
+    }
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
           </tr>
           <tr>
             <td style="padding: 15px 5px;">
-              <div style="font-size: 16px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
+              <div class="email-body" style="font-size: 14px; line-height: 1.8; color: #334155; word-break: break-word; overflow-wrap: break-word;">${personalizedBody}</div>
             </td>
           </tr>
           <tr>
