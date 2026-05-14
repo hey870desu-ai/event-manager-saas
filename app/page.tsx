@@ -1,829 +1,1123 @@
 import Link from "next/link";
-import { 
-  Settings, Activity, Users, ArrowRight, CheckCircle2, 
-  LayoutTemplate, Sparkles, ShieldCheck, BarChart3,Check, 
-  FileSpreadsheet, QrCode, Mail, Smartphone, Zap,Link as LinkIcon, Share2, Copy 
-} from "lucide-react";
 import Image from "next/image";
+import {
+  Activity, ArrowRight, CheckCircle2,
+  LayoutTemplate, ShieldCheck, BarChart3, Check,
+  FileSpreadsheet, QrCode, Mail, Smartphone, Users,
+  Link as LinkIcon, Share2, Copy, Terminal, ChevronRight,
+} from "lucide-react";
+import { JetBrains_Mono } from "next/font/google";
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+// Claude Code テーマトークン（インライン使用）
+const ORANGE = "#D97757";
+const ORANGE_BRIGHT = "#F08856";
+const ORANGE_GLOW = "#FF8E61";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      
-      {/* ▼ Header */}
-<header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
-  <div className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
-    
-    {/* ロゴと名前の部分だっぺ！ */}
-    <Link href="/" className="flex items-center gap-2.5 font-black text-2xl tracking-tighter cursor-pointer group">
-      {/* 1. Sparkles を img に変更！ */}
-      <img 
-        src="/icon.webp" 
-        alt="絆太郎" 
-        className="h-9 w-9 object-contain group-hover:rotate-6 transition-transform duration-300" 
+    <div
+      className={`${mono.className} min-h-screen bg-[#0F0F0F] text-[#E8E8E8] relative overflow-x-hidden selection:bg-[#D97757]/30 selection:text-white`}
+      style={{ lineHeight: 1.6 }}
+    >
+      {/* グリッド背景 */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        aria-hidden
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(217,119,87,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(217,119,87,0.04) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
       />
-      {/* 2. 名前を表示 */}
-      <span className="text-slate-900">絆太郎</span>
-    </Link>
-
-    <nav className="flex items-center gap-4">
-      {/* ...ナビゲーション部分はそのまま... */}
-      <Link href="#features" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-        機能
-      </Link>
-      <Link href="#pricing" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-        料金
-      </Link>
-      <Link href="/contact" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors hidden sm:block">
-        お問い合わせ
-      </Link>
-      <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-      <Link href="/login" className="text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors">
-        ログイン
-      </Link>
-      <Link href="/register" className="text-sm font-bold bg-indigo-600 text-white px-5 py-2.5 rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40">
-        無料で始める
-      </Link>
-    </nav>
-  </div>
-</header>
-
-      <main>
-        
-        {/* ▼ 絆を大切にする主催者のための Hero Section */}
-<section className="relative pt-32 pb-24 overflow-hidden bg-white">
-  {/* 装飾用のドット背景 */}
-  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
-
-  <div className="container mx-auto px-4 relative z-10">
-    <div className="max-w-5xl mx-auto text-center">
-      
-      {/* ターゲットメッセージ */}
-      <div className="inline-block px-5 py-2 mb-10 text-xs font-black tracking-[0.2em] text-indigo-600 uppercase bg-indigo-50 rounded-full border border-indigo-100">
-        絆を深めるセミナー運営
-      </div>
-
-           {/* 見出し部分の修正案 */}
-<h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-[1.2] mb-8">
-  {/* 1段目（PCでは横並び / スマホでは1つずつ縦に） */}
-  <div className="flex flex-col md:flex-row md:justify-center items-center gap-y-2 md:gap-x-8 mb-2 md:mb-4">
-    <span className="text-slate-400 whitespace-nowrap">セミナーの 案内</span>
-    <span className="text-slate-900 whitespace-nowrap">スマートな 受付</span>
-  </div>
-
-  {/* 2段目（常に独立した行） */}
-  <div className="text-indigo-600 whitespace-nowrap">
-    絆を深める ファン作り
-  </div>
-</h1>
-
-      {/* サブ：一本の線で繋がる安心感 */}
-      <p className="text-lg md:text-2xl text-slate-500 mb-14 max-w-4xl mx-auto leading-relaxed font-medium px-4">
-        募集から当日、そして終了後の心のこもったフォローまで<br className="hidden md:inline" />
-        これまでバラバラの道具で苦労していた<br className="hidden md:inline" />
-        <span className="text-slate-900 font-bold border-b-4 border-indigo-500/30">LP作成からフォーム作成・名簿管理を「絆太郎」で完結</span>
-      </p>
-
-      {/* アクションボタン */}
-      <div className="flex flex-col items-center gap-8">
-        <Link href="/register" className="px-12 py-6 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 hover:scale-105 transition-all text-xl shadow-xl shadow-slate-200">
-          まずは無料で試してみる
-        </Link>
-        
-        {/* メリットの要約 */}
-        <div className="flex flex-wrap justify-center items-center gap-6 text-slate-600 text-sm font-bold">
-          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> 想いが伝わる案内作り</span>
-          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> 笑顔で迎える当日受付</span>
-          <span className="flex items-center gap-2"><Check size={20} className="text-emerald-500"/> 次に繋がる参加者名簿</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-        {/* ▼▼▼ ここに挿入！日常のワンシーン (Before/After) ▼▼▼ */}
-        <section className="py-24 bg-white border-b border-slate-100">
-           <div className="container mx-auto max-w-6xl px-4">
-              <div className="text-center mb-16">
-                 <h2 className="text-3xl md:text-4xl font-black mb-4 text-slate-900">
-                    「イベント準備」の時間を、<br className="sm:hidden"/>「企画」の時間へ。
-                 </h2>
-                 <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                    名簿の印刷、エクセルへの転記、メールの送信…。<br className="hidden sm:inline"/>
-                    そんな「作業」からあなたを解放し、本来やるべき「企画」に集中できる環境を作ります。
-                 </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-12 items-center">
-                 
-                 {/* 左側：スマホで確認 (スマートな日常) */}
-                 <div className="space-y-6 md:order-2 animate-fade-in-up animation-delay-200">
-                    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl group">
-                       {/* ▼ カフェでスマホの写真 (image_12.png) */}
-                       <Image 
-                         src="/image_12.png" 
-                         alt="カフェでスマホでイベント管理" 
-                         fill 
-                         className="object-cover object-[50%_30%] group-hover:scale-105 transition-transform duration-700"
-                       />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
-                       <div className="absolute bottom-4 left-4 text-white font-bold text-sm flex items-center gap-2">
-                          <Smartphone size={16} /> 外出先でもスマホで完結
-                       </div>
-                    </div>
-                    <div className="p-2">
-                       <h3 className="font-bold text-xl text-slate-900 mb-2">移動中も、リアルタイムで確認</h3>
-                       <p className="text-slate-600 leading-relaxed">
-                          申し込み状況は、カフェでも電車でも、スマホからリアルタイムでチェック。急な問い合わせにも、その場ですぐに対応できます。
-                       </p>
-                    </div>
-                 </div>
-
-                 {/* 右側：PCで作業 (効率的な準備) */}
-                 <div className="space-y-6 animate-fade-in-up animation-delay-400">
-                    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl group">
-                       {/* ▼ PC作業の写真 (image_13.png) */}
-                       <Image 
-                         src="/image_13.png" 
-                         alt="PCでイベント準備" 
-                         fill 
-                         className="object-cover object-[50%_30%] group-hover:scale-105 transition-transform duration-700"
-                       />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
-                       <div className="absolute bottom-4 left-4 text-white font-bold text-sm flex items-center gap-2">
-                          <Mail size={16} /> 面倒な作業を効率化
-                       </div>
-                    </div>
-                    <div className="p-2">
-                       <h3 className="font-bold text-xl text-slate-900 mb-2">メール配信も、手軽にお任せ</h3>
-                       <p className="text-slate-600 leading-relaxed">
-                          申し込み完了メール、前日のリマインド、当日のサンクスメール。すべて一元化されるので、送信漏れの心配はもうありません。
-                       </p>
-                    </div>
-                 </div>
-
-              </div>
-           </div>
-        </section>
-
-        {/* ▼ Problem Solution Section (課題解決・ダッシュボード) */}
-        {/* 元のヒーローセクションをここに移動 */}
-        <section id="demo" className="relative py-20 md:py-32 bg-white">
-          <div className="container mx-auto max-w-5xl px-4 text-center relative z-10">
-            
-            {/* ★文字サイズ調整: スマホで変に改行されないよう text-3xl に少し小さくしました */}
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight mb-8 leading-tight md:leading-[1.1]">
-              イベント管理の<br className="md:hidden"/>
-              <span className="text-indigo-600 inline-block">「面倒」をゼロにする</span>
-            </h2>
-
-            <p className="text-slate-500 text-base md:text-lg max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
-              告知ページの作成から、当日のQR受付まで<br className="hidden sm:inline"/>
-              専門知識なしで、誰でも美しいイベントページが作れます
-            </p>
-            
-            {/* ダッシュボード画像 */}
-            <div className="relative mx-auto max-w-4xl rounded-xl border border-slate-200 bg-white/50 shadow-2xl backdrop-blur-sm p-2 md:p-4">
-               <div className="aspect-[16/9] rounded-lg bg-slate-100 border border-slate-100 overflow-hidden relative group">
-                  <Image 
-                    src="/dashboard.png" 
-                    alt="Dashboard" 
-                    fill 
-                    className="object-cover" 
-                  />
-               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ▼ Mobile First Section (スマホ完結アピール) */}
-        {/* 前回追加したこのセクションはここに維持 */}
-        <section className="py-24 bg-slate-50 border-y border-slate-200 overflow-hidden">
-           <div className="container mx-auto max-w-6xl px-4">
-              <div className="flex flex-col md:flex-row items-center gap-16 md:gap-24">
-                 {/* 左側：テキスト */}
-                 <div className="flex-1 space-y-8">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-100 text-pink-600 text-xs font-bold border border-pink-200">
-                       <Smartphone size={14} /> Mobile First
-                    </div>
-                    {/* ★ここもスマホでの文字折れ対策 */}
-                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight">
-                       ポケットから出して<br/>
-                       <span className="text-pink-600">親指ひとつ</span>で完了
-                    </h2>
-                    <p className="text-slate-600 text-lg leading-relaxed">
-                       申し込み状況の確認も、当日のQR受付も<br/>
-                       PCを開く必要はありません。満員電車の中でも、会場の片隅でも
-                       すべての操作が、あなたの左手だけで完結します
-                    </p>
-                    {/* アイコンリスト */}
-                    <div className="flex flex-col gap-4">
-                       <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                          <div className="bg-slate-900 text-white p-3 rounded-full">
-                             <Activity size={20} />
-                          </div>
-                          <div>
-                             <h4 className="font-bold text-slate-900">リアルタイム状況確認</h4>
-                             <p className="text-xs text-slate-500">申し込み通知もスマホに届きます</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                          <div className="bg-slate-900 text-white p-3 rounded-full">
-                             <QrCode size={20} />
-                          </div>
-                          <div>
-                             <h4 className="font-bold text-slate-900">QRコード受付</h4>
-                             <p className="text-xs text-slate-500">専用アプリ不要。リーダーで読み取るだけ</p>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* 右側：スマホ動画 */}
-                 <div className="flex-1 relative flex justify-center">
-                    <div className="relative mx-auto border-slate-900 bg-slate-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-2xl">
-                       <div className="h-[32px] w-[3px] bg-slate-800 absolute -start-[17px] top-[72px] rounded-s-lg"></div>
-                       <div className="h-[46px] w-[3px] bg-slate-800 absolute -start-[17px] top-[124px] rounded-s-lg"></div>
-                       <div className="h-[46px] w-[3px] bg-slate-800 absolute -start-[17px] top-[178px] rounded-s-lg"></div>
-                       <div className="h-[64px] w-[3px] bg-slate-800 absolute -end-[17px] top-[142px] rounded-e-lg"></div>
-                       <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
-                          <video 
-                             src="/mobile-demo.mp4" 
-                             className="absolute inset-0 w-full h-full object-cover"
-                             autoPlay loop muted playsInline
-                          />
-                       </div>
-                    </div>
-                    <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-pink-200 to-indigo-200 rounded-full blur-3xl opacity-50 animate-pulse"></div>
-                 </div>
-              </div>
-           </div>
-        </section>
-
-        {/* ▼ 機能の深掘り (ジグザグ配置) */}
-        <section id="features" className="py-24 bg-white border-t border-slate-100">
-           {/* ... ここから下は以前と同じコードでOKです ... */}
-           <div className="container mx-auto max-w-6xl px-4 space-y-24">
-              
-              {/* Feature 1: ダッシュボード */}
-              <div className="grid md:grid-cols-2 gap-12 items-center">
-                 <div className="space-y-6">
-                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-                       <BarChart3 size={24}/>
-                    </div>
-                    {/* ★文字サイズ微調整 */}
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900">
-                       イベントの状況を<br/>一目で把握
-                    </h2>
-                    <p className="text-slate-600 text-lg leading-relaxed">
-                       申し込み数、PV数、残席数をリアルタイムで可視化<br/>
-                       直感的なダッシュボードで、イベントの今の状況が手に取るようにわかります
-                    </p>
-                    <ul className="space-y-3">
-                       <li className="flex items-center gap-2 text-slate-700 font-bold"><CheckCircle2 size={18} className="text-blue-500"/> リアルタイム更新</li>
-                       <li className="flex items-center gap-2 text-slate-700 font-bold"><CheckCircle2 size={18} className="text-blue-500"/> デバイスを選ばないレスポンシブ対応</li>
-                    </ul>
-                 </div>
-                 {/* 画像 */}
-                 <div className="bg-slate-100 rounded-2xl aspect-[4/3] border border-slate-200 shadow-lg relative overflow-hidden group">
-                    <Image src="/analytics.png" alt="リアルタイム集計画面" fill className="object-cover" />
-                 </div>
-              </div>
-
-              {/* Feature 2: デザイン切り替え */}
-              <div className="grid md:grid-cols-2 gap-12 items-center md:flex-row-reverse">
-                 <div className="space-y-6 md:order-2">
-                    <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
-                       <LayoutTemplate size={24}/>
-                    </div>
-                    {/* ★文字サイズ微調整 */}
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900">
-                       デザイン作成は不要<br/>テーマを選ぶだけ
-                    </h2>
-                    <p className="text-slate-600 text-lg leading-relaxed">
-                       Tech系、ビジネス系、ポップ系<br/>
-                       イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます
-                    </p>
-                 </div>
-                 {/* 動画 */}
-                 <div className="md:order-1 bg-slate-100 rounded-2xl aspect-[4/3] border border-slate-200 shadow-lg relative overflow-hidden">
-                    <video src="/scroll-demo.mp4" className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
-                 </div>
-              </div>
-
-              {/* Feature 3: フォーム・アンケート機能 */}
-              <div className="grid md:grid-cols-2 gap-12 items-center">
-                 <div className="space-y-6">
-                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
-                       {/* アンケート用紙っぽいアイコンに変更 */}
-                       <FileSpreadsheet size={24}/>
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900">
-                       フォームも、アンケートも<br/>自在にカスタマイズ
-                    </h2>
-                    <p className="text-slate-600 text-lg leading-relaxed">
-                       申し込み時の入力項目はもちろん、セミナー後の「満足度アンケート」も事前に管理画面で作成可能<br/>
-                       当日はQRコードを読み込むだけで回答できるので、回収率も抜群。参加者の「生の声」を分析し、次の開催をより良いものにします
-                    </p>
-                 </div>
-                 {/* 画像: フォーム設定画面やアンケート結果画面など */}
-                 <div className="bg-slate-100 rounded-2xl aspect-[4/3] border border-slate-200 shadow-lg relative overflow-hidden group">
-                     {/* ▼ 画像ファイル名を変更して保存してください */}
-                     <Image 
-                       src="/form-survey.png" 
-                       alt="フォーム設定とアンケート機能" 
-                       fill 
-                       className="object-cover" 
-                     />
-                 </div>
-              </div>
-
-              {/* Feature 4: CRM (顧客資産化) ★ここに追加！ */}
-              <div className="grid md:grid-cols-2 gap-12 items-center md:flex-row-reverse">
-                 <div className="space-y-6 md:order-2">
-                    <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
-                       {/* データベース/資産をイメージするアイコン */}
-                       <Users size={24}/>
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 leading-tight">
-                       そのデータ<br/>
-                       使い捨てていませんか？
-                    </h2>
-                    <div className="space-y-4 text-slate-600 text-lg leading-relaxed">
-                       <p>
-                          Googleフォームでイベントごとにバラバラに管理するのは、もう終わりです<br/>
-                          <span className="font-bold text-slate-800 bg-orange-100 px-1">過去の参加者の情報は、あなたの「財産」です</span>
-                       </p>
-                       <p>
-                          このシステムなら、全てのイベントの参加者データが自動で一箇所に蓄積されます<br/>
-                          「あのイベントに来た人」をすぐに検索でき、次のアプローチにつなげることができます
-                       </p>
-                    </div>
-                 </div>
-                 {/* 画像: 顧客リストがずらっと並んでいる画面など */}
-                 <div className="md:order-1 bg-slate-100 rounded-2xl aspect-[4/3] border border-slate-200 shadow-lg relative overflow-hidden group">
-                     {/* ▼ 顧客一覧画面のスクショを撮って入れてください (crm-list.png) */}
-                     <Image 
-                       src="/crm-list.png" 
-                       alt="顧客一元管理画面" 
-                       fill 
-                       className="object-cover" 
-                     />
-                 </div>
-              </div>
-
-           </div>
-        </section>
-
-        {/* ▼ Comparison Section (統一感重視のライトデザイン版) */}
-        <section className="py-24 bg-slate-50 border-y border-slate-200">
-           <div className="container mx-auto max-w-5xl px-4">
-              <div className="text-center mb-16">
-                 <div className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-indigo-600 uppercase bg-indigo-50 rounded-full">
-                    Cost Performance
-                 </div>
-                 <h2 className="text-3xl md:text-5xl font-black mb-6 text-slate-900 leading-tight">
-                    「制作会社」への外注を、<br className="sm:hidden"/>過去の習慣に。
-                 </h2>
-                 <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-                    1回きりのイベントに、数十万円をかける必要はありません。<br className="hidden sm:inline"/>
-                    プロの品質を、あなたの手で、わずか10分で。
-                 </p>
-              </div>
-
-{/* 📊 比較テーブル：3行復活 ＆ 横スクロール完全版 */}
-<div className="relative group">
-   {/* 1. 外側の div を横滑り可能に設定 */}
-   <div className="relative overflow-x-auto pb-4 bg-white border border-slate-200 shadow-2xl rounded-[2rem] custom-scrollbar">
-      
-      {/* 2. テーブルに最小幅を持たせて文字を潰さない */}
-      <table className="w-full min-w-[700px] text-left border-collapse">
-         <thead>
-            <tr className="bg-slate-50/50 border-b border-slate-100">
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">制作手法</th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">概算費用</th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">制作期間</th>
-               <th className="p-6 md:p-8 text-sm md:text-base font-bold text-slate-500 uppercase tracking-widest text-center whitespace-nowrap">クオリティ</th>
-            </tr>
-         </thead>
-         <tbody className="divide-y divide-slate-100 text-slate-600">
-            {/* 行1: 制作会社 */}
-            <tr>
-               <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">制作会社（プロ品質）</td>
-               <td className="p-6 md:p-8 whitespace-nowrap">30万 〜 100万円以上</td>
-               <td className="p-6 md:p-8 text-center text-sm whitespace-nowrap">1 〜 2ヶ月</td>
-               <td className="p-6 md:p-8 text-center whitespace-nowrap">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">最高品質</span>
-               </td>
-            </tr>
-            {/* 🌟 行2: フリーランス（ここが消えていたので復活だっぺ！） */}
-            <tr>
-               <td className="p-6 md:p-8 font-bold text-slate-900 whitespace-nowrap">フリーランス（標準）</td>
-               <td className="p-6 md:p-8 whitespace-nowrap">10万 〜 30万円</td>
-               <td className="p-6 md:p-8 text-center text-sm whitespace-nowrap">2週間 〜 1ヶ月</td>
-               <td className="p-6 md:p-8 text-center whitespace-nowrap">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">バラツキあり</span>
-               </td>
-            </tr>
-            {/* 行3: Event Manager */}
-            <tr className="relative group bg-indigo-50/30">
-  <td className="p-6 md:p-8 whitespace-nowrap">
-    <div className="flex items-center gap-3">
-      {/* 1. 星マークを icon.webp に差し替え！ */}
-      <img 
-        src="/icon.webp" 
-        alt="絆太郎ロゴ" 
-        className="h-8 w-8 object-contain" 
+      {/* 上部オレンジグロー */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 -top-[200px] w-[900px] h-[400px] pointer-events-none z-0"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(217,119,87,0.2), transparent 70%)",
+        }}
       />
-      {/* 2. 名前を「絆太郎」に変更！グラデーションは維持だっぺ */}
-      <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500 tracking-tight">
-        絆太郎
-      </span>
-    </div>
-  </td>
-  
-  {/* ...以下、価格や時間のセルはそのまま... */}
-  <td className="p-6 md:p-8 whitespace-nowrap">
-    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
-      ¥3,300<span className="text-xs font-medium text-indigo-400">/月</span>
-    </div>
-  </td>
-  <td className="p-6 md:p-8 text-center whitespace-nowrap">
-    <span className="text-lg font-black text-indigo-700">わずか 10分</span>
-  </td>
-  <td className="p-6 md:p-8 text-center whitespace-nowrap">
-    <span className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-full text-xs font-black shadow-lg shadow-indigo-500/20">
-      プロ品質（再利用可）
-    </span>
-  </td>
-</tr>
-         </tbody>
-      </table>
-   </div>
-   
-   {/* 3. スマホのみに表示されるスワイプのヒント（看板だっぺ） */}
-   <div className="md:hidden text-center mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-      ← Swipe to compare →
-   </div>
-</div>
 
-              {/* 💡 結論：なぜ「外注費0円」が可能なのか？（洗練版） */}
-              <div className="mt-24">
-                 <div className="text-center mb-16">
-                    <h3 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight">
-                       「絆太郎」の<br className="sm:hidden"/>導入メリットと強み
-                    </h3>
-                 </div>
-
-                 <div className="grid md:grid-cols-3 gap-8 items-stretch"> {/* items-stretch で高さを揃えるっぺ */}
-   {/* Point 1 */}
-   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
-      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-indigo-50/50 transition-colors pointer-events-none">01</div>
-      <div className="relative z-10 flex flex-col h-full">
-         <div className="inline-flex self-start px-4 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-            POINT 01
-         </div>
-         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">プロの「型」を自社資産に</h4>
-         <p className="text-sm text-slate-500 leading-relaxed flex-1">
-            100万円クラスの制作会社が設計する「成果の出る構成」をシステム化。一度導入すれば、高品質なデザインテンプレートがあなたの強力な「自社資産」に変わります。
-         </p>
-      </div>
-   </div>
-
-   {/* Point 2: ここも flex-col と min-h でビシッと揃えるぞい！ */}
-   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
-      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-emerald-50/50 transition-colors pointer-events-none">02</div>
-      <div className="relative z-10 flex flex-col h-full">
-         <div className="inline-flex self-start px-4 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-            POINT 02
-         </div>
-         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">10分のデータ入力で完成</h4>
-         <p className="text-sm text-slate-500 leading-relaxed flex-1">
-            2回目以降は、新しいイベント情報を流し込むだけ。これまで数週間かかっていた外注とのやり取りが、わずか10分ほどの「データ入力」に置き換わります。
-         </p>
-      </div>
-   </div>
-
-   {/* Point 3 */}
-   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
-      <div className="text-6xl font-black text-slate-50 absolute top-4 right-8 group-hover:text-orange-50/50 transition-colors pointer-events-none">03</div>
-      <div className="relative z-10 flex flex-col h-full">
-         <div className="inline-flex self-start px-4 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-bold mb-6 tracking-widest">
-            POINT 03
-         </div>
-         <h4 className="text-xl font-black mb-4 text-slate-900 min-h-[1.5em] flex items-center">浮いた予算を次なる企画へ</h4>
-         <p className="text-sm text-slate-500 leading-relaxed flex-1">
-            開催のたびに消費されていた数十万円の外注費はもう不要です。その予算を広告やコンテンツの質向上に回し、イベントの成功率をさらに高めましょう。
-         </p>
-      </div>
-   </div>
-</div>
-              </div>
-           </div>
-        </section>
-
-
-        {/* ▼ 詳細機能グリッド (Bento Grid) */}
-        <section className="py-24 bg-slate-50 border-y border-slate-200">
-           <div className="container mx-auto max-w-6xl px-4">
-              <div className="text-center mb-16">
-                 <h2 className="text-3xl md:text-4xl font-black mb-4">細かい機能も、妥協しません</h2>
-                 <p className="text-slate-600">イベント成功に必要な機能を搭載しています</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 {/* Card 1 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <QrCode className="w-10 h-10 text-slate-700 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">QRチェックイン</h3>
-                    <p className="text-slate-500 text-sm">受付アプリ不要。参加証のQRコードをリーダーで読み取るだけで受付完了</p>
-                 </div>
-                 {/* Card 2 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <FileSpreadsheet className="w-10 h-10 text-emerald-600 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">CSV一括出力</h3>
-                    <p className="text-slate-500 text-sm">参加者データをExcelやGoogleスプレッドシートで扱える形式で出力</p>
-                 </div>
-                 {/* Card 3 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <ShieldCheck className="w-10 h-10 text-blue-600 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">堅牢なセキュリティ</h3>
-                    <p className="text-slate-500 text-sm">Google認証基盤（Firebase）を採用し、最高レベルのセキュリティを確保</p>
-                 </div>
-                 {/* Card 4 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <Smartphone className="w-10 h-10 text-purple-600 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">完全レスポンシブ</h3>
-                    <p className="text-slate-500 text-sm">PC、タブレット、スマホ。どんなデバイスからでも美しく表示されます</p>
-                 </div>
-                 {/* Card 5 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <Mail className="w-10 h-10 text-pink-500 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">リッチな自動返信メール</h3>
-                    <p className="text-slate-500 text-sm">申し込み完了時に、参加証QRコード付きのメールを自動で送信します</p>
-                 </div>
-                 {/* Card 6: 一斉メール配信 (And more... から変更) */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <Mail className="w-10 h-10 text-indigo-500 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">スマートなメール配信</h3>
-                    <p className="text-slate-500 text-sm">蓄積された顧客リストから、ターゲットを絞って次回の案内を一斉送信。リピーターを逃しません</p>
-                 </div>
-                 {/* Card 7: URL即時発行 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <LinkIcon className="w-10 h-10 text-cyan-500 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">URL即時発行</h3>
-                    <p className="text-slate-500 text-sm">イベントを作成した瞬間に公開URLを発行。ワンクリックでコピーして共有できます</p>
-                 </div>
-                 {/* Card 8: SNSシェア対応 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <Share2 className="w-10 h-10 text-indigo-500 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">SNSシェア対応</h3>
-                    <p className="text-slate-500 text-sm">LINEやXにURLを貼るだけで、美しいカード（OGP画像）が自動で表示されます</p>
-                 </div>
-                 {/* Card 9: イベント複製 */}
-                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                    <Copy className="w-10 h-10 text-orange-500 mb-4"/>
-                    <h3 className="text-lg font-bold mb-2">イベント複製</h3>
-                    <p className="text-slate-500 text-sm">定例会や定期セミナーは、過去のイベントを「コピーして作成」すれば5秒で準備完了</p>
-                 </div>
-              </div>
-           </div>
-        </section>
-              
-         {/* ▼ 絆太郎：新3段階料金プランセクション */}
-<section id="pricing" className="py-24 bg-slate-50 relative overflow-hidden">
-  <div className="container mx-auto px-4 relative z-10">
-    <div className="max-w-3xl mx-auto text-center mb-20">
-      <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">
-        選べる3つの「絆」プラン
-      </h2>
-      <p className="text-slate-600 text-lg font-bold leading-relaxed">
-        単発の事務作業から、顧客を資産に変えるマーケティングまで。<br />
-        あなたの成長に合わせて、最適なプランを選べます。
-      </p>
-    </div>
-
-    <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-      
-      {/* 1. フリープラン */}
-      <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm hover:shadow-xl transition-all relative flex flex-col group">
-        <div className="mb-8">
-          <span className="px-4 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full uppercase tracking-widest mb-4 inline-block">
-            Free
-          </span>
-          <h3 className="text-xl font-black text-slate-900 mb-2">スポット利用</h3>
-          <div className="flex items-baseline gap-1 mt-4">
-            <span className="text-4xl font-black text-slate-900">¥5,500</span>
-            <span className="text-slate-500 text-xs font-bold">/ 1イベント (税込)</span>
-          </div>
-          <p className="mt-6 text-slate-500 text-sm font-medium leading-relaxed">
-            まずは一度試したい方に。事務作業を自動化し、当日の運営をスマートにします。
-          </p>
-        </div>
-        
-        <div className="space-y-4 mb-10 flex-1 border-t border-slate-50 pt-8">
-          {[
-            "当該イベントの参加者管理",
-            "当日QR受付・名簿作成",
-            "リマインド・御礼メール送信",
-            "アンケート集計・分析",
-            { text: "過去データの蓄積・活用", cross: true }
-          ].map((item, i) => (
-            <div key={i} className={`flex items-center gap-3 text-sm font-bold ${typeof item === 'object' ? 'text-slate-300' : 'text-slate-600'}`}>
-              <div className={`p-1 rounded-full ${typeof item === 'object' ? 'bg-slate-50 text-slate-200' : 'bg-blue-50 text-blue-600'}`}>
-                <Check size={14} strokeWidth={3} />
-              </div>
-              <span className={typeof item === 'object' ? 'line-through' : ''}>
-                {typeof item === 'object' ? item.text : item}
+      {/* ▼ Header（ターミナル風） */}
+      <header className="sticky top-0 z-50 w-full border-b border-[#2A2A2A] bg-[#0F0F0F]/85 backdrop-blur-md">
+        <div className="container mx-auto max-w-7xl px-4 h-14 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 cursor-pointer group">
+            <img
+              src="/icon.webp"
+              alt="絆太郎"
+              className="h-7 w-7 object-contain group-hover:rotate-6 transition-transform duration-300"
+            />
+            <span className="flex items-center gap-2 text-sm">
+              <span className="text-[#888]">$</span>
+              <span className="text-[#4ADE80]">launch</span>
+              <ChevronRight size={14} className="text-[#D97757]" />
+              <span className="text-[#F08856] font-semibold tracking-wide">
+                kizuna-taro
               </span>
-            </div>
-          ))}
-        </div>
-        
-        <Link href="/register" className="block text-center py-4 bg-slate-50 text-slate-900 font-black rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-          まずは1回使ってみる
-        </Link>
-      </div>
+            </span>
+          </Link>
 
-      {/* 2. スタンダードプラン（おすすめ！） */}
-      <div className="bg-white p-8 rounded-[3rem] shadow-2xl relative flex flex-col group scale-105 border-4 border-indigo-500 ring-8 ring-indigo-50">
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-widest shadow-xl">
-          Recommended
+          <nav className="flex items-center gap-1 md:gap-3 text-xs md:text-sm">
+            <Link
+              href="#features"
+              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              features
+            </Link>
+            <Link
+              href="#pricing"
+              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              pricing
+            </Link>
+            <Link
+              href="/contact"
+              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              contact
+            </Link>
+            <span className="hidden sm:inline h-4 w-px bg-[#2A2A2A]" />
+            <Link
+              href="/login"
+              className="text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              login
+            </Link>
+            <Link
+              href="/register"
+              className="ml-1 inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-md text-white text-xs md:text-sm font-bold tracking-wide transition-all"
+              style={{
+                background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})`,
+                boxShadow:
+                  "0 4px 18px rgba(217,119,87,0.45), inset 0 1px 0 rgba(255,255,255,0.18)",
+              }}
+            >
+              ▶ start
+            </Link>
+          </nav>
         </div>
-        
-        <div className="mb-8 pt-4">
-          <span className="px-4 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full uppercase tracking-widest mb-4 inline-block">
-            Best Asset
-          </span>
-          <h3 className="text-xl font-black text-slate-900 mb-2">スタンダードプラン</h3>
-          <div className="flex items-baseline gap-1 mt-4">
-            <span className="text-4xl font-black text-slate-900">¥3,300</span>
-            <span className="text-slate-500 text-xs font-bold">/ 月額 (税込)</span>
-          </div>
-          <p className="mt-6 text-slate-500 text-sm font-medium leading-relaxed">
-            出会いを「資産」に変える。過去すべての参加者データを一元管理し、継続的な関係を築けます。
-          </p>
-        </div>
-        
-        <div className="space-y-4 mb-10 flex-1 border-t border-slate-50 pt-8">
-          {[
-            "全イベントの名簿を「絆リスト」化",
-            "過去の参加者へ一斉メール送付",
-            "イベント開催数・登録数 無制限",
-            "クロス分析・CRM機能フル開放",
-            "リピート率の自動集計"
-          ].map((text, i) => (
-            <div key={i} className="flex items-center gap-3 text-slate-700 font-bold text-sm">
-              <div className="p-1 bg-indigo-100 text-indigo-600 rounded-full">
-                <Check size={14} strokeWidth={3} />
+      </header>
+
+      <main className="relative z-10">
+        {/* ▼ Hero（ターミナルウィンドウ） */}
+        <section className="pt-10 md:pt-16 pb-20 px-4">
+          <div className="container mx-auto max-w-4xl">
+            {/* ターミナル枠 */}
+            <div
+              className="rounded-xl overflow-hidden border border-[#2A2A2A]"
+              style={{
+                background: "#1A1A1A",
+                boxShadow:
+                  "0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(217,119,87,0.1)",
+              }}
+            >
+              {/* ターミナルバー */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2A2A2A] bg-[#1E1E1E]">
+                <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
+                <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
+                <span className="w-3 h-3 rounded-full bg-[#28C840]" />
+                <span className="flex-1 text-center text-[11px] text-[#888] tracking-wider">
+                  kizuna-taro ~ event-manager.app
+                </span>
+                <span className="text-[11px] text-[#555]">v1.0</span>
               </div>
-              {text}
-            </div>
-          ))}
-        </div>
-        
-        <Link href="/register" className="block text-center py-5 bg-indigo-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-200 text-lg">
-          絆を資産に変える
-        </Link>
-      </div>
 
-      {/* 3. プロプラン */}
-      <div className="bg-slate-900 p-8 rounded-[3rem] shadow-xl relative flex flex-col group translate-y-4">
-        <div className="mb-8">
-          <span className="px-4 py-1 bg-slate-800 text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest mb-4 inline-block border border-slate-700">
-            Professional
-          </span>
-          <h3 className="text-xl font-black text-white mb-2">プロプラン</h3>
-          <div className="flex items-baseline gap-1 mt-4 text-white">
-            <span className="text-4xl font-black">¥11,000</span>
-            <span className="text-slate-400 text-xs font-bold">/ 月額 (税込)</span>
-          </div>
-          <p className="mt-6 text-slate-400 text-sm font-medium leading-relaxed">
-            組織や法人での運営に。複数スタッフ、複数拠点のデータを一つのプラットフォームで。
-          </p>
-        </div>
-        
-        <div className="space-y-4 mb-10 flex-1 border-t border-slate-800 pt-8">
-          {[
-            "スタッフ招待（共同管理）",
-            "複数拠点（教室・支部）の管理",
-            "優先カスタマーサポート",
-            "全拠点の横断レポート出力",
-            "スタンダードの全機能を含む"
-          ].map((text, i) => (
-            <div key={i} className="flex items-center gap-3 text-slate-300 font-bold text-sm">
-              <div className="p-1 bg-slate-800 text-emerald-400 rounded-full border border-slate-700">
-                <Check size={14} strokeWidth={3} />
+              <div className="px-6 md:px-12 py-10 md:py-14">
+                {/* ブランド */}
+                <div className="text-center mb-6">
+                  <span
+                    className="inline-block px-3 py-1 text-[11px] font-semibold tracking-[0.3em] rounded-full border"
+                    style={{ color: ORANGE, borderColor: ORANGE }}
+                  >
+                    HANAHIRO CARE DESIGN WORKS
+                  </span>
+                </div>
+
+                {/* プロンプト */}
+                <div className="text-center text-xs text-[#4ADE80] mb-4">
+                  <span className="text-[#D97757]">$</span> seminar
+                  <span className="mx-1.5 text-[#D97757]">▶</span>
+                  <span className="text-[#E8E8E8]">create / manage / connect</span>
+                </div>
+
+                {/* タイトル */}
+                <h1 className="text-center font-bold tracking-tight leading-[1.15] mb-6">
+                  <div className="text-[28px] md:text-[44px] text-[#E8E8E8] mb-2">
+                    イベントシステム
+                  </div>
+                  <div
+                    className="text-[40px] md:text-[64px]"
+                    style={{
+                      background: `linear-gradient(135deg, ${ORANGE_BRIGHT}, ${ORANGE_GLOW})`,
+                      WebkitBackgroundClip: "text",
+                      backgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    絆 太 郎
+                  </div>
+                </h1>
+
+                <p className="text-center text-[13px] md:text-[15px] text-[#888] mb-2 leading-relaxed">
+                  募集から当日、終了後の心のこもったフォローまで
+                </p>
+                <p className="text-center text-[13px] md:text-[15px] text-[#888] mb-10 leading-relaxed">
+                  LP作成・フォーム・名簿・メール配信を
+                  <span className="text-[#E8E8E8] font-semibold mx-1">
+                    一本で完結
+                  </span>
+                </p>
+
+                {/* CTA */}
+                <div className="flex justify-center mb-10">
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center gap-2 px-8 py-4 rounded-lg text-white font-bold tracking-wide transition-all hover:-translate-y-0.5"
+                    style={{
+                      background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})`,
+                      boxShadow:
+                        "0 4px 20px rgba(217,119,87,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+                    }}
+                  >
+                    ▶ まずは無料で試す
+                  </Link>
+                </div>
+
+                {/* スタックチップ */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[
+                    "想いが伝わる案内",
+                    "笑顔で迎える受付",
+                    "次に繋がる名簿",
+                  ].map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1.5 text-[11px] tracking-wider text-[#888] px-3 py-1 rounded-full border border-[#333]"
+                    >
+                      <Check size={11} className="text-[#4ADE80]" />
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
-              {text}
             </div>
-          ))}
-        </div>
-        
-        <Link href="/register" className="block text-center py-4 bg-white text-slate-900 font-black rounded-2xl hover:bg-indigo-500 hover:text-white transition-all">
-          チームで利用する
-        </Link>
-      </div>
 
-    </div>
-  </div>
-</section>
+            {/* バージョン情報 */}
+            <p className="text-center text-[11px] text-[#555] tracking-widest mt-4">
+              v1.0 · powered by Hanahiro Inc. · 2026
+            </p>
+          </div>
+        </section>
 
-      
+        {/* ▼ Before / After */}
+        <Section
+          title="EXPERIENCE / 日常のワンシーン"
+          heading={
+            <>
+              「イベント準備」の時間を、<br className="sm:hidden" />
+              <span style={{ color: ORANGE_BRIGHT }}>「企画」</span>の時間へ
+            </>
+          }
+          subtitle="名簿の印刷、エクセルへの転記、メール送信…そんな『作業』からあなたを解放します"
+        >
+          <div className="grid md:grid-cols-2 gap-8">
+            <DarkImageCard
+              src="/image_12.png"
+              alt="カフェでスマホでイベント管理"
+              label={
+                <>
+                  <Smartphone size={14} /> 外出先でもスマホで完結
+                </>
+              }
+              title="移動中も、リアルタイムで確認"
+              body="申し込み状況は、カフェでも電車でも、スマホからリアルタイムでチェック。急な問い合わせにも、その場ですぐに対応できます。"
+            />
+            <DarkImageCard
+              src="/image_13.png"
+              alt="PCでイベント準備"
+              label={
+                <>
+                  <Mail size={14} /> 面倒な作業を効率化
+                </>
+              }
+              title="メール配信も、手軽にお任せ"
+              body="申し込み完了メール、前日のリマインド、当日のサンクスメール。すべて一元化されるので、送信漏れの心配はもうありません。"
+            />
+          </div>
+        </Section>
+
+        {/* ▼ Demo / Dashboard */}
+        <Section
+          title="DEMO / ダッシュボード"
+          heading={
+            <>
+              イベント管理の<br className="md:hidden" />
+              <span style={{ color: ORANGE_BRIGHT }}>「面倒」をゼロにする</span>
+            </>
+          }
+          subtitle="告知ページの作成から、当日のQR受付まで。専門知識なしで、誰でも美しいイベントページが作れます。"
+        >
+          <div
+            className="relative mx-auto max-w-4xl rounded-xl border border-[#2A2A2A] p-2 md:p-3"
+            style={{
+              background: "#1A1A1A",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div className="aspect-[16/9] rounded-lg overflow-hidden relative bg-[#0F0F0F] border border-[#2A2A2A]">
+              <Image src="/dashboard.png" alt="Dashboard" fill className="object-cover" />
+            </div>
+          </div>
+        </Section>
+
+        {/* ▼ Mobile First */}
+        <Section
+          title="MOBILE / 親指ひとつで完了"
+          heading={
+            <>
+              ポケットから出して<br />
+              <span style={{ color: ORANGE_BRIGHT }}>親指ひとつ</span>で完了
+            </>
+          }
+          subtitle="申し込み状況の確認も、当日のQR受付も、PCを開く必要はありません。"
+        >
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center max-w-6xl mx-auto">
+            <div className="space-y-4">
+              <FeatureRow
+                icon={<Activity size={18} />}
+                title="リアルタイム状況確認"
+                desc="申し込み通知もスマホに届きます"
+              />
+              <FeatureRow
+                icon={<QrCode size={18} />}
+                title="QRコード受付"
+                desc="専用アプリ不要。リーダーで読み取るだけ"
+              />
+              <FeatureRow
+                icon={<Mail size={18} />}
+                title="メール配信もスマホで"
+                desc="移動中でも告知・リマインドが送れる"
+              />
+            </div>
+
+            <div className="flex justify-center">
+              <div className="relative">
+                <div
+                  className="relative mx-auto border-[#1A1A1A] bg-[#0F0F0F] border-[14px] rounded-[2.5rem] h-[560px] w-[280px]"
+                  style={{
+                    boxShadow:
+                      "0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(217,119,87,0.2)",
+                  }}
+                >
+                  <div className="h-[32px] w-[3px] bg-[#1A1A1A] absolute -start-[17px] top-[72px] rounded-s-lg" />
+                  <div className="h-[46px] w-[3px] bg-[#1A1A1A] absolute -start-[17px] top-[124px] rounded-s-lg" />
+                  <div className="h-[46px] w-[3px] bg-[#1A1A1A] absolute -start-[17px] top-[178px] rounded-s-lg" />
+                  <div className="h-[64px] w-[3px] bg-[#1A1A1A] absolute -end-[17px] top-[142px] rounded-e-lg" />
+                  <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
+                    <video
+                      src="/mobile-demo.mp4"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  </div>
+                </div>
+                <div
+                  className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full blur-3xl"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(217,119,87,0.35), transparent 70%)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* ▼ Features (zigzag) */}
+        <section id="features" className="py-20 md:py-28 px-4">
+          <div className="container mx-auto max-w-6xl space-y-20 md:space-y-28">
+            <ZigzagFeature
+              icon={<BarChart3 size={22} />}
+              label="01 / DASHBOARD"
+              title={
+                <>
+                  イベントの状況を<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>一目で把握</span>
+                </>
+              }
+              body="申し込み数、PV数、残席数をリアルタイムで可視化。直感的なダッシュボードで、イベントの今の状況が手に取るようにわかります。"
+              bullets={["リアルタイム更新", "レスポンシブ対応"]}
+              image="/analytics.png"
+              imageAlt="リアルタイム集計画面"
+            />
+            <ZigzagFeature
+              reverse
+              icon={<LayoutTemplate size={22} />}
+              label="02 / TEMPLATES"
+              title={
+                <>
+                  デザイン作成は不要<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>テーマを選ぶだけ</span>
+                </>
+              }
+              body="Tech系、ビジネス系、ポップ系、医療・福祉系。イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます。"
+              bullets={["全8種テンプレート", "1クリック切替"]}
+              video="/scroll-demo.mp4"
+            />
+            <ZigzagFeature
+              icon={<FileSpreadsheet size={22} />}
+              label="03 / FORMS"
+              title={
+                <>
+                  フォームも、アンケートも<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>自在にカスタマイズ</span>
+                </>
+              }
+              body="申し込み時の入力項目はもちろん、セミナー後の「満足度アンケート」も事前に管理画面で作成可能。当日はQRコードを読み込むだけで回答できるので、回収率も抜群です。"
+              bullets={["事前/事後アンケート対応", "CSV出力"]}
+              image="/form-survey.png"
+              imageAlt="フォーム設定とアンケート機能"
+            />
+            <ZigzagFeature
+              reverse
+              icon={<Users size={22} />}
+              label="04 / CRM"
+              title={
+                <>
+                  そのデータ、<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>使い捨てていませんか？</span>
+                </>
+              }
+              body="Googleフォームでイベントごとにバラバラに管理するのは、もう終わり。全てのイベントの参加者データが自動で一箇所に蓄積され、「あのイベントに来た人」をすぐに検索できます。"
+              bullets={["全イベント横断検索", "絆リストとして蓄積"]}
+              image="/crm-list.png"
+              imageAlt="顧客一元管理画面"
+            />
+          </div>
+        </section>
+
+        {/* ▼ Comparison（ターミナル風テーブル） */}
+        <Section
+          title="COST / 比較"
+          heading={
+            <>
+              「制作会社」への外注を、<br className="sm:hidden" />
+              <span style={{ color: ORANGE_BRIGHT }}>過去の習慣に</span>
+            </>
+          }
+          subtitle="1回きりのイベントに、数十万円をかける必要はありません。プロの品質を、あなたの手で、わずか10分で。"
+        >
+          <div
+            className="rounded-xl border border-[#2A2A2A] overflow-hidden"
+            style={{ background: "#1A1A1A" }}
+          >
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[640px] text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-[#2A2A2A] bg-[#1E1E1E]">
+                    <th className="p-5 text-[11px] font-bold text-[#F08856] uppercase tracking-widest">
+                      method
+                    </th>
+                    <th className="p-5 text-[11px] font-bold text-[#F08856] uppercase tracking-widest">
+                      cost
+                    </th>
+                    <th className="p-5 text-[11px] font-bold text-[#F08856] uppercase tracking-widest text-center">
+                      time
+                    </th>
+                    <th className="p-5 text-[11px] font-bold text-[#F08856] uppercase tracking-widest text-center">
+                      quality
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-[#888]">
+                  <tr className="border-b border-[#2A2A2A]">
+                    <td className="p-5 text-[#E8E8E8] font-semibold whitespace-nowrap">
+                      制作会社
+                    </td>
+                    <td className="p-5 whitespace-nowrap">¥300,000〜1,000,000+</td>
+                    <td className="p-5 text-center text-xs whitespace-nowrap">1〜2ヶ月</td>
+                    <td className="p-5 text-center whitespace-nowrap">
+                      <span className="px-3 py-1 bg-[#1E1E1E] border border-[#333] rounded-full text-[10px] font-bold">
+                        最高品質
+                      </span>
+                    </td>
+                  </tr>
+                  <tr className="border-b border-[#2A2A2A]">
+                    <td className="p-5 text-[#E8E8E8] font-semibold whitespace-nowrap">
+                      フリーランス
+                    </td>
+                    <td className="p-5 whitespace-nowrap">¥100,000〜300,000</td>
+                    <td className="p-5 text-center text-xs whitespace-nowrap">
+                      2週間〜1ヶ月
+                    </td>
+                    <td className="p-5 text-center whitespace-nowrap">
+                      <span className="px-3 py-1 bg-[#1E1E1E] border border-[#333] rounded-full text-[10px] font-bold">
+                        バラつき
+                      </span>
+                    </td>
+                  </tr>
+                  <tr
+                    style={{
+                      background: "rgba(217,119,87,0.06)",
+                      borderLeft: `3px solid ${ORANGE}`,
+                    }}
+                  >
+                    <td className="p-5 whitespace-nowrap">
+                      <div className="flex items-center gap-2.5">
+                        <img src="/icon.webp" alt="絆太郎" className="h-7 w-7 object-contain" />
+                        <span
+                          className="text-xl font-bold tracking-tight"
+                          style={{
+                            background: `linear-gradient(135deg, ${ORANGE_BRIGHT}, ${ORANGE_GLOW})`,
+                            WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                          }}
+                        >
+                          絆太郎
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-5 whitespace-nowrap">
+                      <span
+                        className="text-2xl font-bold"
+                        style={{
+                          background: `linear-gradient(135deg, ${ORANGE_BRIGHT}, ${ORANGE_GLOW})`,
+                          WebkitBackgroundClip: "text",
+                          backgroundClip: "text",
+                          WebkitTextFillColor: "transparent",
+                        }}
+                      >
+                        ¥3,300
+                      </span>
+                      <span className="text-xs text-[#888] ml-1">/月</span>
+                    </td>
+                    <td className="p-5 text-center whitespace-nowrap">
+                      <span className="text-base font-bold text-[#F08856]">
+                        わずか 10分
+                      </span>
+                    </td>
+                    <td className="p-5 text-center whitespace-nowrap">
+                      <span
+                        className="inline-block px-3 py-1 rounded-full text-[10px] font-bold text-white"
+                        style={{
+                          background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})`,
+                        }}
+                      >
+                        プロ品質 (再利用可)
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="md:hidden text-center mt-4 text-[10px] text-[#555] tracking-widest">
+            ← swipe to compare →
+          </div>
+        </Section>
+
+        {/* ▼ 3 Points */}
+        <Section
+          title="STRENGTH / 絆太郎の強み"
+          heading={
+            <>
+              「絆太郎」の<br className="sm:hidden" />
+              導入メリットと強み
+            </>
+          }
+          subtitle=""
+        >
+          <div className="grid md:grid-cols-3 gap-6">
+            <PointCard
+              num="01"
+              title="プロの「型」を自社資産に"
+              body="100万円クラスの制作会社が設計する「成果の出る構成」をシステム化。一度導入すれば、高品質なテンプレートがあなたの強力な「自社資産」に変わります。"
+            />
+            <PointCard
+              num="02"
+              title="10分のデータ入力で完成"
+              body="2回目以降は、新しいイベント情報を流し込むだけ。これまで数週間かかっていた外注とのやり取りが、わずか10分ほどの「データ入力」に置き換わります。"
+            />
+            <PointCard
+              num="03"
+              title="浮いた予算を次なる企画へ"
+              body="開催のたびに消費されていた数十万円の外注費はもう不要。その予算を広告やコンテンツの質向上に回し、イベントの成功率をさらに高めましょう。"
+            />
+          </div>
+        </Section>
+
+        {/* ▼ Bento Grid */}
+        <Section
+          title="FEATURES / 細かい機能"
+          heading={
+            <>
+              細かい機能も、<br className="sm:hidden" />
+              <span style={{ color: ORANGE_BRIGHT }}>妥協しません</span>
+            </>
+          }
+          subtitle="イベント成功に必要な機能を搭載しています"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <BentoCard icon={<QrCode size={22} />} title="QRチェックイン" body="受付アプリ不要。参加証のQRコードをリーダーで読み取るだけで受付完了" />
+            <BentoCard icon={<FileSpreadsheet size={22} />} title="CSV一括出力" body="参加者データをExcelやスプレッドシートで扱える形式で出力" />
+            <BentoCard icon={<ShieldCheck size={22} />} title="堅牢なセキュリティ" body="Google認証基盤（Firebase）を採用し、最高レベルのセキュリティを確保" />
+            <BentoCard icon={<Smartphone size={22} />} title="完全レスポンシブ" body="PC、タブレット、スマホ。どんなデバイスからでも美しく表示" />
+            <BentoCard icon={<Mail size={22} />} title="リッチな自動返信" body="申し込み完了時に、参加証QRコード付きのメールを自動送信" />
+            <BentoCard icon={<Mail size={22} />} title="スマートなメール配信" body="蓄積された顧客リストから、ターゲットを絞って一斉送信" />
+            <BentoCard icon={<LinkIcon size={22} />} title="URL即時発行" body="イベントを作成した瞬間に公開URLを発行。ワンクリックでコピー" />
+            <BentoCard icon={<Share2 size={22} />} title="SNSシェア対応" body="LINEやXにURLを貼るだけで、美しいOGPカードが自動表示" />
+            <BentoCard icon={<Copy size={22} />} title="イベント複製" body="定例会や定期セミナーは「コピーして作成」すれば5秒で準備完了" />
+          </div>
+        </Section>
+
+        {/* ▼ Pricing */}
+        <section id="pricing" className="py-20 md:py-28 px-4">
+          <div className="container mx-auto max-w-7xl">
+            <div className="text-center mb-14">
+              <div
+                className="inline-block px-3 py-1 mb-4 text-[11px] font-semibold tracking-[0.3em] rounded-full border"
+                style={{ color: ORANGE, borderColor: ORANGE }}
+              >
+                PRICING
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#E8E8E8] mb-4 tracking-tight">
+                選べる3つの「絆」プラン
+              </h2>
+              <p className="text-[#888] text-sm md:text-base leading-relaxed">
+                単発の事務作業から、顧客を資産に変えるマーケティングまで。<br />
+                あなたの成長に合わせて、最適なプランを選べます。
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {/* スポット */}
+              <PricingCard
+                badge="SPOT"
+                name="スポット利用"
+                price="¥5,500"
+                priceUnit="/ 1イベント (税込)"
+                desc="まずは一度試したい方に。事務作業を自動化し、当日の運営をスマートにします。"
+                features={[
+                  { text: "当該イベントの参加者管理" },
+                  { text: "当日QR受付・名簿作成" },
+                  { text: "リマインド・御礼メール送信" },
+                  { text: "アンケート集計・分析" },
+                  { text: "過去データの蓄積・活用", disabled: true },
+                ]}
+                ctaText="まずは1回使ってみる"
+              />
+              {/* スタンダード（推奨） */}
+              <PricingCard
+                badge="RECOMMENDED"
+                name="スタンダード"
+                price="¥3,300"
+                priceUnit="/ 月額 (税込)"
+                desc="出会いを「資産」に変える。過去すべての参加者データを一元管理し、継続的な関係を築けます。"
+                features={[
+                  { text: "全イベントの名簿を絆リスト化" },
+                  { text: "過去の参加者へ一斉メール" },
+                  { text: "開催数・登録数 無制限" },
+                  { text: "CRM機能フル開放" },
+                  { text: "リピート率の自動集計" },
+                ]}
+                ctaText="絆を資産に変える"
+                highlight
+              />
+              {/* プロ */}
+              <PricingCard
+                badge="PROFESSIONAL"
+                name="プロプラン"
+                price="¥11,000"
+                priceUnit="/ 月額 (税込)"
+                desc="組織や法人での運営に。複数スタッフ、複数拠点のデータを一つのプラットフォームで。"
+                features={[
+                  { text: "スタッフ招待（共同管理）" },
+                  { text: "複数拠点の管理" },
+                  { text: "優先カスタマーサポート" },
+                  { text: "横断レポート出力" },
+                  { text: "スタンダードの全機能" },
+                ]}
+                ctaText="チームで利用する"
+              />
+            </div>
+          </div>
+        </section>
       </main>
 
-{/* ▼ Footer */}
-      <footer className="bg-white py-12 border-t border-slate-200">
-        <div className="container mx-auto max-w-6xl px-4">
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-              <div>
-                 <h4 className="font-bold mb-4 text-slate-900">Product</h4>
-                 <ul className="space-y-2 text-sm text-slate-600">
-                    {/* ▼ href を #features に変更 */}
-                    <li>
-                      <Link href="#features" className="hover:text-indigo-600">
-                        機能一覧
-                      </Link>
-                    </li>
-                    
-                    {/* ▼ href を #pricing に変更 */}
-                    <li>
-                      <Link href="#pricing" className="hover:text-indigo-600">
-                        料金プラン
-                      </Link>
-                    </li>
-                    
-                    {/* ▼ 導入事例はまだないので、クリックしても動かないように # のまま */}
-                    <li>
-                      <Link href="#" className="hover:text-indigo-600 cursor-not-allowed opacity-70" title="準備中">
-                        導入事例 (Coming Soon)
-                      </Link>
-                    </li>
-                 </ul>
+      {/* ▼ Footer */}
+      <footer className="border-t border-[#2A2A2A] py-12 px-4 relative z-10">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            <FooterCol
+              title="Product"
+              items={[
+                { label: "機能一覧", href: "#features" },
+                { label: "料金プラン", href: "#pricing" },
+                { label: "導入事例 (Coming Soon)", href: "#", disabled: true },
+              ]}
+            />
+            <FooterCol
+              title="Support"
+              items={[
+                { label: "ヘルプセンター", href: "#", disabled: true },
+                { label: "お問い合わせ", href: "/contact" },
+                { label: "APIドキュメント", href: "#", disabled: true },
+              ]}
+            />
+            <FooterCol
+              title="Legal"
+              items={[
+                { label: "利用規約", href: "/terms" },
+                { label: "プライバシーポリシー", href: "/privacy" },
+                { label: "特定商取引法", href: "/legal" },
+              ]}
+            />
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <img src="/icon.webp" alt="絆太郎" className="h-6 w-6 object-contain" />
+                <span className="text-[#F08856] font-bold text-base">絆太郎</span>
               </div>
-              <div>
-                 <h4 className="font-bold mb-4 text-slate-900">Support</h4>
-                 <ul className="space-y-2 text-sm text-slate-600">
-                    {/* まだないので準備中にする */}
-                    <li>
-                        <Link href="#" className="hover:text-indigo-600 cursor-not-allowed opacity-70" title="準備中">
-                            ヘルプセンター
-                        </Link>
-                    </li>
-                    
-                    {/* ▼ href を "/contact" に変更 */}
-                    <li>
-                        <Link href="/contact" className="hover:text-indigo-600">
-                            お問い合わせ
-                        </Link>
-                    </li>
-                    
-                    {/* まだないので準備中にする */}
-                    <li>
-                        <Link href="#" className="hover:text-indigo-600 cursor-not-allowed opacity-70" title="準備中">
-                            APIドキュメント
-                        </Link>
-                    </li>
-                 </ul>
-              </div>
-              <div>
-                 <h4 className="font-bold mb-4 text-slate-900">Legal</h4>
-                 <ul className="space-y-2 text-sm text-slate-600">
-                    <li><Link href="/terms" className="hover:text-indigo-600">利用規約</Link></li>
-                    <li><Link href="/privacy" className="hover:text-indigo-600">プライバシーポリシー</Link></li>
-                    <li><Link href="/legal" className="hover:text-indigo-600">特定商取引法</Link></li>
-                 </ul>
-              </div>
-              <div>
-                 <div className="flex items-center gap-2 font-black text-slate-900 mb-4 text-xl">
-  {/* Sparkles を img に差し替えだっぺ！ */}
-  <img 
-    src="/icon.webp" 
-    alt="絆太郎" 
-    className="h-7 w-7 object-contain" 
-  />
-  絆太郎
-</div>
-                 {/* ★ここを会社名に変更 */}
-                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                    Produced by<br/>
-                    <span className="text-slate-800 font-bold text-sm">Hanahiro Inc.</span><br/>
-                    CARE DESIGN WORKS
-                 </p>
-              </div>
-           </div>
-           
-           <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-              {/* ★コピーライトも変更 */}
-              <p className="text-slate-400 text-xs">
-                 © {new Date().getFullYear()} Hanahiro Inc. CARE DESIGN WORKS. All rights reserved.
+              <p className="text-[11px] text-[#555] leading-relaxed tracking-wide">
+                Produced by<br />
+                <span className="text-[#888] font-semibold">Hanahiro Inc.</span>
+                <br />
+                CARE DESIGN WORKS
               </p>
-              <div className="flex gap-4">
-                 {/* SNSアイコンなどを置くスペース */}
-              </div>
-           </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-[#1E1E1E] flex flex-col md:flex-row justify-between items-center gap-3">
+            <p className="text-[11px] text-[#555] tracking-wider">
+              © {new Date().getFullYear()} Hanahiro Inc. CARE DESIGN WORKS. All rights reserved.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["POWERED BY", "Next.js", "Firebase", "Stripe", "Resend"].map((s, i) => (
+                <span
+                  key={s}
+                  className={`text-[10px] tracking-widest px-2.5 py-1 rounded-full border ${
+                    i === 0
+                      ? "text-[#F08856] border-[#F08856]"
+                      : "text-[#888] border-[#333]"
+                  }`}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/* ===== サブコンポーネント ===== */
+
+function Section({
+  title,
+  heading,
+  subtitle,
+  children,
+}: {
+  title: string;
+  heading: React.ReactNode;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="py-20 md:py-28 px-4 border-t border-[#1A1A1A]">
+      <div className="container mx-auto max-w-6xl">
+        <div className="text-center mb-12 md:mb-16">
+          <div className="inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] mb-4" style={{ color: ORANGE }}>
+            <span style={{ color: ORANGE_BRIGHT }}>▸</span> {title}
+          </div>
+          <h2 className="text-2xl md:text-4xl font-bold text-[#E8E8E8] mb-4 tracking-tight leading-tight">
+            {heading}
+          </h2>
+          {subtitle && (
+            <p className="text-[#888] text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function DarkImageCard({
+  src,
+  alt,
+  label,
+  title,
+  body,
+}: {
+  src: string;
+  alt: string;
+  label: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden border border-[#2A2A2A] group">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          className="object-cover object-[50%_30%] group-hover:scale-105 transition-transform duration-700"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0F0F0F]/90 via-[#0F0F0F]/30 to-transparent" />
+        <div className="absolute bottom-4 left-4 text-[#F08856] font-semibold text-xs flex items-center gap-2 tracking-wider">
+          {label}
+        </div>
+      </div>
+      <div className="px-1">
+        <h3 className="font-bold text-lg text-[#E8E8E8] mb-2">{title}</h3>
+        <p className="text-[#888] text-sm leading-relaxed">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function FeatureRow({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-4 p-4 rounded-lg border border-[#2A2A2A]"
+      style={{
+        background: "rgba(217,119,87,0.04)",
+        borderLeft: `3px solid ${ORANGE}`,
+      }}
+    >
+      <div
+        className="flex-shrink-0 p-3 rounded-full text-white"
+        style={{ background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})` }}
+      >
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-bold text-[#E8E8E8] text-sm">{title}</h4>
+        <p className="text-xs text-[#888] mt-0.5">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function ZigzagFeature({
+  icon,
+  label,
+  title,
+  body,
+  bullets,
+  image,
+  imageAlt,
+  video,
+  reverse,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  title: React.ReactNode;
+  body: string;
+  bullets?: string[];
+  image?: string;
+  imageAlt?: string;
+  video?: string;
+  reverse?: boolean;
+}) {
+  return (
+    <div className="grid md:grid-cols-2 gap-12 items-center">
+      <div className={`space-y-5 ${reverse ? "md:order-2" : ""}`}>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-semibold tracking-widest"
+          style={{
+            color: ORANGE_BRIGHT,
+            background: "rgba(217,119,87,0.08)",
+            border: "1px solid rgba(217,119,87,0.25)",
+          }}
+        >
+          <span style={{ color: ORANGE }}>{icon}</span>
+          {label}
+        </div>
+        <h2 className="text-2xl md:text-3xl font-bold text-[#E8E8E8] leading-tight tracking-tight">
+          {title}
+        </h2>
+        <p className="text-[#888] text-sm md:text-base leading-relaxed">{body}</p>
+        {bullets && (
+          <ul className="space-y-2 pt-2">
+            {bullets.map((b) => (
+              <li
+                key={b}
+                className="flex items-center gap-2 text-[#E8E8E8] text-sm font-medium"
+              >
+                <CheckCircle2 size={16} style={{ color: ORANGE_BRIGHT }} />
+                {b}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div
+        className={`relative aspect-[4/3] rounded-xl overflow-hidden border border-[#2A2A2A] ${
+          reverse ? "md:order-1" : ""
+        }`}
+        style={{
+          background: "#1A1A1A",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+        }}
+      >
+        {image && imageAlt && (
+          <Image src={image} alt={imageAlt} fill className="object-cover" />
+        )}
+        {video && (
+          <video
+            src={video}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PointCard({
+  num,
+  title,
+  body,
+}: {
+  num: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div
+      className="relative p-8 rounded-xl border border-[#2A2A2A] overflow-hidden"
+      style={{
+        background: "#1A1A1A",
+      }}
+    >
+      <div
+        className="absolute top-3 right-6 text-6xl font-bold pointer-events-none"
+        style={{ color: "rgba(217,119,87,0.08)" }}
+      >
+        {num}
+      </div>
+      <div className="relative z-10">
+        <div
+          className="inline-block px-3 py-1 mb-5 text-[10px] font-bold tracking-[0.2em] rounded-full"
+          style={{
+            color: ORANGE_BRIGHT,
+            background: "rgba(217,119,87,0.1)",
+            border: "1px solid rgba(217,119,87,0.3)",
+          }}
+        >
+          POINT {num}
+        </div>
+        <h4 className="text-lg font-bold mb-3 text-[#E8E8E8] leading-snug">
+          {title}
+        </h4>
+        <p className="text-sm text-[#888] leading-relaxed">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function BentoCard({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div
+      className="p-5 rounded-xl border border-[#2A2A2A] transition-all hover:border-[#444]"
+      style={{ background: "#1A1A1A" }}
+    >
+      <div className="mb-3" style={{ color: ORANGE_BRIGHT }}>
+        {icon}
+      </div>
+      <h3 className="text-base font-bold text-[#E8E8E8] mb-1.5">{title}</h3>
+      <p className="text-xs text-[#888] leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function PricingCard({
+  badge,
+  name,
+  price,
+  priceUnit,
+  desc,
+  features,
+  ctaText,
+  highlight,
+}: {
+  badge: string;
+  name: string;
+  price: string;
+  priceUnit: string;
+  desc: string;
+  features: { text: string; disabled?: boolean }[];
+  ctaText: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className="relative p-7 rounded-xl flex flex-col"
+      style={{
+        background: "#1A1A1A",
+        border: highlight ? `1.5px solid ${ORANGE}` : "1px solid #2A2A2A",
+        boxShadow: highlight
+          ? "0 0 0 4px rgba(217,119,87,0.1), 0 10px 40px rgba(217,119,87,0.18)"
+          : "0 10px 30px rgba(0,0,0,0.3)",
+        transform: highlight ? "translateY(-8px)" : undefined,
+      }}
+    >
+      {highlight && (
+        <div
+          className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] text-white"
+          style={{
+            background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})`,
+            boxShadow: "0 4px 14px rgba(217,119,87,0.5)",
+          }}
+        >
+          {badge}
+        </div>
+      )}
+      {!highlight && (
+        <span
+          className="inline-block self-start px-3 py-1 mb-5 text-[10px] font-bold tracking-[0.2em] rounded-full"
+          style={{
+            color: ORANGE_BRIGHT,
+            background: "rgba(217,119,87,0.08)",
+            border: "1px solid rgba(217,119,87,0.25)",
+          }}
+        >
+          {badge}
+        </span>
+      )}
+      {highlight && <div className="h-5" />}
+
+      <h3 className="text-lg font-bold text-[#E8E8E8] mb-3">{name}</h3>
+      <div className="flex items-baseline gap-1 mb-4">
+        <span
+          className="text-3xl font-bold"
+          style={{
+            background: `linear-gradient(135deg, ${ORANGE_BRIGHT}, ${ORANGE_GLOW})`,
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          {price}
+        </span>
+        <span className="text-[11px] text-[#888]">{priceUnit}</span>
+      </div>
+      <p className="text-[13px] text-[#888] leading-relaxed mb-6 min-h-[3em]">{desc}</p>
+
+      <div className="space-y-3 mb-7 flex-1 border-t border-[#2A2A2A] pt-6">
+        {features.map((f, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-3 text-sm font-medium ${
+              f.disabled ? "text-[#555] line-through" : "text-[#E8E8E8]"
+            }`}
+          >
+            <span
+              className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{
+                background: f.disabled ? "#1E1E1E" : "rgba(217,119,87,0.15)",
+                border: f.disabled ? "1px solid #2A2A2A" : `1px solid ${ORANGE}`,
+              }}
+            >
+              <Check
+                size={11}
+                strokeWidth={3}
+                style={{ color: f.disabled ? "#555" : ORANGE_BRIGHT }}
+              />
+            </span>
+            {f.text}
+          </div>
+        ))}
+      </div>
+
+      <Link
+        href="/register"
+        className="block text-center py-3.5 rounded-lg font-bold text-sm tracking-wide transition-all hover:-translate-y-0.5"
+        style={
+          highlight
+            ? {
+                background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_BRIGHT})`,
+                color: "#fff",
+                boxShadow:
+                  "0 4px 20px rgba(217,119,87,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+              }
+            : {
+                background: "transparent",
+                color: "#E8E8E8",
+                border: "1px solid #444",
+              }
+        }
+      >
+        {ctaText} <ArrowRight size={14} className="inline ml-1" />
+      </Link>
+    </div>
+  );
+}
+
+function FooterCol({
+  title,
+  items,
+}: {
+  title: string;
+  items: { label: string; href: string; disabled?: boolean }[];
+}) {
+  return (
+    <div>
+      <h4 className="text-[11px] font-bold tracking-[0.2em] mb-4" style={{ color: ORANGE_BRIGHT }}>
+        {title.toUpperCase()}
+      </h4>
+      <ul className="space-y-2.5 text-xs text-[#888]">
+        {items.map((i) => (
+          <li key={i.label}>
+            <Link
+              href={i.href}
+              className={`hover:text-[#F08856] transition-colors ${
+                i.disabled ? "cursor-not-allowed opacity-50" : ""
+              }`}
+              title={i.disabled ? "準備中" : undefined}
+            >
+              {i.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
