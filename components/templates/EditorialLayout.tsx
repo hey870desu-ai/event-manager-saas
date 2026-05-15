@@ -203,11 +203,17 @@ export default function EditorialLayout({ event, tenant, eventId, tenantId }: Pr
           </div>
         </div>
 
-        {/* Main image (full width) */}
+        {/* Main image (full width, contained / centered) */}
         {event.ogpImage && (
           <div className="border-t border-[#D8D6D0]">
             <div className="max-w-6xl mx-auto px-6 py-12">
-              <img src={event.ogpImage} className="w-full max-h-[70vh] object-cover" alt="Main Visual" />
+              <div className="flex items-center justify-center bg-[#F0EDE5] overflow-hidden">
+                <img
+                  src={event.ogpImage}
+                  className="w-auto max-w-full max-h-[80vh] object-contain"
+                  alt="Main Visual"
+                />
+              </div>
               <p className={`mt-3 text-[10px] tracking-widest uppercase ${sansEn.className}`} style={{ color: FAINT }}>
                 — Image · {event.title}
               </p>
