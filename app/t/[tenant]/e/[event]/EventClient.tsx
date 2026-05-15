@@ -13,6 +13,7 @@ import ChameleonLayout from "@/components/templates/ChameleonLayout";
 import LPLayout from "@/components/templates/LPLayout";
 import MedicalLayout from "@/components/templates/MedicalLayout";
 import NatureLayout from "@/components/templates/NatureLayout";
+import ClaudeCodeLayout from "@/components/templates/ClaudeCodeLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -81,6 +82,11 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
   // ★ナチュラルテーマ
   if (theme === "nature") {
     return <NatureLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★Claude Code テーマ（ターミナル風 / ダーク+オレンジ）
+  if (theme === "claude") {
+    return <ClaudeCodeLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
 
   // ★デフォルト（Tech / Dark）
