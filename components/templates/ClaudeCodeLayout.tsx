@@ -297,9 +297,23 @@ export default function ClaudeCodeLayout({
             <span style={{ color: ORANGE }}>▸</span> presents
           </div>
 
-          {/* イベントタイトル */}
+          {/* イベントタイトル（ピクセル文字・白） */}
           <h1
-            className="text-2xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight mt-6 mb-4 text-[#E8E8E8]"
+            className={dotFont.className}
+            style={{
+              fontSize: "clamp(28px, 6vw, 64px)",
+              lineHeight: 1.15,
+              letterSpacing: "0.03em",
+              color: "#FFFFFF",
+              textShadow: [
+                "0 0 6px rgba(255,255,255,0.6)",
+                "0 0 18px rgba(255,255,255,0.35)",
+                "0 0 36px rgba(217,119,87,0.25)",
+              ].join(", "),
+              marginTop: "1.5rem",
+              marginBottom: "1rem",
+              wordBreak: "break-word",
+            }}
           >
             {event.title}
           </h1>
