@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
 import Link from "next/link";
+import { DotGothic16 } from "next/font/google";
 import {
   Calendar, Clock, MapPin, User, AlignLeft, Check, Copy,
   Mail, Phone, CheckCircle2, ChevronRight,
@@ -19,6 +20,13 @@ type Props = {
 const ORANGE = "#D97757";
 const ORANGE_BRIGHT = "#F08856";
 const ORANGE_GLOW = "#FF8E61";
+
+// ドット・ピクセル風フォント（日本語対応 / ターミナル起動ロゴの雰囲気）
+const dotFont = DotGothic16({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 
 export default function ClaudeCodeLayout({
   event, tenant, eventId, tenantId,
@@ -252,27 +260,46 @@ export default function ClaudeCodeLayout({
       />
 
       <div className="relative z-10 container mx-auto px-3 md:px-4 pt-10 md:pt-16 max-w-6xl">
-        {/* テナント帯 */}
+        {/* テナント名（ターミナル起動ロゴ風・ピクセル文字） */}
         <div className="text-center mb-8 px-4">
-          <div
-            className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full text-xs tracking-widest mb-6"
-            style={{ background: "rgba(217,119,87,0.06)", border: `1px solid ${ORANGE}` }}
-          >
-            {tenant?.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="h-5 object-contain" />
-            ) : (
-              <span className="text-[#4ADE80]">$</span>
-            )}
-            <span className="text-[#888]">event</span>
+          {/* 起動プロンプト */}
+          <div className="inline-flex items-center gap-2 text-[11px] md:text-xs tracking-widest mb-4 text-[#4ADE80]">
+            <span>$</span>
+            <span className="text-[#E8E8E8]">launch</span>
             <ChevronRight size={12} style={{ color: ORANGE }} />
-            <span className="text-[#F08856] font-semibold uppercase tracking-widest">
-              {tenant?.name || tenantId}
-            </span>
+            <span style={{ color: ORANGE_BRIGHT }}>event</span>
+            <span className="inline-block w-2 h-3 bg-[#E8E8E8] animate-pulse ml-1" />
           </div>
 
-          {/* タイトル */}
+          {/* デカ文字（ドット・ピクセル） */}
+          <div
+            className={dotFont.className}
+            style={{
+              fontSize: "clamp(40px, 11vw, 110px)",
+              lineHeight: 1.05,
+              letterSpacing: "0.04em",
+              color: ORANGE_BRIGHT,
+              textShadow: [
+                `0 0 8px ${ORANGE}`,
+                `0 0 24px rgba(217,119,87,0.55)`,
+                `0 0 48px rgba(217,119,87,0.35)`,
+                `2px 2px 0 rgba(217,119,87,0.4)`,
+              ].join(", "),
+              fontWeight: 400,
+              wordBreak: "break-word",
+            }}
+          >
+            {tenant?.name || tenantId}
+          </div>
+
+          {/* 小さな補足 */}
+          <div className="mt-5 text-[10px] md:text-[11px] tracking-[0.3em] text-[#888] uppercase">
+            <span style={{ color: ORANGE }}>▸</span> presents
+          </div>
+
+          {/* イベントタイトル */}
           <h1
-            className="text-2xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight mb-4 text-[#E8E8E8]"
+            className="text-2xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight mt-6 mb-4 text-[#E8E8E8]"
           >
             {event.title}
           </h1>
