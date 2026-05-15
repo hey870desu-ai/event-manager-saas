@@ -1190,6 +1190,32 @@ useEffect(() => {
             {formData.theme === 'claude' && <div className="absolute top-2 right-2 text-[#F08856]"><CheckCircle size={16}/></div>}
           </label>
 
+          {/* 10. Executive（黒+ゴールド / コンサル・経営者塾） */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'executive'
+              ? 'bg-[#0A0A0A] border-[#C9A961] shadow-[0_0_15px_rgba(201,169,97,0.3)]'
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="executive" checked={formData.theme === 'executive'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-[#0A0A0A] border border-[#C9A961]/40 rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner relative overflow-hidden">
+               <div className="flex items-center gap-2 absolute top-2">
+                 <span className="h-px w-6 bg-[#C9A961]"/>
+                 <span className="text-[7px] tracking-[0.3em] text-[#C9A961] uppercase font-serif">Executive</span>
+                 <span className="h-px w-6 bg-[#C9A961]"/>
+               </div>
+               <div className="w-2/3 h-1 bg-[#C9A961]/40 rounded-full mt-4"/>
+               <div className="w-1/2 h-1 bg-[#C9A961]/20 rounded-full"/>
+               <span className="absolute -bottom-1 -left-1 w-2 h-2 border-t border-l border-[#C9A961]/0"/>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'executive' ? 'text-[#C9A961]' : 'text-slate-300'}`}>Executive（黒×ゴールド）</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">コンサル・経営者塾・高単価セミナー</div>
+            </div>
+            {formData.theme === 'executive' && <div className="absolute top-2 right-2 text-[#C9A961]"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 

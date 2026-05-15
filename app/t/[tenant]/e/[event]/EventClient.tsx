@@ -14,6 +14,7 @@ import LPLayout from "@/components/templates/LPLayout";
 import MedicalLayout from "@/components/templates/MedicalLayout";
 import NatureLayout from "@/components/templates/NatureLayout";
 import ClaudeCodeLayout from "@/components/templates/ClaudeCodeLayout";
+import ExecutiveLayout from "@/components/templates/ExecutiveLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -87,6 +88,11 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
   // ★Claude Code テーマ（ターミナル風 / ダーク+オレンジ）
   if (theme === "claude") {
     return <ClaudeCodeLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★Executive テーマ（黒+ゴールド / コンサル・経営者塾）
+  if (theme === "executive") {
+    return <ExecutiveLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
 
   // ★デフォルト（Tech / Dark）
