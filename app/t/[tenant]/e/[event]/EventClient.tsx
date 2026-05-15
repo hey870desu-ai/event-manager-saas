@@ -15,6 +15,7 @@ import MedicalLayout from "@/components/templates/MedicalLayout";
 import NatureLayout from "@/components/templates/NatureLayout";
 import ClaudeCodeLayout from "@/components/templates/ClaudeCodeLayout";
 import ExecutiveLayout from "@/components/templates/ExecutiveLayout";
+import EditorialLayout from "@/components/templates/EditorialLayout";
 
 // 親からデータをもらうための型定義
 type Props = {
@@ -93,6 +94,11 @@ export default function EventClient({ event, tenant, eventId, tenantId }: Props)
   // ★Executive テーマ（黒+ゴールド / コンサル・経営者塾）
   if (theme === "executive") {
     return <ExecutiveLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
+  }
+
+  // ★Editorial テーマ（雑誌風 / 洗練ビジネス）
+  if (theme === "editorial") {
+    return <EditorialLayout event={event} tenant={tenant} eventId={eventId} tenantId={tenantId} />;
   }
 
   // ★デフォルト（Tech / Dark）

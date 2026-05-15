@@ -1216,6 +1216,35 @@ useEffect(() => {
             {formData.theme === 'executive' && <div className="absolute top-2 right-2 text-[#C9A961]"><CheckCircle size={16}/></div>}
           </label>
 
+          {/* 11. Editorial（雑誌風 / 洗練ビジネス） */}
+          <label className={`
+            cursor-pointer relative rounded-xl border-2 p-4 transition-all flex flex-col gap-3
+            ${formData.theme === 'editorial'
+              ? 'bg-[#FAFAF6] border-[#B83B3B] shadow-[0_0_15px_rgba(184,59,59,0.2)]'
+              : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-600'
+            }
+          `}>
+            <input type="radio" name="theme" value="editorial" checked={formData.theme === 'editorial'} onChange={handleChange} className="hidden" />
+            <div className="w-full h-20 bg-[#FAFAF6] border border-[#D8D6D0] rounded-lg flex flex-col items-start justify-between p-2 shadow-inner relative overflow-hidden">
+              <div className="flex justify-between w-full text-[6px] font-bold text-[#1A1A1A]">
+                <span className="tracking-[0.2em]">No.024 · MAY 2026</span>
+                <span className="tracking-[0.2em]">EDITION</span>
+              </div>
+              <div className="w-full text-[9px] font-serif font-bold text-[#1A1A1A] tracking-tight leading-tight">
+                EDITORIAL
+              </div>
+              <div className="flex items-center gap-1 w-full">
+                <span className="h-[2px] w-3 bg-[#B83B3B]"/>
+                <span className="text-[6px] text-[#B83B3B] tracking-widest">FEATURE</span>
+              </div>
+            </div>
+            <div>
+               <div className={`font-bold text-sm ${formData.theme === 'editorial' ? 'text-[#B83B3B]' : 'text-slate-300'}`}>Editorial（雑誌風）</div>
+               <div className="text-[10px] text-slate-500 mt-0.5">HBR・日経ビジネス・洗練ビジネス</div>
+            </div>
+            {formData.theme === 'editorial' && <div className="absolute top-2 right-2 text-[#B83B3B]"><CheckCircle size={16}/></div>}
+          </label>
+
         </div>
       </div>
 
