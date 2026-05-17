@@ -6,6 +6,7 @@ import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newslett
 import { decrypt } from '@/lib/encryption';
 import { createWpPost, findCategoryIdBySlug } from '@/lib/wordpress-bridge';
 import { createWpPostXmlRpc } from '@/lib/wordpress-xmlrpc';
+import { scheduleKintaiBroadcastIdempotent } from '@/lib/kintai-line-bridge';
 
 const BATCH_SIZE = 100;
 
@@ -364,6 +365,90 @@ async function processCron() {
         }
       } catch (fukuErr: any) {
         console.error('福ひろばブログfetch error:', fukuErr);
+      }
+    }
+
+    // ============================================================
+    // 6. 一隅を照らす：Notion → 勤怠SaaS scheduled_messages（LINE配信予約）
+    // ============================================================
+    // Notion 「🕯️ 一隅を照らす」DB から ステータス=配信予定 の本日記事を取得し、
+    // 勤怠SaaS（kintai-saas-v1）の scheduled_messages に予約として書き込む。
+    // 実配信は勤怠SaaS の processScheduledMessages（5分毎）が担当。
+    const ichiguDbId = process.env.ICHIGU_NOTION_DATABASE_ID;
+    const ichiguNotionToken = process.env.NOTION_API_KEY;
+    const ichiguCompanyId = process.env.ICHIGU_KINTAI_COMPANY_ID;
+    const ichiguDeliveryTime = process.env.ICHIGU_DELIVERY_TIME_JST || '07:45';
+    const ichiguTestLineId = process.env.ICHIGU_TEST_LINE_USER_ID; // 設定時はこの1人にのみ配信
+    if (ichiguDbId && ichiguNotionToken && ichiguCompanyId) {
+      try {
+        // 本日JSTの 日付 と スケジュール時刻
+        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const yyyy = nowJst.getUTCFullYear();
+        const mm = String(nowJst.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(nowJst.getUTCDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        const [hh, min] = ichiguDeliveryTime.split(':').map(n => parseInt(n, 10));
+        // 配信予定時刻（JST）を UTC Date に変換
+        const scheduledAtUtc = new Date(Date.UTC(yyyy, parseInt(mm, 10) - 1, parseInt(dd, 10), hh - 9, min, 0));
+
+        const readyPages = await fetchPagesByStatus(ichiguNotionToken, ichiguDbId, '配信予定');
+        for (const page of readyPages) {
+          try {
+            const pageDateProp = page.properties?.['日付']?.date?.start;
+            // 本日分のみ処理（過去・未来分はスキップ）
+            if (!pageDateProp || pageDateProp.slice(0, 10) !== dateKey) continue;
+
+            const { title, body } = await fetchPagePlainText(ichiguNotionToken, page);
+            if (!title || !body) {
+              await updatePageStatus(ichiguNotionToken, page.id, '保留',
+                `⚠ 配信予約失敗：タイトル or 本文が空です`);
+              continue;
+            }
+
+            // LINEメッセージは1メッセージ5000文字までだが、念のため4500文字で分割
+            const MAX_LEN = 4500;
+            const segments: string[] = [];
+            let remaining = body;
+            while (remaining.length > 0 && segments.length < 3) {
+              if (remaining.length <= MAX_LEN) {
+                segments.push(remaining);
+                break;
+              }
+              // 改行で分割を試みる
+              const cutAt = remaining.lastIndexOf('\n', MAX_LEN);
+              const cut = cutAt > MAX_LEN / 2 ? cutAt : MAX_LEN;
+              segments.push(remaining.slice(0, cut));
+              remaining = remaining.slice(cut).trimStart();
+            }
+            // タイトルを先頭メッセージの冒頭に付与
+            if (segments.length > 0) {
+              segments[0] = `🕯️ ${title}\n\n${segments[0]}`;
+            }
+
+            const result = await scheduleKintaiBroadcastIdempotent({
+              companyId: ichiguCompanyId,
+              messages: segments,
+              targetLineUserIds: ichiguTestLineId ? [ichiguTestLineId] : [],
+              scheduledAt: scheduledAtUtc,
+              dateKey,
+              source: 'ichigu-daily',
+            });
+
+            const note = result.alreadyExists
+              ? `🔁 既に本日分の配信予約あり（schedule_id: ${result.scheduleId}）`
+              : `✅ 配信予約完了（${ichiguTestLineId ? 'テスト1名' : '全員'}・配信予定: ${ichiguDeliveryTime} JST・schedule_id: ${result.scheduleId}）`;
+            await updatePageStatus(ichiguNotionToken, page.id, '配信済み', note);
+            totalProcessed++;
+          } catch (perPageErr: any) {
+            console.error(`一隅を照らす予約失敗 (page=${page.id}):`, perPageErr);
+            try {
+              await updatePageStatus(ichiguNotionToken, page.id, '保留',
+                `⚠ 配信予約失敗：${perPageErr?.message || 'unknown error'}`);
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (ichiguErr: any) {
+        console.error('一隅を照らすfetch error:', ichiguErr);
       }
     }
 
