@@ -84,16 +84,18 @@ export async function GET(request: Request) {
   if (ichiguCompanyId && kintaiSA) {
     try {
       const kdb = getKintaiDb();
-      // 最新の scheduled_messages（source=ichigu-daily）
+      // 最新の scheduled_messages（client-side で source filter、index 不要）
       const schedSnap = await kdb
         .collection("companies")
         .doc(ichiguCompanyId)
         .collection("scheduled_messages")
-        .where("source", "==", "ichigu-daily")
         .orderBy("createdAt", "desc")
-        .limit(3)
+        .limit(20)
         .get();
-      const latest = schedSnap.docs.map((d) => {
+      const ichiguDocs = schedSnap.docs.filter(
+        (d) => (d.data() as any).source === "ichigu-daily",
+      ).slice(0, 5);
+      const latest = ichiguDocs.map((d) => {
         const data: any = d.data();
         return {
           id: d.id,
