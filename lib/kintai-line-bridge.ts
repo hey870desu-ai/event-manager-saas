@@ -75,12 +75,15 @@ export async function findExistingKintaiBroadcast(opts: {
   scheduledDateKey: string; // YYYY-MM-DD（JST）
 }): Promise<{ id: string } | null> {
   const db = getKintaiDb();
+  // status=pending のみを「既存」とみなす。sent/cancelled は重複扱いせず
+  // 新規予約を作る（テスト再実行や1日複数回配信を許容）。
   const snap = await db
     .collection("companies")
     .doc(opts.companyId)
     .collection("scheduled_messages")
     .where("source", "==", opts.source)
     .where("dateKey", "==", opts.scheduledDateKey)
+    .where("status", "==", "pending")
     .limit(1)
     .get();
   if (snap.empty) return null;
