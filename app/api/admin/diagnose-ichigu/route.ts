@@ -4,6 +4,7 @@
 // 値は返さない（boolean と件数だけ）。
 import { NextResponse } from "next/server";
 import { fetchPagesByStatus } from "@/lib/notion-bridge";
+import { getKintaiDb } from "@/lib/kintai-line-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -78,10 +79,88 @@ export async function GET(request: Request) {
   const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const dateKey = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, "0")}-${String(nowJst.getUTCDate()).padStart(2, "0")}`;
 
+  // 勤怠SaaS 側を直接覗く（重要）
+  let kintaiCheck: any = { tried: false };
+  if (ichiguCompanyId && kintaiSA) {
+    try {
+      const kdb = getKintaiDb();
+      // 最新の scheduled_messages（source=ichigu-daily）
+      const schedSnap = await kdb
+        .collection("companies")
+        .doc(ichiguCompanyId)
+        .collection("scheduled_messages")
+        .where("source", "==", "ichigu-daily")
+        .orderBy("createdAt", "desc")
+        .limit(3)
+        .get();
+      const latest = schedSnap.docs.map((d) => {
+        const data: any = d.data();
+        return {
+          id: d.id,
+          status: data.status,
+          sentCount: data.sentCount ?? null,
+          dateKey: data.dateKey,
+          targetCount: (data.targetLineUserIds || []).length,
+          targetFirst: data.targetLineUserIds?.[0]
+            ? data.targetLineUserIds[0].slice(0, 6) + "..." + data.targetLineUserIds[0].slice(-4)
+            : null,
+        };
+      });
+      // ICHIGU_TEST_LINE_USER_ID と users.lineUserId が一致するユーザーがいるか
+      const testId = ichiguTestLineId;
+      let matchedUserCount = 0;
+      let userCount = 0;
+      let testIdMaskedForCompare: string | null = null;
+      if (testId) {
+        const userSnap = await kdb
+          .collection("users")
+          .where("companyId", "==", ichiguCompanyId)
+          .get();
+        userCount = userSnap.size;
+        userSnap.forEach((doc) => {
+          const u: any = doc.data();
+          if (u.lineUserId === testId) matchedUserCount++;
+        });
+        testIdMaskedForCompare = testId.slice(0, 6) + "..." + testId.slice(-4);
+      }
+      // 全ユーザーの lineUserId プレフィックス一覧（先頭6文字＋末尾4文字）
+      const userLineIdsSample: string[] = [];
+      const userSnap2 = await kdb
+        .collection("users")
+        .where("companyId", "==", ichiguCompanyId)
+        .get();
+      userSnap2.forEach((doc) => {
+        const u: any = doc.data();
+        if (u.lineUserId) {
+          userLineIdsSample.push(
+            u.lineUserId.slice(0, 6) + "..." + u.lineUserId.slice(-4) + " (" + u.lineUserId.length + ")",
+          );
+        }
+      });
+      kintaiCheck = {
+        tried: true,
+        ok: true,
+        latestScheduled: latest,
+        usersWithCompanyId: userCount,
+        usersWithLineUserId: userLineIdsSample.length,
+        userLineIdsMasked: userLineIdsSample.slice(0, 10),
+        testIdMaskedForCompare,
+        matchedUserCount,
+      };
+    } catch (e: any) {
+      kintaiCheck = {
+        tried: true,
+        ok: false,
+        error: e?.message || String(e),
+      };
+    }
+  }
+
   return NextResponse.json({
     serverTime: new Date().toISOString(),
     jstDateKey: dateKey,
     env: envCheck,
     notion: notionCheck,
+    kintai: kintaiCheck,
   });
 }
