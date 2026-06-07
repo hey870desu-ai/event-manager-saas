@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-const resend = new Resend(process.env.RESEND_API_KEY);
 import { adminDb } from '@/lib/firebase-admin';
+import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 
 // 🗓️ GoogleカレンダーURL生成
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
@@ -90,7 +89,8 @@ export async function POST(request: Request) {
     const brandColor = tData?.themeColor || "#3b82f6";
     const logoUrl = tData?.logoUrl || "";
     const homeUrl = tData?.url || "#";
-    const replyTo = tData?.ownerEmail || process.env.GMAIL_USER;
+    const replyTo = eData?.contactEmail || tData?.ownerEmail || "info@event-manager.app";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
 
     // カレンダー用情報の準備
     const eventTitle = eData?.title || "イベント";
@@ -138,19 +138,15 @@ export async function POST(request: Request) {
       ? `<img src="${logoUrl}" alt="${senderName}" style="max-width: 180px; max-height: 50px; object-fit: contain;">`
       : `<span style="${styles.logoText}">${senderName}</span>`;
 
-    // 5. ループ送信
-    let sentCount = 0;
-    const errors: any[] = [];
-
-    // ★修正: reservationsSnap.docs を any[] として扱う
+    // 5. メール組み立て（送信は sendBatchEmail に集約: optout除外・レート制御・List-Unsubscribe対応）
     const docs = reservationsSnap.docs as any[];
 
-    const sendPromises = docs.map(async (doc) => {
+    const emails = docs.map((doc) => {
       const rData = doc.data();
       const userEmail = rData.email;
       const userName = rData.name || "お客様";
 
-      if (!userEmail) return;
+      if (!userEmail) return null;
 
       // 変数置換
       const personalizedMessage = message
@@ -187,7 +183,6 @@ export async function POST(request: Request) {
                   <div style="${styles.value}">${eventDate} ${eventTime}</div>
                   <div style="${styles.label}">会場</div>
                   <div style="${styles.value}">${venueName}</div>
-                  {/* --- ここから追加：お問い合わせ窓口 --- */}
                   <div style="${styles.contactBox}">
                     <div style="${styles.label}">イベントに関するお問い合わせ</div>
                     <div style="${styles.value}">
@@ -196,7 +191,6 @@ export async function POST(request: Request) {
                       ${contactPhone ? `<span style="font-weight: normal; font-size: 13px;">📞 ${contactPhone}</span>` : ''}
                     </div>
                   </div>
-                  {/* --- ここまで追加 --- */}
                   <a href="${calendarUrl}" target="_blank" style="${styles.calendarLink}">
                     📅 Googleカレンダーに追加
                   </a>
@@ -207,6 +201,9 @@ export async function POST(request: Request) {
             <div style="${styles.footer}">
               <p style="margin: 0; font-weight: bold;">${senderName}</p>
               ${homeUrl !== '#' ? `<p style="margin-top: 10px;"><a href="${homeUrl}" style="${styles.footerLink}">公式サイト</a></p>` : ''}
+              <p style="margin-top: 15px;">
+                <a href="${appUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}" style="color: #94a3b8; text-decoration: underline;">配信停止はこちら</a>
+              </p>
               <p style="margin-top: 20px; opacity: 0.5;">© ${new Date().getFullYear()} ${senderName}.</p>
             </div>
           </div>
@@ -214,25 +211,34 @@ export async function POST(request: Request) {
         </html>
       `;
 
+      return {
+        from: `"${senderName}" <info@event-manager.app>`,
+        to: userEmail,
+        replyTo: replyTo,
+        subject: subject,
+        html: htmlContent,
+        headers: buildUnsubscribeHeaders(userEmail),
+      };
+    }).filter(Boolean) as any[];
+
+    // Resend batch APIは100件/回が上限のためチャンク分割して送信
+    const BATCH_SIZE = 100;
+    let sentCount = 0;
+    let errorCount = 0;
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const chunk = emails.slice(i, i + BATCH_SIZE);
       try {
-        // ✅ ここを Resend に書き換え！
-        const { error } = await resend.emails.send({
-          from: `${senderName} <info@event-manager.app>`,
-          to: [userEmail],
-          replyTo: replyTo, // 波線対策でキャメルケースにしてあるっぺ
-          subject: subject,
-          html: htmlContent,
-        });
-
-        if (error) throw error;
-        sentCount++;
+        const result = await sendBatchEmail(chunk);
+        sentCount += result.successCount;
+        errorCount += result.errorCount;
       } catch (err: any) {
-        console.error(`Failed to send to ${userEmail}:`, err);
-        errors.push({ email: userEmail, error: err.message });
+        console.error(`Broadcast batch ${Math.floor(i / BATCH_SIZE) + 1} エラー:`, err.message);
+        errorCount += chunk.length;
       }
-    });
-
-    await Promise.all(sendPromises);
+      if (i + BATCH_SIZE < emails.length) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
 
     // 6. ログ保存
     await eventRef.collection('broadcast_logs').add({
@@ -240,17 +246,25 @@ export async function POST(request: Request) {
       message,
       targetStatus,
       sentCount,
-      errorCount: errors.length,
-      errors: errors.length > 0 ? errors : null,
+      errorCount,
+      errors: null,
       sentAt: new Date(),
       sentBy: "admin"
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      sentCount, 
-      errorCount: errors.length,
-      message: `${sentCount}件の送信が完了しました` 
+    // 全件失敗を「成功」として返さない
+    if (emails.length > 0 && sentCount === 0) {
+      return NextResponse.json(
+        { success: false, sentCount, errorCount, error: 'メール送信に失敗しました（全件未送信）' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      sentCount,
+      errorCount,
+      message: `${sentCount}件の送信が完了しました`
     });
 
   } catch (error: any) {

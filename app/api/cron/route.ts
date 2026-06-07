@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { sendBatchEmail, sendEmail } from '@/lib/mailer';
+import { sendBatchEmail, sendEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatus, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
@@ -497,6 +497,7 @@ async function sendBatch(data: any) {
         to: recipient.email,
         replyTo: replyTo || "info@event-manager.app",
         subject: subject,
+        headers: buildUnsubscribeHeaders(recipient.email),
         html: `<!DOCTYPE html>
 <html lang="ja" xmlns="http://www.w3.org/1999/xhtml">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="x-apple-disable-message-reformatting"><style>body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}@supports (-webkit-touch-callout:none){.email-body{font-size:14px !important;}}@media screen and (min-width:600px){.email-body{font-size:16px !important;}}</style></head>

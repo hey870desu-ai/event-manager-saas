@@ -1,6 +1,6 @@
 // 📂 app/api/send-marketing/route.ts
 import { NextResponse } from 'next/server';
-import { sendBatchEmail } from '@/lib/mailer';
+import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 1500;
@@ -99,6 +99,7 @@ export async function POST(request: Request) {
           replyTo: replyTo || "info@event-manager.app",
           subject: subject,
           html: buildHtml(recipient, personalizedBody),
+          headers: buildUnsubscribeHeaders(recipient.email),
         };
       });
 
@@ -118,6 +119,15 @@ export async function POST(request: Request) {
     }
 
     console.log(`📊 送信結果: 成功=${successCount}, 失敗=${errorCount}, 合計=${recipients.length}`);
+
+    // 全件失敗を「成功」として返さない
+    if (recipients.length > 0 && successCount === 0) {
+      return NextResponse.json(
+        { success: false, successCount, errorCount, total: recipients.length, error: 'メール送信に失敗しました（全件未送信）' },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({ success: true, successCount, errorCount, total: recipients.length });
 
   } catch (error: any) {

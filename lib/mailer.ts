@@ -39,19 +39,63 @@ type EmailParams = {
   subject: string;
   html: string;
   replyTo?: string;
+  text?: string; // 未指定ならHTMLから自動生成（multipart/alternative化で迷惑メール判定を軽減）
+  headers?: Record<string, string>; // List-Unsubscribe等のカスタムヘッダー
 };
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
+
+// マーケティング系メール用: Gmail/Yahoo一括送信者要件のワンクリック配信停止ヘッダー（RFC 8058）
+export function buildUnsubscribeHeaders(email: string): Record<string, string> {
+  return {
+    'List-Unsubscribe': `<${APP_URL}/api/optout?email=${encodeURIComponent(email)}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
+}
+
+// HTMLからtext/plainパートを生成（HTMLオンリーはスパムスコア悪化要因）
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|table|h[1-6]|li)>/gi, '\n')
+    .replace(/<a\s[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_, url, label) => {
+      const t = label.replace(/<[^>]+>/g, '').trim();
+      return t ? `${t} ( ${url} )` : url;
+    })
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export async function sendEmail(params: EmailParams) {
+  const text = params.text || htmlToText(params.html);
+  // List-Unsubscribe等のカスタムヘッダーが必要なメールはSES v1経路に流さない（ヘッダーが黙って消えるため）
+  const hasCustomHeaders = !!(params.headers && Object.keys(params.headers).length > 0);
+
   // SES優先
-  if (USE_SES && sesClient) {
+  if (USE_SES && sesClient && !hasCustomHeaders) {
     const toAddresses = Array.isArray(params.to) ? params.to : [params.to];
     const senderName = extractName(params.from);
+    // 注: SES v1 SendEmailCommandはカスタムヘッダー非対応（List-Unsubscribeを使うならSESv2移行が必要）
     await sesClient.send(new SendEmailCommand({
       Source: `${senderName} <${SES_FROM}>`,
       Destination: { ToAddresses: toAddresses },
       Message: {
         Subject: { Data: params.subject, Charset: 'UTF-8' },
-        Body: { Html: { Data: params.html, Charset: 'UTF-8' } },
+        Body: {
+          Html: { Data: params.html, Charset: 'UTF-8' },
+          Text: { Data: text, Charset: 'UTF-8' },
+        },
       },
       ReplyToAddresses: params.replyTo ? [params.replyTo] : undefined,
     }));
@@ -60,13 +104,16 @@ export async function sendEmail(params: EmailParams) {
 
   // Resend
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: params.from,
       to: Array.isArray(params.to) ? params.to : [params.to],
       subject: params.subject,
       html: params.html,
+      text,
       replyTo: params.replyTo,
-    } as any);
+      headers: params.headers,
+    });
+    if (error) throw new Error(error.message);
     return { provider: 'resend' };
   } catch (err: any) {
     console.error('Resend送信エラー:', err?.message);
@@ -79,7 +126,9 @@ export async function sendEmail(params: EmailParams) {
       to: Array.isArray(params.to) ? params.to.join(',') : params.to,
       subject: params.subject,
       html: params.html,
+      text,
       replyTo: params.replyTo,
+      headers: params.headers,
     });
     return { provider: 'gmail' };
   }
@@ -104,8 +153,11 @@ export async function sendBatchEmail(emails: EmailParams[]) {
   });
   if (filtered.length === 0) return { successCount: 0, errorCount: 0, provider: 'skipped' };
 
+  // List-Unsubscribe等のカスタムヘッダーが必要なバッチはSES v1経路に流さない（ヘッダーが黙って消えるため）
+  const needsCustomHeaders = filtered.some(e => e.headers && Object.keys(e.headers).length > 0);
+
   // SES優先
-  if (USE_SES && sesClient) {
+  if (USE_SES && sesClient && !needsCustomHeaders) {
     for (const email of filtered) {
       try {
         const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
@@ -115,7 +167,10 @@ export async function sendBatchEmail(emails: EmailParams[]) {
           Destination: { ToAddresses: toAddresses },
           Message: {
             Subject: { Data: email.subject, Charset: 'UTF-8' },
-            Body: { Html: { Data: email.html, Charset: 'UTF-8' } },
+            Body: {
+              Html: { Data: email.html, Charset: 'UTF-8' },
+              Text: { Data: email.text || htmlToText(email.html), Charset: 'UTF-8' },
+            },
           },
           ReplyToAddresses: email.replyTo ? [email.replyTo] : undefined,
         }));
@@ -129,43 +184,35 @@ export async function sendBatchEmail(emails: EmailParams[]) {
   }
 
   // Resend
+  // 注: バッチはGmailへフォールバックしない。
+  //     from が GMAIL_USER（gmail.com）に書き換わって到達性がむしろ悪化する上、
+  //     1チャンク100件がGmailの1日送信上限を一気に消費するため。失敗は件数として返す。
   try {
-    await resend.batch.send(
+    const { data, error } = await resend.batch.send(
       filtered.map(e => ({
         from: e.from,
         to: Array.isArray(e.to) ? e.to : [e.to],
         subject: e.subject,
         html: e.html,
-        reply_to: e.replyTo,
-      })) as any
+        text: e.text || htmlToText(e.html),
+        replyTo: e.replyTo,
+        headers: e.headers,
+      })),
+      // permissive: 1件の不正アドレスでチャンク全体が拒否されるのを防ぎ、失敗分だけ errors で受け取る
+      { batchValidation: 'permissive' }
     );
-    successCount = filtered.length;
+    if (error) throw new Error(error.message);
+    const failures: { index: number; message: string }[] = (data as any)?.errors || [];
+    if (failures.length > 0) {
+      console.error('Resend Batch 部分失敗:', failures.map(f => `[${f.index}] ${f.message}`).join(' / '));
+    }
+    errorCount += failures.length;
+    successCount = filtered.length - failures.length;
     return { successCount, errorCount, provider: 'resend' };
   } catch (err: any) {
     console.error('Resend Batch送信エラー:', err?.message);
+    return { successCount, errorCount: errorCount + filtered.length, provider: 'resend-failed' };
   }
-
-  // Gmail フォールバック
-  if (gmailTransport) {
-    for (const email of filtered) {
-      try {
-        await gmailTransport.sendMail({
-          from: `${extractName(email.from)} <${process.env.GMAIL_USER}>`,
-          to: Array.isArray(email.to) ? email.to.join(',') : email.to,
-          subject: email.subject,
-          html: email.html,
-          replyTo: email.replyTo,
-        });
-        successCount++;
-        await new Promise(r => setTimeout(r, 500));
-      } catch {
-        errorCount++;
-      }
-    }
-    return { successCount, errorCount, provider: 'gmail' };
-  }
-
-  throw new Error('バッチメール送信に失敗しました（全プロバイダー）');
 }
 
 // オプトアウト済みのメールアドレスをフィルタリング

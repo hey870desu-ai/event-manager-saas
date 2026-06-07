@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendBatchEmail } from '@/lib/mailer';
+import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 
 const FONT_MAP: Record<string, string> = {
   sans: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif",
@@ -191,9 +191,12 @@ export async function POST(req: Request) {
     if (tenantData.facebookUrl) snsIcons.push(`<a href="${tenantData.facebookUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" width="32" height="32" style="border-radius:8px;"></a>`);
 
     // 🏆 一人ひとりに個別のメールを作成（Batch処理だばい！）
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
+    const replyTo = tenantData.contactEmail || tenantData.ownerEmail || undefined;
+
     const batchRequests = recipients.map((email: string) => {
       // 🎯 塙さんが見せてくれた「配信停止リンク」をメアドごとに生成するぞい！
-      const unsubscribeUrl = `https://event-manager.app/unsubscribe?email=${email}`;
+      const unsubscribeUrl = `${appUrl}/unsubscribe?email=${encodeURIComponent(email)}`;
 
       return {
         from: `"${senderName} ｜ 絆太郎リッチメールシステム" <info@event-manager.app>`,
@@ -274,10 +277,38 @@ export async function POST(req: Request) {
       to: r.to[0],
       subject: r.subject,
       html: r.html,
+      replyTo,
+      headers: buildUnsubscribeHeaders(r.to[0]),
     }));
 
-    const result = await sendBatchEmail(emails);
-    return NextResponse.json({ success: true, ...result });
+    // Resend batch APIは100件/回が上限のためチャンク分割して送信
+    const BATCH_SIZE = 100;
+    let successCount = 0;
+    let errorCount = 0;
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const chunk = emails.slice(i, i + BATCH_SIZE);
+      try {
+        const result = await sendBatchEmail(chunk);
+        successCount += result.successCount;
+        errorCount += result.errorCount;
+      } catch (err: any) {
+        console.error(`Newsletter batch ${Math.floor(i / BATCH_SIZE) + 1} エラー:`, err.message);
+        errorCount += chunk.length;
+      }
+      if (i + BATCH_SIZE < emails.length) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    // 全件失敗を「成功」として返さない（管理画面が response.ok しか見ないため）
+    if (emails.length > 0 && successCount === 0) {
+      return NextResponse.json(
+        { success: false, successCount, errorCount, error: 'メール送信に失敗しました（全件未送信）' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true, successCount, errorCount });
   } catch (error: any) {
     console.error("Resend Batch API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
