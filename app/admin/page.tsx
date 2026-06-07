@@ -3,7 +3,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
@@ -160,6 +160,35 @@ export default function AdminDashboard() {
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
   const [cancelledParticipants, setCancelledParticipants] = useState<ReservationData[]>([]);
+  const [participantSortMode, setParticipantSortMode] = useState<'reception' | 'kana'>('reception');
+
+  const sortedParticipants = useMemo(() => {
+    if (participantSortMode === 'kana') {
+      // ふりがなはカスタム項目（customAnswers）として収集されるため、
+      // 「ふりがな」系ラベルの回答をソートキーに使う（無ければ氏名でフォールバック）
+      const isKanaLabel = (label: string) => /ふりがな|フリガナ|よみがな|ヨミガナ|読み仮名|かな|カナ|kana/i.test(label);
+      const keyOf = (p: any): string => {
+        const ca = p?.customAnswers;
+        if (Array.isArray(ca)) {
+          // 新形式（配列）
+          const found = ca.find((a: any) => a?.label && isKanaLabel(String(a.label)));
+          const v = found && (Array.isArray(found.value) ? found.value[0] : found.value);
+          if (v && String(v).trim()) return String(v).trim();
+        } else if (ca && typeof ca === 'object') {
+          // 旧形式（オブジェクト）
+          const key = Object.keys(ca).find((k) => isKanaLabel(k));
+          const raw = key != null ? ca[key] : null;
+          const v = Array.isArray(raw) ? raw[0] : raw;
+          if (v && String(v).trim()) return String(v).trim();
+        }
+        return String(p?.name || '').trim();
+      };
+      return [...participants].sort((a, b) =>
+        keyOf(a).localeCompare(keyOf(b), 'ja')
+      );
+    }
+    return participants;
+  }, [participants, participantSortMode]);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
   
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -1352,7 +1381,31 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
             </div>
             
             <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex flex-wrap gap-2 justify-between items-center shrink-0">
-               <div className="flex gap-2">
+               <div className="flex gap-2 items-center flex-wrap">
+                 <div className="inline-flex bg-slate-800 rounded-lg p-0.5 border border-slate-700" role="group" aria-label="並び替え">
+                   <button
+                     onClick={() => setParticipantSortMode('reception')}
+                     className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+                       participantSortMode === 'reception'
+                         ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow'
+                         : 'text-slate-400 hover:text-white'
+                     }`}
+                     title="申込が早い順"
+                   >
+                     受付順
+                   </button>
+                   <button
+                     onClick={() => setParticipantSortMode('kana')}
+                     className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${
+                       participantSortMode === 'kana'
+                         ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow'
+                         : 'text-slate-400 hover:text-white'
+                     }`}
+                     title="氏名の50音順"
+                   >
+                     あいうえお順
+                   </button>
+                 </div>
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
@@ -1377,7 +1430,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800">
-  {participants.map((p) => (
+  {sortedParticipants.map((p) => (
     <tr key={p.id} className={p.checkedIn ? 'bg-emerald-900/10' : ''}>
       {/* 1. チェックボックス */}
       <td className="p-2 text-center align-middle">
