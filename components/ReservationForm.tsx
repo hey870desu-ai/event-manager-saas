@@ -58,6 +58,11 @@ export default function ReservationForm({
     ...f,
     id: (f.id && /^[a-zA-Z0-9_-]+$/.test(f.id)) ? f.id : `cf_${i}_${Math.random().toString(36).substring(2, 7)}`,
   }));
+  // 「ふりがな」項目は基本情報（お名前の隣）に表示するため抽出し、カスタム質問ループからは除外する。
+  // データ保存(customAnswers)は customFields 全体を使うので、保存先・ソート・CSVは従来どおり。
+  const isKanaLabel = (label: string) => /ふりがな|フリガナ|よみがな|ヨミガナ|読み仮名|かな|カナ/i.test(label || "");
+  const furiganaField = customFields.find(f => f.type === "text" && isKanaLabel(f.label || ""));
+  const otherFields = furiganaField ? customFields.filter(f => f !== furiganaField) : customFields;
 
   // --- 🏆 【2段目】次に「状態（State）」を準備するぞい ---
   const [currentCount, setCurrentCount] = useState(0);
@@ -401,33 +406,63 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     <div className="space-y-6">
                       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">基本情報</h3>
                       
-                      {/* お名前 & メールアドレス */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><User size={14} style={{color: themeColor}}/> お名前 <span className="text-red-400">*</span></label>
-                          <input type="text" name="name" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Mail size={14} style={{color: themeColor}}/> メールアドレス <span className="text-red-400">*</span></label>
-                          <input type="email" name="email" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
-                        </div>
-                      </div>
+                      {furiganaField ? (
+                        <>
+                          {/* お名前 & ふりがな（横並び） */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><User size={14} style={{color: themeColor}}/> お名前 <span className="text-red-400">*</span></label>
+                              <input type="text" name="name" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><User size={14} style={{color: themeColor}}/> {furiganaField.label || "ふりがな"} {furiganaField.required && <span className="text-red-400">*</span>}</label>
+                              <input type="text" name={furiganaField.id} required={furiganaField.required} placeholder="例：やまだ はなこ" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                          </div>
 
-                      {/* 電話番号のみ（会社名は削除） */}
-                      <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Phone size={14} style={{color: themeColor}}/> 電話番号 <span className="text-red-400">*</span></label>
-                          <input type="tel" name="phone" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
-                      </div>
+                          {/* メールアドレス & 電話番号（横並び） */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Mail size={14} style={{color: themeColor}}/> メールアドレス <span className="text-red-400">*</span></label>
+                              <input type="email" name="email" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Phone size={14} style={{color: themeColor}}/> 電話番号 <span className="text-red-400">*</span></label>
+                              <input type="tel" name="phone" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* お名前 & メールアドレス */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><User size={14} style={{color: themeColor}}/> お名前 <span className="text-red-400">*</span></label>
+                              <input type="text" name="name" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Mail size={14} style={{color: themeColor}}/> メールアドレス <span className="text-red-400">*</span></label>
+                              <input type="email" name="email" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                            </div>
+                          </div>
+
+                          {/* 電話番号のみ（会社名は削除） */}
+                          <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><Phone size={14} style={{color: themeColor}}/> 電話番号 <span className="text-red-400">*</span></label>
+                              <input type="tel" name="phone" required className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
+                          </div>
+                        </>
+                      )}
                     </div>
                     {/* ▲▲▲ 修正完了 ▲▲▲ */}
 
                     {/* ▼▼▼ 修正版: 垣根（線と文字）を完全に削除 ▼▼▼ */}
-                    {customFields.length > 0 && (
+                    {otherFields.length > 0 && (
                       <div className="space-y-6 mt-6">
-                        
+
                         {/* 🗑️ ここにあった <h3>アンケート</h3> と border を削除しました */}
 
-                        {customFields.map((field) => (
+                        {otherFields.map((field) => (
                           <div key={field.id} className="space-y-3">
                             {field.type !== "link" && (
                               <label className="text-sm font-medium text-slate-300 flex items-start gap-1.5">
