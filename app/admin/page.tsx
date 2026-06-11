@@ -93,6 +93,29 @@ ${orgName}
 --------------------------------------------------
 `
   },
+  survey: {
+    label: "事後アンケート依頼",
+    subject: "【アンケートのお願い】ご参加ありがとうございました",
+    body: (eventTitle: string, orgName: string) => `
+${eventTitle}
+参加者各位
+
+この度は、ご参加いただき誠にありがとうございました。
+${orgName}です。
+
+今後のより良いイベント運営のため、ぜひ事後アンケートにご協力ください。
+下のボタンから1分ほどでご回答いただけます。
+
+{survey}
+
+いただいたご意見は、今後の活動に活かしてまいります。
+ご協力のほど、よろしくお願いいたします。
+
+--------------------------------------------------
+${orgName}
+--------------------------------------------------
+`
+  },
   custom: {
     label: "手動入力（空紙）",
     subject: "",
@@ -620,7 +643,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     
     if (key === 'remind' || key === 'ticket') {
        if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('all');
-    } else if (key === 'thankyou') {
+    } else if (key === 'thankyou' || key === 'survey') {
        if (mailTargetType !== 'individual' && mailTargetType !== 'selected') setMailTargetType('checked-in');
     }
   };
@@ -660,6 +683,8 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
           recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })),
           subject: mailSubject,
           body: mailBody,
+          tenantId: currentEventForList.tenantId || "",
+          eventId: currentEventForList.id,
           eventTitle: currentEventForList.title,
           eventDate: currentEventForList.date,
           venueName: currentEventForList.venueName || "詳細は本文をご確認ください",
@@ -2008,6 +2033,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                <button onClick={()=>applyTemplate('thankyou')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">御礼 (受付済)</button>
                <button onClick={()=>applyTemplate('remind')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">リマインド (全員)</button>
                <button onClick={()=>applyTemplate('ticket')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-orange-400 border-orange-500/50 hover:bg-slate-800 hover:text-orange-300 transition-colors">🎟️ チケット (QR)</button>
+               <button onClick={()=>applyTemplate('survey')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-blue-500/50 text-xs text-blue-400 hover:bg-slate-800 hover:text-blue-300 transition-colors">📝 事後アンケート</button>
                <button onClick={()=>applyTemplate('custom')} className="whitespace-nowrap px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">空紙</button>
              </div>
 

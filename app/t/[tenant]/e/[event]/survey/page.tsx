@@ -60,6 +60,12 @@ export default function SurveyPage() {
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventId) return;
+    // 星評価が未選択なら、グレーボタンで黙らせず「何をすべきか」を伝えて上部へ誘導
+    if (rating === 0) {
+      alert("一番上の「本日のイベントはいかがでしたか？」で、星を1つタップして選んでください。");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -139,7 +145,10 @@ const handleSubmit = async (e: React.FormEvent) => {
           
           {/* 1. 全体的な満足度 (固定) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <label className="block text-sm font-bold text-slate-300 mb-4 text-center">本日のイベントはいかがでしたか？</label>
+            <label className="block text-sm font-bold text-slate-300 mb-4 text-center">
+              本日のイベントはいかがでしたか？
+              <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded align-middle">必須</span>
+            </label>
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -230,14 +239,14 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* 3. 送信ボタン */}
           <div className="pt-4">
-             <button 
-               type="submit" 
-               disabled={submitting || rating === 0} 
+             <button
+               type="submit"
+               disabled={submitting}
                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
              >
                {submitting ? "送信中..." : <><Send size={20}/> アンケートを送信する</>}
              </button>
-             {rating === 0 && <p className="text-center text-xs text-red-400 mt-2">※星評価を選択してください</p>}
+             {rating === 0 && <p className="text-center text-xs text-amber-400 mt-2">※一番上で星を選んでから送信してください</p>}
           </div>
         </form>
       </main>

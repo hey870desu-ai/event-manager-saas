@@ -21,12 +21,29 @@ function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { 
-       recipients, subject, body: baseBody, 
+    const {
+       recipients, subject, body: baseBody,
        eventTitle, eventDate, venueName,
        tenantName, senderName,
-       scheduledAt, contactEmail, replyTo 
+       scheduledAt, contactEmail, replyTo,
+       tenantId, eventId,
     } = body;
+
+    // 事後アンケートのURL（本文に {survey} があれば回答ボタンに置換）
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.event-manager.app';
+    // アンケートページは eventId だけで解決するため、tenantId 欠落時も 'default' で有効なURLになる
+    const surveyUrl = eventId
+      ? `${baseUrl}/t/${tenantId || 'default'}/e/${eventId}/survey`
+      : '';
+    const surveyHtml = surveyUrl ? `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 30px 0;">
+<tr><td align="center">
+<a href="${surveyUrl}" target="_blank" style="display: inline-block; background: #3b82f6; color: #ffffff; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px;">アンケートに回答する</a>
+<p style="margin: 12px 0 0; font-size: 11px; color: #94a3b8;">ボタンが押せない場合は次のURLをご利用ください<br>${surveyUrl}</p>
+</td></tr>
+</table>` : '';
+    // {survey} を全受信者共通で置換（予約配信・即時配信どちらにも反映）
+    const bodyWithSurvey = String(baseBody || '').replace(/\{survey\}/g, surveyHtml);
 
     // 🏆 【名前の修正ロジック】Firestoreのデータ（CARE DESIGN WORKS）を最優先にするぞい
     const rawName = tenantName || senderName || "CARE DESIGN WORKS";
@@ -38,7 +55,7 @@ export async function POST(request: Request) {
     // 🅰️ 予約配信ロジック（そのまま維持）
     if (scheduledAt) {
       await adminDb.collection('mail_queue').add({
-        recipients, subject, body: baseBody, senderName: headerForEmail, tenantName: senderForInbox,
+        recipients, subject, body: bodyWithSurvey, senderName: headerForEmail, tenantName: senderForInbox,
         eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
         scheduledAt: new Date(scheduledAt), status: 'pending', createdAt: new Date(),
       });
@@ -49,7 +66,7 @@ export async function POST(request: Request) {
     const calendarUrl = createGoogleCalendarUrl(`【${headerForEmail}】${eventTitle}`, eventDate || "", "13:00", venueName || "");
 
     for (const recipient of recipients) {
-      let personalBody = baseBody;
+      let personalBody = bodyWithSurvey;
 
       // 1. 本文置換
       personalBody = personalBody.replace(/{email}/g, recipient.email);

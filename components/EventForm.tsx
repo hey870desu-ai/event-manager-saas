@@ -469,6 +469,18 @@ useEffect(() => {
     setCustomFields([...customFields, ...newFields]);
   };
 
+  // ★ふりがな欄を追加（申込一覧のあいうえお順ソートに使われる）
+  // 先頭に追加して、お名前のすぐ下に表示されるようにする
+  const addFuriganaField = () => {
+    const isKanaLabel = (label: string) => /ふりがな|フリガナ|よみがな|ヨミガナ|読み仮名|かな|カナ/i.test(label || "");
+    if (customFields.some(f => isKanaLabel(f.label))) {
+      alert("すでに「ふりがな」欄が追加されています。");
+      return;
+    }
+    const furiganaField: CustomField = { id: "furigana", label: "ふりがな", type: "text", optionsString: "", required: true };
+    setCustomFields([furiganaField, ...customFields]);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -1528,6 +1540,10 @@ useEffect(() => {
                <Briefcase size={16}/> 会社名・役職を追加
              </button>
           </div>
+          {/* ★ふりがな欄を追加（申込一覧をあいうえお順で並べ替えるのに使われます） */}
+          <button type="button" onClick={addFuriganaField} className="w-full mt-3 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 hover:text-white text-sm font-bold flex items-center justify-center gap-2 transition-all">
+            <Plus size={16}/> ふりがな欄を追加（あいうえお順の並べ替え用）
+          </button>
         </div>
       </div>
 
