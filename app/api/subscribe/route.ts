@@ -3,11 +3,13 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: Request) {
   try {
-    const { email, name, tenantId } = await request.json();
+    const { email: rawEmail, name, tenantId } = await request.json();
 
-    if (!email || !tenantId) {
+    if (!rawEmail || !tenantId) {
       return NextResponse.json({ error: "メールアドレスとテナントIDは必須です" }, { status: 400 });
     }
+    // 小文字正規化（重複登録・配信停止のすり抜けを防ぐ）
+    const email = String(rawEmail).trim().toLowerCase();
 
     // テナントが存在するか確認
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();

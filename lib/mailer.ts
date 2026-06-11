@@ -217,14 +217,14 @@ export async function sendBatchEmail(emails: EmailParams[]) {
 
 // オプトアウト済みのメールアドレスをフィルタリング
 async function filterOptedOut(emails: string[]): Promise<Set<string>> {
+  // marketing_optouts を全件読み、ドキュメントIDを小文字Setに正規化してから照合する。
+  // （旧データは大文字混じりIDで登録されている場合があり、doc()のpoint-lookupだと
+  //   小文字宛先↔大文字IDがヒットせず配信停止がすり抜けるため、全件読み込み方式にする）
+  const snap = await adminDb.collection('marketing_optouts').get();
+  const blocked = new Set(snap.docs.map((d: any) => d.id.trim().toLowerCase()));
   const optedOut = new Set<string>();
-  // 10件ずつチェック（Firestoreのinクエリ上限対策）
-  for (let i = 0; i < emails.length; i += 10) {
-    const batch = emails.slice(i, i + 10);
-    for (const email of batch) {
-      const doc = await adminDb.collection('marketing_optouts').doc(email).get();
-      if (doc.exists) optedOut.add(email);
-    }
+  for (const email of emails) {
+    if (blocked.has((email || '').trim().toLowerCase())) optedOut.add(email); // 元アドレスを格納（呼び出し側 has(addr) と整合）
   }
   return optedOut;
 }

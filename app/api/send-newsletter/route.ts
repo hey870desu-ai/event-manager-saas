@@ -7,6 +7,9 @@ const FONT_MAP: Record<string, string> = {
   rounded: "'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', sans-serif",
 };
 
+// alt属性用のエスケープ（画像オフ環境でも内容が伝わるよう代替テキストに使う）
+const escAttr = (s: any) => String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 export async function POST(req: Request) {
   try {
     const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData, recipients, mainFontFamily, mainTitleFontSize, mainBodyFontSize } = await req.json();
@@ -165,7 +168,7 @@ export async function POST(req: Request) {
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                   <tr>
                     <td bgcolor="#f1f5f9" style="height: ${imgHeight}px; overflow: hidden; border-radius: 0;">
-                      <img src="${s.imageUrl}" width="100%" height="${imgHeight}" style="width: 100%; height: ${imgHeight}px; object-fit: cover; display: block; border-radius: 0;" border="0" />
+                      <img src="${s.imageUrl}" alt="${escAttr(s.title || '写真')}" width="100%" height="${imgHeight}" style="width: 100%; height: ${imgHeight}px; object-fit: cover; display: block; border-radius: 0;" border="0" />
                     </td>
                   </tr>
                   <tr>
@@ -186,9 +189,9 @@ export async function POST(req: Request) {
 
     // 🏆 SNSボタンの共通HTML
     const snsIcons: string[] = [];
-    if (tenantData.instagramUrl) snsIcons.push(`<a href="${tenantData.instagramUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" width="32" height="32" style="border-radius:8px;"></a>`);
-    if (tenantData.lineUrl) snsIcons.push(`<a href="${tenantData.lineUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968771.png" width="32" height="32" style="border-radius:8px;"></a>`);
-    if (tenantData.facebookUrl) snsIcons.push(`<a href="${tenantData.facebookUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" width="32" height="32" style="border-radius:8px;"></a>`);
+    if (tenantData.instagramUrl) snsIcons.push(`<a href="${tenantData.instagramUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/174/174855.png" alt="Instagram" width="32" height="32" style="border-radius:8px;"></a>`);
+    if (tenantData.lineUrl) snsIcons.push(`<a href="${tenantData.lineUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968771.png" alt="LINE" width="32" height="32" style="border-radius:8px;"></a>`);
+    if (tenantData.facebookUrl) snsIcons.push(`<a href="${tenantData.facebookUrl}" style="text-decoration:none; margin: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" alt="Facebook" width="32" height="32" style="border-radius:8px;"></a>`);
 
     // 🏆 一人ひとりに個別のメールを作成（Batch処理だばい！）
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
@@ -226,7 +229,7 @@ export async function POST(req: Request) {
                       </tr>
                       <tr>
                         <td style="padding: 0; font-size: 0; line-height: 0;">
-                          <img src="${mainImageUrl}" style="width: 100%; display: block;" />
+                          <img src="${mainImageUrl}" alt="${escAttr(mainTitle || 'メインビジュアル')}" style="width: 100%; display: block;" />
                         </td>
                       </tr>
                       <tr>

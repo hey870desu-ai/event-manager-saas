@@ -35,7 +35,8 @@ export type Recipient = { email: string; name: string; company?: string; phone?:
 
 export async function buildKizunaList(tenantId: string): Promise<Recipient[]> {
   const optOutSnap = await adminDb.collection('marketing_optouts').get();
-  const blocked = new Set(optOutSnap.docs.map((d: any) => d.id));
+  // 配信停止IDは小文字正規化（大文字混じりの旧データの取りこぼし防止）
+  const blocked = new Set(optOutSnap.docs.map((d: any) => d.id.trim().toLowerCase()));
 
   const map = new Map<string, Recipient & { _createdAt: number }>();
 
@@ -43,9 +44,10 @@ export async function buildKizunaList(tenantId: string): Promise<Recipient[]> {
   const manualSnap = await adminDb.collection('tenants').doc(tenantId).collection('manual_contacts').get();
   manualSnap.forEach((doc: any) => {
     const d = doc.data();
-    if (d.email && !blocked.has(d.email)) {
-      map.set(d.email, {
-        email: d.email,
+    const email = (d.email || '').trim().toLowerCase();
+    if (email && !blocked.has(email)) {
+      map.set(email, {
+        email,
         name: d.name || '',
         company: d.company || '',
         phone: d.phone || '',

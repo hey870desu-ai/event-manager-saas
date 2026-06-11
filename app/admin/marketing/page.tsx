@@ -24,7 +24,7 @@ const EMAIL_TEMPLATES = [
     id: "invite",
     label: "📅 次回イベントのご案内",
     subject: "【ご案内】次回セミナーの開催が決定しました",
-    body: `参加者各位
+    body: `{name} 様
 
 いつも大変お世話になっております。
 〇〇事務局でございます。
@@ -38,34 +38,26 @@ const EMAIL_TEMPLATES = [
 ▼詳細・お申し込みはこちら
 （ここにURLを入力）
 --------------------------------------------------
-
---------------------------------------------------
-▼配信停止をご希望の方はこちら
-https://www.event-manager.app/unsubscribe?email={email}
---------------------------------------------------`
+`
   },
   {
     id: "news",
     label: "📢 重要なお知らせ",
     subject: "【重要】サービスに関するお知らせ",
-    body: `ご利用者様各位
+    body: `{name} 様
 
 平素より当サービスをご利用いただき、誠にありがとうございます。
 
 （ここにニュース内容を入力）
 
 今後とも変わらぬご愛顧を賜りますようお願い申し上げます。
-
---------------------------------------------------
-▼配信停止をご希望の方はこちら
-https://www.event-manager.app/unsubscribe?email={email}
---------------------------------------------------`
+`
   },
   {
     id: "apology",
     label: "🙏 訂正・お詫び",
     subject: "【お詫び】配信内容の訂正について",
-    body: `お客様各位
+    body: `{name} 様
 
 いつも大変お世話になっております。
 
@@ -80,17 +72,13 @@ https://www.event-manager.app/unsubscribe?email={email}
 
 混乱を招いてしまい大変申し訳ございませんでした。
 以後、このようなことがないよう管理体制を強化してまいります。
-
---------------------------------------------------
-▼配信停止をご希望の方はこちら
-https://www.event-manager.app/unsubscribe?email={email}
---------------------------------------------------`
+`
   },
   {
     id: "season",
     label: "☀️ 季節のご挨拶",
     subject: "【ご挨拶】年末年始の営業について",
-    body: `お取引先様各位
+    body: `{name} 様
 
 拝啓
 
@@ -105,17 +93,13 @@ https://www.event-manager.app/unsubscribe?email={email}
 今年一年ご愛顧を賜りまして大変感謝申し上げますと伴に、皆様のご多幸をお祈りいたします。
 
 敬具
-
---------------------------------------------------
-▼配信停止をご希望の方はこちら
-https://www.event-manager.app/unsubscribe?email={email}
---------------------------------------------------`
+`
   },
   {
     id: "survey",
     label: "📝 アンケートのお願い",
     subject: "【お願い】サービス向上のためのアンケート",
-    body: `参加者各位
+    body: `{name} 様
 
 先日はイベントにご参加いただき、誠にありがとうございました。
 
@@ -126,11 +110,7 @@ https://www.event-manager.app/unsubscribe?email={email}
 （URLを入力）
 
 貴重なご意見をお待ちしております。
-
---------------------------------------------------
-▼配信停止をご希望の方はこちら
-https://www.event-manager.app/unsubscribe?email={email}
---------------------------------------------------`
+`
   }
 ];
 
@@ -249,6 +229,18 @@ useEffect(() => {
 
   const hasBranches = safeBranches.length > 0;
 
+  // 本文・件名を書きかけのままタブを閉じる/戻る操作をしたら警告（書きかけ消失の事故防止）
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (subject || body) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [subject, body]);
+
   const filteredEvents = events.filter(e => {
   // 1. 「全部署・全イベント」なら、文句なしで表示
   if (targetBranch === "all") return true;
@@ -274,7 +266,8 @@ const fetchTargets = async (overrides?: { branch?: string; eventId?: string }) =
 
     try {
       const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
-      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
+      // 配信停止IDは小文字正規化して照合（大文字混じりの旧データの取りこぼし防止）
+      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id.trim().toLowerCase()));
 
       // override対応のローカルフィルタ
       const localFiltered = events.filter(e => {
@@ -299,7 +292,10 @@ const fetchTargets = async (overrides?: { branch?: string; eventId?: string }) =
       const manualSnap = await getDocs(collection(db, "tenants", tenantData.id, "manual_contacts"));
       manualSnap.forEach(doc => {
         const d = doc.data();
-        customerMap.set(d.email, {
+        const email = (d.email || "").trim().toLowerCase();
+        if (!email) return; // 電話のみの名刺(card_*)はメール一斉送信の宛先に含めない
+        if (blockedEmails.has(email)) { blockedCount++; return; } // 配信停止者は除外
+        customerMap.set(email, {
           name: d.name,
           company: d.company || "",
           phone: d.phone || "",
@@ -522,7 +518,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
           const phoneKey = findKey(row, phonePatterns);
           const roleKey = findKey(row, rolePatterns);
 
-          const email = emailKey ? String(row[emailKey]).trim() : '';
+          const email = emailKey ? String(row[emailKey]).trim().toLowerCase() : '';
           return {
             email,
             name: nameKey ? String(row[nameKey]).trim() : '名前なし',
@@ -723,7 +719,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
     // チェックが入っている場合は、その人たちだけに絞り込む
     finalRecipients = recipients.filter(r => selectedEmails.has(r.email));
   } else if (isTest) {
-    finalRecipients = [{ email: user?.email || "", name: "管理者(テスト)" }];
+    // テストは「自分のアドレス」へ送るが、宛名は実際の1人目を使って本番の差し込みを再現する
+    const sampleName = recipients[0]?.name || "管理者(テスト)";
+    finalRecipients = [{ email: user?.email || "", name: sampleName }];
   }
 
   if (finalRecipients.length === 0) return alert("宛先がありません。");
@@ -764,7 +762,10 @@ const handleSaveMemo = async (email: string, memo: string) => {
     }
 
     if (!isTest) {
-      if (!confirm(`【最終確認】\n\n宛先数: ${finalRecipients.length} 名\n件名: ${subject}\n\n本当に一斉送信しますか？`)) return;
+      const targetLabel = selectedEmails.size > 0
+        ? `チェックした ${finalRecipients.length} 名`
+        : `全員（${finalRecipients.length} 名）`;
+      if (!confirm(`【最終確認】\n\n宛先: ${targetLabel}\n件名: ${subject}\n\n本当に一斉送信しますか？`)) return;
     }
 
     setSending(true);
@@ -814,6 +815,8 @@ const handleSaveMemo = async (email: string, memo: string) => {
         }),
       });
 
+      const result = await res.json().catch(() => ({} as any));
+
       if (res.ok) {
         // 即時送信のログを保存（テスト送信以外）
         if (!isTest && tenantData) {
@@ -822,6 +825,8 @@ const handleSaveMemo = async (email: string, memo: string) => {
             body,
             recipients: finalRecipients,
             recipientCount: finalRecipients.length,
+            successCount: result.successCount ?? finalRecipients.length,
+            errorCount: result.errorCount ?? 0,
             senderName: tenantData?.name || "絆太郎",
             replyTo: user?.email,
             themeColor: tenantData?.themeColor || "#3b82f6",
@@ -834,7 +839,15 @@ const handleSaveMemo = async (email: string, memo: string) => {
           const schedSnap = await getDocs(query(collection(db, "tenants", tenantData.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
           setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         }
-        alert(isTest ? "テスト送信完了！メールを確認してください。" : "一斉送信リクエスト完了！順次配信されます。");
+        if (isTest) {
+          alert("テスト送信完了！ご自身のメールを確認してください。");
+        } else {
+          const ok = result.successCount ?? finalRecipients.length;
+          const ng = result.errorCount ?? 0;
+          alert(ng > 0
+            ? `送信しました：成功 ${ok}名／失敗 ${ng}名（全${finalRecipients.length}名）`
+            : `送信しました：${ok}名へお届けしました。`);
+        }
         if (!isTest) {
           // 送信成功 → 元になった下書きは削除
           if (currentDraftId && tenantData) {
@@ -850,7 +863,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
           setCurrentDraftId(null);
         }
       } else {
-        alert("送信エラーが発生しました。");
+        alert(result.error
+          ? `送信に失敗しました：${result.error}`
+          : "送信エラーが発生しました。");
       }
     } catch (e) {
       alert("通信エラー");
@@ -1093,6 +1108,10 @@ const handleSaveMemo = async (email: string, memo: string) => {
                  <div>
                     <label className="block text-xs text-slate-500 font-bold mb-2">本文 (Body)</label>
                     <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="いつも大変お世話になっております。..." className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none font-sans leading-relaxed min-h-[450px]" />
+                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                      💡 <span className="text-slate-400 font-bold">{"{name}"}</span> と書くと相手のお名前が入ります（例：佐藤 太郎 様）。
+                      配信停止リンクはメールの末尾に自動で付くので、本文に書く必要はありません。
+                    </p>
                  </div>
               </div>
               <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1427,8 +1446,13 @@ const handleSaveMemo = async (email: string, memo: string) => {
                    </p>
                 </div>
 
-                {/* 本文の置換プレビュー */}
-                {body ? body.replace(/参加者各位/g, "佐藤 太郎 様") : "(本文が入力されていません)"}
+                {/* 本文の置換プレビュー（実際の差し込みに合わせる） */}
+                {body
+                  ? body
+                      .replace(/\{name\}/g, "佐藤 太郎")
+                      .replace(/\{email\}/g, "sample@example.com")
+                      .replace(/(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g, "佐藤 太郎 様")
+                  : "(本文が入力されていません)"}
                 
                 <div className="mt-8 pt-8 border-t border-slate-100 text-xs text-slate-400 text-center">
                   © {new Date().getFullYear()} {tenantData?.name} All rights reserved.

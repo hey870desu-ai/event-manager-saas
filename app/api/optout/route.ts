@@ -33,6 +33,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Email is required" }, { status: 400 });
     }
 
+    // 小文字正規化（登録・照合キーを全経路で統一し、配信停止のすり抜けを防ぐ）
+    email = email.trim().toLowerCase();
     await registerOptout(email, reason);
 
     return NextResponse.json({ success: true });

@@ -261,7 +261,8 @@ export default function NewsletterStudio() {
       
       // 🎯 1. まずは「配信停止」を希望した人のリストを読み込むぞい
       const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
-      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id));
+      // 配信停止IDは小文字正規化（大文字混じりの旧データの取りこぼし防止）
+      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id.trim().toLowerCase()));
       // 🎯 ここ！ループの前に箱を作るのを忘れちゃいけねぇだばい！
       const q = query(collection(db, "events"), where("tenantId", "==", tid));
       const evSnap = await getDocs(q);
@@ -272,9 +273,10 @@ export default function NewsletterStudio() {
         const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
         resSnap.forEach(rdoc => {
           const data = rdoc.data();
-          if (data.email && !blockedEmails.has(data.email)) {
-            userMap.set(data.email, {
-              email: data.email, name: data.name,
+          const email = (data.email || "").trim().toLowerCase();
+          if (email && !blockedEmails.has(email)) {
+            userMap.set(email, {
+              email, name: data.name,
               eventId: edoc.id, eventTitle: edoc.data().title
             });
           }
@@ -1026,9 +1028,9 @@ export default function NewsletterStudio() {
             <div className="flex justify-between items-end mb-2">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px]">3</div>
-                スナップ写真（最大10枚）
+                スナップ写真（最大12枚）
               </label>
-              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">現在 {snaps.length} / 10 枚</span>
+              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">現在 {snaps.length} / 12 枚</span>
             </div>
             
             <div className="flex flex-wrap gap-6 items-start">

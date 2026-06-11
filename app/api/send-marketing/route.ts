@@ -87,9 +87,14 @@ export async function POST(request: Request) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
 
       const emails = batch.map((recipient: any) => {
-        let personalizedBody = emailBody.replace(
+        // 差し込み変数: {name}→お名前 / {email}→メールアドレス（独立行で実施し二重置換を防ぐ）
+        let personalizedBody = emailBody
+          .replace(/\{name\}/g, recipient.name || 'お客様')
+          .replace(/\{email\}/g, recipient.email || '');
+        // 後方互換: 旧テンプレの「参加者各位」等は引き続き「○○様」へ
+        personalizedBody = personalizedBody.replace(
           /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g,
-          `${recipient.name} 様`
+          `${recipient.name || 'お客様'} 様`
         );
         personalizedBody = personalizedBody.replace(/\n/g, '<br>');
 

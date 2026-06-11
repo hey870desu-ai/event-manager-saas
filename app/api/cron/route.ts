@@ -484,11 +484,13 @@ async function sendBatch(data: any) {
 
     const emails = batch.map((recipient: any) => {
       let personalBody = emailBody || '';
+      // 差し込み {name}→お名前（即時送信 send-marketing と同じ挙動。予約配信で生の{name}が出るのを防ぐ）
+      personalBody = personalBody.replace(/\{name\}/g, recipient.name || 'お客様');
       personalBody = personalBody.replace(
         /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g,
         `${recipient.name || 'お客様'} 様`
       );
-      personalBody = personalBody.replace(/{email}/g, recipient.email);
+      personalBody = personalBody.replace(/\{email\}/g, recipient.email || '');
       // 改行を<br>に変換（メールクライアントのwhite-space非対応対策）
       personalBody = personalBody.replace(/\n/g, '<br>');
 

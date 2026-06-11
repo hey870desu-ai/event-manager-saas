@@ -67,9 +67,11 @@ export default function ReliableScanner() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setResult(data);
+      // 全項目を空文字で初期化してからAI結果をマージ（入力欄が動かなくなる不具合を防止）
+      setResult({ name: "", company: "", title: "", email: "", phone: "", ...data });
     } catch (err: any) {
-      alert("AI解析に失敗だっぺ。\n\n" + (err?.message || "不明なエラー"));
+      console.error("OCR analyze error:", err?.message || err);
+      alert("うまく読み取れませんでした。\n\n明るい場所で名刺全体がはっきり写るようにもう一度撮影するか、下の欄に手で入力してください。");
       reset();
     } finally {
       setLoading(false);
@@ -79,19 +81,25 @@ export default function ReliableScanner() {
   // 絆リストに保存
   const handleSave = async () => {
     if (!result || !tenantId) return;
-    if (!result.email) {
-      alert("メールアドレスがないと保存できないっぺ。入力してくんちぇ！");
+    // メールを小文字正規化（大文字違いで別人扱い→重複・配信漏れを防ぐ）
+    const normEmail = (result.email || "").trim().toLowerCase();
+    const phone = (result.phone || "").trim();
+    // メールが無くても電話があれば保存OK（介護の名刺は電話のみが多い）
+    if (!normEmail && !phone) {
+      alert("メールアドレスか電話番号のどちらかを入力してください。");
       return;
     }
 
     setSaving(true);
     try {
-      const contactRef = doc(db, "tenants", tenantId, "manual_contacts", result.email);
+      // ドキュメントID: メールがあればメール、無ければ電話ベースの一意IDにフォールバック
+      const docId = normEmail || `card_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const contactRef = doc(db, "tenants", tenantId, "manual_contacts", docId);
       await setDoc(contactRef, {
-        email: result.email,
+        email: normEmail,
         name: result.name || "",
         company: result.company || "",
-        phone: result.phone || "",
+        phone: phone,
         role: result.title || "",
         source: "business_card_scan",
         updatedAt: new Date(),
@@ -136,6 +144,9 @@ export default function ReliableScanner() {
                 <p className="text-sm text-slate-400">名刺を撮影してください</p>
               </div>
             </div>
+            <p className="text-[11px] text-slate-500 text-center leading-relaxed max-w-[280px]">
+              ① 明るい場所で　② 名刺を枠いっぱいに　③ 影が入らないように
+            </p>
 
             <input
               ref={fileInputRef}
@@ -202,6 +213,7 @@ export default function ReliableScanner() {
                 {saving ? "保存中..." : "絆リストに保存"}
               </button>
             </div>
+            <p className="text-[11px] text-slate-500 text-center mt-1">メールが無くても、電話番号だけで絆リストに残せます</p>
           </div>
         </div>
       )}
