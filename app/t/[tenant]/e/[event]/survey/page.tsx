@@ -60,10 +60,15 @@ export default function SurveyPage() {
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventId) return;
-    // 星評価が未選択なら、グレーボタンで黙らせず「何をすべきか」を伝えて上部へ誘導
-    if (rating === 0) {
-      alert("一番上の「本日のイベントはいかがでしたか？」で、星を1つタップして選んでください。");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    // 必須チェックボックス（同意など）は素のHTMLでは強制できないため、ここで検証する。
+    // ※テキスト・選択・記述式は input/select の required 属性でブラウザが先に検証する
+    const requiredCheckMissing = (event?.surveyFields || []).find((f: any) => {
+      if (f.type !== "checkbox" || !f.required) return false;
+      const v = answers[f.label];
+      return !v || (Array.isArray(v) && v.length === 0);
+    });
+    if (requiredCheckMissing) {
+      alert(`「${String(requiredCheckMissing.label).slice(0, 40)}…」は必須です。チェックを入れてください。`);
       return;
     }
     setSubmitting(true);
@@ -147,7 +152,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
             <label className="block text-sm font-bold text-slate-300 mb-4 text-center">
               本日のイベントはいかがでしたか？
-              <span className="ml-2 text-xs text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded align-middle">必須</span>
+              <span className="ml-2 text-xs text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded align-middle">任意</span>
             </label>
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -246,7 +251,6 @@ const handleSubmit = async (e: React.FormEvent) => {
              >
                {submitting ? "送信中..." : <><Send size={20}/> アンケートを送信する</>}
              </button>
-             {rating === 0 && <p className="text-center text-xs text-amber-400 mt-2">※一番上で星を選んでから送信してください</p>}
           </div>
         </form>
       </main>

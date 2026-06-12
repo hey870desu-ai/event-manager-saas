@@ -1831,7 +1831,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                       <div>
                         <div className="text-xs text-slate-400 font-bold uppercase">平均満足度</div>
                         <div className="text-2xl font-bold text-white">
-                          {(feedbacks.reduce((acc, f) => acc + (f.rating || 0), 0) / feedbacks.length).toFixed(1)}
+                          {(() => {
+                            // 星評価は任意のため、回答済み(1以上)だけで平均を出す
+                            const rated = feedbacks.filter(f => (f.rating || 0) > 0);
+                            return rated.length > 0
+                              ? (rated.reduce((acc, f) => acc + f.rating, 0) / rated.length).toFixed(1)
+                              : "—";
+                          })()}
                           <span className="text-sm text-slate-500 ml-1">/ 5.0</span>
                         </div>
                       </div>
