@@ -123,6 +123,18 @@ ${orgName}
   }
 };
 
+// アンケート回答(answers)の新旧フォーマット両対応ヘルパー
+// 新: 配列 [{label, value}]（長文ラベル対応）／ 旧: マップ {label: value}
+const answerEntries = (answers: any): Array<[string, any]> => {
+  if (Array.isArray(answers)) return answers.map((a: any) => [a?.label ?? "", a?.value]);
+  if (answers && typeof answers === "object") return Object.entries(answers);
+  return [];
+};
+const answerValue = (answers: any, label: string): any => {
+  if (Array.isArray(answers)) return answers.find((a: any) => a?.label === label)?.value;
+  return answers?.[label];
+};
+
 export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -815,7 +827,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     if (currentEventForList?.surveyFields && Array.isArray(currentEventForList.surveyFields)) {
       questionKeys = currentEventForList.surveyFields.map((f: any) => f.label);
     } else {
-      questionKeys = Array.from(new Set(feedbacks.flatMap(f => Object.keys(f.answers || {}))));
+      questionKeys = Array.from(new Set(feedbacks.flatMap(f => answerEntries(f.answers).map(([k]) => k))));
     }
 
     // 2. CSVのヘッダー行を作成 (日時, 評価, [質問1], [質問2]...)
@@ -828,7 +840,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       
       // 各質問への回答を取り出す
       const answerColumns = questionKeys.map(key => {
-        const val = fb.answers?.[key];
+        const val = answerValue(fb.answers, key);
         // 配列なら結合、文字ならエスケープ処理
         let cellData = "";
         if (Array.isArray(val)) {
@@ -863,14 +875,14 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     if (currentEventForList?.preSurveyFields && Array.isArray(currentEventForList.preSurveyFields)) {
       questionKeys = currentEventForList.preSurveyFields.map((f: any) => f.label);
     } else {
-      questionKeys = Array.from(new Set(preFeedbacks.flatMap(f => Object.keys(f.answers || {}))));
+      questionKeys = Array.from(new Set(preFeedbacks.flatMap(f => answerEntries(f.answers).map(([k]) => k))));
     }
 
     const headers = ["回答日時", ...questionKeys];
     const csvRows = preFeedbacks.map(fb => {
       const date = fb.createdAt?.toDate ? fb.createdAt.toDate().toLocaleString() : "";
       const answerColumns = questionKeys.map(key => {
-        const val = fb.answers?.[key];
+        const val = answerValue(fb.answers, key);
         let cellData = "";
         if (Array.isArray(val)) cellData = val.join(" / ");
         else if (val) cellData = String(val);
@@ -1772,13 +1784,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                       {/* 質問別の回答一覧 */}
                       {(() => {
                         const fields = currentEventForList?.preSurveyFields || [];
-                        const keys = fields.length > 0 ? fields.map((f: any) => f.label) : Array.from(new Set(preFeedbacks.flatMap(f => Object.keys(f.answers || {}))));
+                        const keys = fields.length > 0 ? fields.map((f: any) => f.label) : Array.from(new Set(preFeedbacks.flatMap(f => answerEntries(f.answers).map(([k]) => k))));
                         return keys.map((key: string, qi: number) => (
                           <div key={qi} className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
                             <h4 className="text-sm font-bold text-purple-400 mb-3">Q{qi + 1}. {key}</h4>
                             <div className="space-y-2">
                               {preFeedbacks.map((fb, fi) => {
-                                const val = fb.answers?.[key];
+                                const val = answerValue(fb.answers, key);
                                 const display = Array.isArray(val) ? val.join(", ") : (val || "---");
                                 return (
                                   <div key={fi} className="flex items-start gap-3 text-sm border-b border-slate-800/50 pb-2">
@@ -1913,14 +1925,14 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                        <ListChecks size={20} className="text-emerald-400"/> 質問別レポート
                     </h3>
                     
-                    {Array.from(new Set(feedbacks.flatMap(f => Object.keys(f.answers || {})))).map((questionKey) => {
-                      
+                    {Array.from(new Set(feedbacks.flatMap(f => answerEntries(f.answers).map(([k]) => k)))).map((questionKey) => {
+
                       const aggregates: {[key: string]: number} = {};
                       let textAnswers: string[] = [];
                       let isTextType = false;
 
                       feedbacks.forEach(f => {
-                         const val = f.answers?.[questionKey];
+                         const val = answerValue(f.answers, questionKey);
                          if (!val) return;
 
                          if (Array.isArray(val)) {
@@ -2001,8 +2013,8 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                            
                            {/* 回答内容（ここに名前も表示されます） */}
                            <div className="flex-1 space-y-2">
-                             {Object.entries(fb.answers || {}).map(([k, v]) => (
-                               <div key={k} className="flex flex-col sm:flex-row gap-1 sm:gap-2 border-b border-slate-800/30 last:border-0 pb-1 last:pb-0">
+                             {answerEntries(fb.answers).map(([k, v], idx) => (
+                               <div key={idx} className="flex flex-col sm:flex-row gap-1 sm:gap-2 border-b border-slate-800/30 last:border-0 pb-1 last:pb-0">
                                  <span className="text-indigo-400/80 font-bold shrink-0 min-w-[100px]">{k}:</span>
                                  <span className="text-slate-200 break-all">{Array.isArray(v) ? v.join(", ") : String(v)}</span>
                                </div>

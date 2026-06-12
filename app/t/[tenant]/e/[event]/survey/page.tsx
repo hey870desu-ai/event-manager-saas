@@ -74,16 +74,20 @@ const handleSubmit = async (e: React.FormEvent) => {
     setSubmitting(true);
 
     try {
-      // ★修正: iPhone対策 (undefined を null に変換して掃除する)
-      const cleanAnswers = JSON.parse(JSON.stringify(answers, (key, value) => {
+      // 質問ラベルを「キー」にするとFirestoreのフィールド名1500バイト制限を超えて
+      // 「invalid nested entity」エラーになる（長文の同意質問等）。
+      // 申込フォーム(customAnswers)と同様に配列形式 [{label, value}] で保存する。
+      const answersArray = Object.entries(answers).map(([label, value]) => ({ label, value }));
+      // iPhone対策: undefined を null に変換して掃除
+      const cleanAnswers = JSON.parse(JSON.stringify(answersArray, (key, value) => {
         if (value === undefined) return null;
         return value;
       }));
 
       // フィードバック保存
       await addDoc(collection(db, "events", eventId, "feedbacks"), {
-        rating, 
-        answers: cleanAnswers, // ★掃除したデータを使う
+        rating,
+        answers: cleanAnswers, // 配列形式 [{label, value}]
         createdAt: serverTimestamp(),
         tenantId,
         eventId,

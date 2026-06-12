@@ -72,7 +72,10 @@ function PreSurveyContent() {
     setSubmitting(true);
 
     try {
-      const cleanAnswers = JSON.parse(JSON.stringify(answers, (_key, value) => {
+      // 長文ラベルをキーにするとFirestoreの1500バイト制限超過で「invalid nested entity」になるため、
+      // 配列形式 [{label, value}] で保存する（事後アンケート・申込フォームと同じ）
+      const answersArray = Object.entries(answers).map(([label, value]) => ({ label, value }));
+      const cleanAnswers = JSON.parse(JSON.stringify(answersArray, (_key, value) => {
         if (value === undefined) return null;
         return value;
       }));
