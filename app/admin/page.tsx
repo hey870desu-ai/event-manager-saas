@@ -234,6 +234,7 @@ export default function AdminDashboard() {
   const [newAdminTenantId, setNewAdminTenantId] = useState(""); 
   
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedApplyId, setCopiedApplyId] = useState<string | null>(null); // 申し込みフォーム(/apply)URLコピー用
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -1187,9 +1188,24 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                   </div>
                   {/* ▼▼▼ ここに変更！ゴミ箱の左に複製ボタンを追加 ▼▼▼ */}
                   <div className="flex items-center gap-1">
+                    {/* 申し込みフォーム(/apply)URLコピー：Lステップ等への組み込み用 */}
+                    <button
+                      onClick={(e)=>{
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(`${window.location.origin}/t/${ev.tenantId}/e/${ev.id}/apply`);
+                        setCopiedApplyId(ev.id);
+                        setTimeout(()=>setCopiedApplyId(null), 2000);
+                      }}
+                      className={`transition-colors bg-white rounded-full p-1.5 flex items-center gap-1 ${copiedApplyId===ev.id ? "text-emerald-600 bg-emerald-50" : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"}`}
+                      title="申し込みフォームだけのURLをコピー（Lステップ等への組み込み用）"
+                    >
+                        {copiedApplyId===ev.id ? <Check size={18}/> : <ClipboardList size={18}/>}
+                        <span className="text-[10px] font-bold hidden sm:inline">{copiedApplyId===ev.id ? "コピー済" : "申込フォーム"}</span>
+                    </button>
+
                     {/* 複製ボタン */}
-                    <button 
-                      onClick={(e)=>handleDuplicate(e,ev)} 
+                    <button
+                      onClick={(e)=>handleDuplicate(e,ev)}
                       disabled={duplicatingId===ev.id}
                       className="text-slate-400 hover:text-orange-600 transition-colors bg-white rounded-full p-1.5 hover:bg-orange-50" 
                       title="イベントを複製"
