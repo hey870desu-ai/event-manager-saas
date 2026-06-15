@@ -33,19 +33,21 @@ type CustomField = {
 type Props = {
   tenantId?: string;
   eventId?: string;
-  event: any; 
+  event: any;
   tenantData?: TenantData;
   tenant?: any;
   onSuccess?: (id: string) => void;
+  embed?: boolean; // ★Lステップ等への組み込み用: 「参加する」ボタン無しでフォームを直接表示
 };
 
-export default function ReservationForm({ 
-  tenantId, 
-  eventId, 
-  event, 
-  tenantData, 
-  onSuccess, 
-  tenant 
+export default function ReservationForm({
+  tenantId,
+  eventId,
+  event,
+  tenantData,
+  onSuccess,
+  tenant,
+  embed
 }: Props) {
   // --- 🏆 【1段目】まずは「材料」を揃えるっぺ（一番上に持ってくる！） ---
   const params = useParams();
@@ -66,7 +68,7 @@ export default function ReservationForm({
 
   // --- 🏆 【2段目】次に「状態（State）」を準備するぞい ---
   const [currentCount, setCurrentCount] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(!!embed); // embed時は最初からフォームを開いた状態にする
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [participationType, setParticipationType] = useState("offline");
@@ -281,10 +283,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   return (
     <>
-      <button 
-  onClick={() => setIsOpen(true)} 
+      {!embed && (
+      <button
+  onClick={() => setIsOpen(true)}
   /* 背景は塙さんこだわりのDXグラデーションだばい */
-  style={{ background: 'linear-gradient(135deg, #FF0080 0%, #7928CA 100%)' }} 
+  style={{ background: 'linear-gradient(135deg, #FF0080 0%, #7928CA 100%)' }}
   className="w-full group relative flex items-center justify-center gap-3 px-8 py-5 text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.05] active:scale-[0.98] overflow-hidden"
 >
   {/* ▼▼▼ ちらっと光るエフェクト（ここが魔法の筋だっぺ！） ▼▼▼ */}
@@ -296,13 +299,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     <ChevronRight size={20} />
   </div>
 </button>
+      )}
 
-      {isOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 font-sans">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsOpen(false)} />
-
-          <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden ring-1 ring-white/10">
-            {status === "success" && !onSuccess ? (
+      {isOpen && (() => {
+        const formInner = (
+          status === "success" && !onSuccess ? (
    <div className="h-full flex items-center justify-center p-6 md:p-10 min-h-[400px] overflow-y-auto">
      <div className="text-center w-full max-w-sm mx-auto">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4"><CheckCircle size={32} /></div>
@@ -344,16 +345,20 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </div>
         )}
 
-        <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-bold transition-colors">閉じる</button>
+        {!embed && (
+          <button onClick={() => { setIsOpen(false); setStatus("idle"); }} className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-white font-bold transition-colors">閉じる</button>
+        )}
      </div>
    </div>
 ) : (
               <>
                 <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0f111a]/95 backdrop-blur z-10 sticky top-0">
                   <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                    <span className="w-1 h-6 rounded-full" style={{ background: themeColor }}></span> 参加申し込みフォーム
+                    <span className="w-1 h-6 rounded-full" style={{ background: themeColor }}></span> {embed ? (event?.title || "参加申し込みフォーム") : "参加申し込みフォーム"}
                   </h2>
-                  <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full"><X size={24} /></button>
+                  {!embed && (
+                    <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full"><X size={24} /></button>
+                  )}
                 </div>
 
                 <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#0f111a]">
@@ -634,11 +639,32 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                   </form>
                 </div>
               </>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+            )
+        );
+
+        // embed時: モーダルにせず通常フローでインライン表示（iframe・アプリ内ブラウザで高さが潰れない）
+        if (embed) {
+          return (
+            <div className="relative w-full max-w-2xl mx-auto p-3 sm:p-4 font-sans">
+              <div className="relative w-full bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10">
+                {formInner}
+              </div>
+            </div>
+          );
+        }
+
+        // 通常時: 従来どおり全画面モーダル（createPortal）
+        return createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 font-sans">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsOpen(false)} />
+
+            <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0f111a] border border-slate-700 rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden ring-1 ring-white/10">
+              {formInner}
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </>
   );
 }
