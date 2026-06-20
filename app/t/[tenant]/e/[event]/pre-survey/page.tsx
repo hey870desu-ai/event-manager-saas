@@ -72,10 +72,14 @@ function PreSurveyContent() {
     setSubmitting(true);
 
     try {
-      // 長文ラベルをキーにするとFirestoreの1500バイト制限超過で「invalid nested entity」になるため、
-      // 配列形式 [{label, value}] で保存する（事後アンケート・申込フォームと同じ）
-      const answersArray = Object.entries(answers).map(([label, value]) => ({ label, value }));
-      const cleanAnswers = JSON.parse(JSON.stringify(answersArray, (_key, value) => {
+      // 保存形式: 連番キーのマップ {"0":{label,value}, ...}
+      //  - マップ型なので「answersはマップ」を要求するFirestoreルールを通る
+      //  - ラベルは"値"側なので、長文質問でもフィールド名1500バイト制限に当たらない
+      const answersMap: { [k: string]: { label: string; value: any } } = {};
+      Object.entries(answers).forEach(([label, value], i) => {
+        answersMap[String(i)] = { label, value };
+      });
+      const cleanAnswers = JSON.parse(JSON.stringify(answersMap, (_key, value) => {
         if (value === undefined) return null;
         return value;
       }));

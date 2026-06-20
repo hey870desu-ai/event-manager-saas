@@ -123,16 +123,33 @@ ${orgName}
   }
 };
 
-// アンケート回答(answers)の新旧フォーマット両対応ヘルパー
-// 新: 配列 [{label, value}]（長文ラベル対応）／ 旧: マップ {label: value}
+// アンケート回答(answers)の新旧フォーマット3種すべてに対応するヘルパー
+//  新 : 連番キーのマップ {"0":{label,value}, "1":{...}}（マップ型でルール通過＋長文ラベルは値側）
+//  中 : 配列 [{label, value}]（2026-06-12〜の形式）
+//  旧 : ラベルキーのマップ {label: value}
+const isLabelValueObj = (v: any): boolean =>
+  !!v && typeof v === "object" && !Array.isArray(v) && "label" in v;
 const answerEntries = (answers: any): Array<[string, any]> => {
   if (Array.isArray(answers)) return answers.map((a: any) => [a?.label ?? "", a?.value]);
-  if (answers && typeof answers === "object") return Object.entries(answers);
+  if (answers && typeof answers === "object") {
+    const vals = Object.values(answers);
+    if (vals.length > 0 && vals.every(isLabelValueObj)) {
+      return vals.map((v: any) => [v.label ?? "", v.value]);
+    }
+    return Object.entries(answers);
+  }
   return [];
 };
 const answerValue = (answers: any, label: string): any => {
   if (Array.isArray(answers)) return answers.find((a: any) => a?.label === label)?.value;
-  return answers?.[label];
+  if (answers && typeof answers === "object") {
+    const vals = Object.values(answers);
+    if (vals.length > 0 && vals.every(isLabelValueObj)) {
+      return (vals.find((v: any) => v.label === label) as any)?.value;
+    }
+    return answers?.[label];
+  }
+  return undefined;
 };
 
 export default function AdminDashboard() {
