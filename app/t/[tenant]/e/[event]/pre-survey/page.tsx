@@ -141,6 +141,7 @@ function PreSurveyContent() {
           <button onClick={() => window.close()} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-3 rounded-xl font-bold transition-colors">
             画面を閉じる
           </button>
+          <p className="text-xs text-slate-500 mt-4">※ボタンで閉じない場合は、この画面（タブ）をそのまま閉じてください。</p>
         </div>
       </div>
     );

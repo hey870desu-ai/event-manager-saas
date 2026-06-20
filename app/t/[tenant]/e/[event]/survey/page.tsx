@@ -124,10 +124,11 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">回答完了</h2>
-          <p className="text-slate-400 mb-8">貴重なご意見ありがとうございました。<br/>今後の運営の参考にさせていただきます。</p>
+          <p className="text-slate-400 mb-6">貴重なご意見ありがとうございました。<br/>今後の運営の参考にさせていただきます。</p>
           <button onClick={() => window.close()} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-3 rounded-xl font-bold transition-colors">
             画面を閉じる
           </button>
+          <p className="text-xs text-slate-500 mt-4">※ボタンで閉じない場合は、この画面（タブ）をそのまま閉じてください。</p>
         </div>
       </div>
     );
