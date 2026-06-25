@@ -166,10 +166,25 @@ export function blocksToHtml(blocks: any[]): string {
   return out.join('\n');
 }
 
-// ページのHTML本文を取得（WordPress投稿用）
+// updatePageStatus がページ本文末尾に追記する「システムメモ」段落の接頭辞。
+// 公開失敗→再公開のときに、過去のエラーメモが記事本文に混入するのを防ぐため除外する。
+const SYSTEM_NOTE_PREFIXES = [
+  '⚠ 投稿失敗', '⚠ 公開失敗', '⚠ 配信',
+  '🌐 WordPress公開済み', '📝 WordPress下書き',
+  '🌐 fukuhiroba.com', '📝 fukuhiroba.com',
+  '🔁 既に', '✅ 配信予約',
+];
+
+function isSystemNoteBlock(block: any): boolean {
+  if (block?.type !== 'paragraph') return false;
+  const text = richTextToPlain(block.paragraph?.rich_text).trim();
+  return SYSTEM_NOTE_PREFIXES.some((p) => text.startsWith(p));
+}
+
+// ページのHTML本文を取得（WordPress投稿用）。システムメモ段落は除外する。
 export async function fetchPageHtml(token: string, page: NotionPage): Promise<{ title: string; html: string }> {
   const title = extractTitle(page);
-  const blocks = await fetchPageBlocks(token, page.id);
+  const blocks = (await fetchPageBlocks(token, page.id)).filter((b) => !isSystemNoteBlock(b));
   const html = blocksToHtml(blocks);
   return { title, html };
 }
