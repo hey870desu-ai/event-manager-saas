@@ -1433,9 +1433,26 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                   <p className="text-sm font-bold text-slate-800 truncate">{item.subject}</p>
                   <p className="text-[10px] text-slate-400">{item.eventTitle ? `${item.eventTitle} / ` : ''}{item.recipients?.length || 0}名宛</p>
                 </div>
-                <button onClick={() => setPreviewMailQueue(item)} className="text-xs bg-white hover:bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-slate-200">
-                  <Eye size={12}/> 詳細
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setPreviewMailQueue(item)} className="text-xs bg-white hover:bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-slate-200">
+                    <Eye size={12}/> 詳細
+                  </button>
+                  {item.status === 'pending' && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('この予約配信を取り消しますか？\n（取り消すと、このメールは送信されません）')) return;
+                        try {
+                          await deleteDoc(doc(db, "mail_queue", item.id));
+                        } catch (e) {
+                          alert('取消に失敗しました。時間をおいて再度お試しください。');
+                        }
+                      }}
+                      className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-red-200"
+                    >
+                      <X size={12}/> 取消
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
