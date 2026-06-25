@@ -449,9 +449,19 @@ useEffect(() => {
     const unsub2 = onSnapshot(adminQuery, (s) => setAdminUsers(s.docs.map(d => d.data() as AdminUser)));
 
     // mail_queue（セミナーメール予約配信）を取得
-    const mqQuery = query(collection(db, "mail_queue"), orderBy("createdAt", "desc"));
+    // ★テナント分離: 自分のテナント宛のみ取得（スーパー管理者は全件）。
+    //   単一フィールドwhereのため複合インデックス不要。createdAt順はクライアント側でソート。
+    const mqQuery = isSuperAdminMode
+      ? query(collection(db, "mail_queue"), orderBy("createdAt", "desc"))
+      : query(collection(db, "mail_queue"), where("tenantId", "==", currentUserTenant));
     const unsub4 = onSnapshot(mqQuery, (s) => {
-      setMailQueueList(s.docs.map(d => ({ id: d.id, ...d.data() })));
+      const list = s.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      list.sort((a: any, b: any) => {
+        const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+        const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+        return tb - ta;
+      });
+      setMailQueueList(list);
     });
 
     // 3. 設定（署名・組織名）の取得 ★ここが重要！

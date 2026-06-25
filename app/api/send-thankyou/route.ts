@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     // 🅰️ 予約配信ロジック（そのまま維持）
     if (scheduledAt) {
       await adminDb.collection('mail_queue').add({
+        tenantId: tenantId || null, eventId: eventId || null,  // ★テナント分離用（配信履歴の絞り込みに必須）
         recipients, subject, body: bodyWithSurvey, senderName: headerForEmail, tenantName: senderForInbox,
         eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
         scheduledAt: new Date(scheduledAt), status: 'pending', createdAt: new Date(),
