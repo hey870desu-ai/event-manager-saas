@@ -210,11 +210,12 @@ async function processCron() {
     const wpPass = process.env.WP_APP_PASSWORD;
     const blogNotionToken = process.env.NOTION_API_KEY;
     const autoPublish = process.env.HANAHIRO_BLOG_AUTO_PUBLISH === 'true';
-    // hana-hiro.com は 2026-06-12 以降、REST APIの認証付き書き込み(POST)がサーバー側で
-    // 403ブロックされる（GETは通る・福ひろばは同じ仕組みのXML-RPCで公開継続中）。
-    // そのため既定で XML-RPC（/wp/xmlrpc.php）経由に切り替える。
-    // REST書き込みが復旧したら Vercel env に WP_USE_XMLRPC=false を設定すれば従来動作に戻せる。
-    const useXmlRpc = process.env.WP_USE_XMLRPC !== 'false';
+    // hana-hiro.com は 2026-06-12 以降、ホスト(GMO)側のWAFが「認証付きの書き込み(POST)」を
+    // REST・XML-RPC とも一律 403ブロックするようになった（GET/認証失敗/読み取りは通る・
+    // 投稿は作成すらされない・別ホストの福ひろばは無事）。これは転送方式を変えても回避できず、
+    // hana-hiro.com 側でWAF/セキュリティ設定を解除する必要がある。
+    // → 既定は元の REST のまま。万一 XML-RPC だけ通る環境になったら WP_USE_XMLRPC=true で切替。
+    const useXmlRpc = process.env.WP_USE_XMLRPC === 'true';
     if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
       // WordPress 投稿時に割り当てるカテゴリ（slugで指定 / 1回だけ解決してキャッシュ）
       const categorySlug = process.env.HANAHIRO_BLOG_CATEGORY_SLUG;
