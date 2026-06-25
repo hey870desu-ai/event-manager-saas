@@ -1,0 +1,163 @@
+rules_version = '2';
+
+// ============================================================================
+// 絆太郎 Firestore セキュリティルール（テナント分離・ハードニング版）
+//
+// 目的: これまで存在した キャッチオール
+//   match /{document=**} { allow read, write: if isAuthenticated() }
+// を撤去し、ログイン済みなら他テナントの全データを読み書きできてしまう
+// 状態を解消する。各コレクションに明示的なテナント境界を付与する。
+//
+// ⚠️ 公開（Firebaseコンソール）前に必ず Rules Playground でテストすること。
+//    単独デプロイで既存導線が permission-denied にならないか、下記の
+//    「許可すべき導線」を1つずつ確認してから本番反映する。
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- ヘルパー ----------
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 運営者（SaaS提供元）。admin_users ドキュメントが無くても特権を持つ
+    function isSuper() {
+      return isAuth()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == 'hey870desu@gmail.com';
+    }
+
+    // ログイン中ユーザーが admin_users に登録された管理者か
+    function isAdmin() {
+      return isAuth()
+        && exists(/databases/$(database)/documents/admin_users/$(request.auth.token.email));
+    }
+
+    // 呼び出し元の所属テナントID（isAdmin() が true の時だけ呼ぶこと）
+    function myTenant() {
+      return get(/databases/$(database)/documents/admin_users/$(request.auth.token.email)).data.tenantId;
+    }
+
+    // 指定テナントに所属する管理者か（運営者は常に true）
+    function isMember(tid) {
+      return isSuper() || (isAdmin() && myTenant() == tid);
+    }
+
+    // events/{eventId} の所属テナント
+    function eventTenant(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data.tenantId;
+    }
+
+    // 未認証PVカウンタ用：pageViews だけを変更する更新か
+    function onlyPageViews() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pageViews']);
+    }
+
+    // ---------- events（イベント本体：公開read） ----------
+    match /events/{eventId} {
+      allow read: if true;                                   // 公開イベントページ（未認証OK）
+      allow create: if isMember(request.resource.data.tenantId);
+      allow update: if isMember(resource.data.tenantId)      // 自テナントの編集
+                    || onlyPageViews();                      // 未認証の閲覧数カウンタ
+      allow delete: if isMember(resource.data.tenantId);
+
+      // 申込（未認証作成OK／閲覧・チェックインは自テナント管理者のみ）
+      match /reservations/{resId} {
+        allow create: if true;
+        allow read, update, delete: if isMember(eventTenant(eventId));
+      }
+      // 事後アンケート（未認証作成OK）
+      match /feedbacks/{fbId} {
+        allow create: if true;
+        allow read, update, delete: if isMember(eventTenant(eventId));
+      }
+      // 事前アンケート（未認証作成OK）
+      match /pre_feedbacks/{pfId} {
+        allow create: if true;
+        allow read, update, delete: if isMember(eventTenant(eventId));
+      }
+    }
+
+    // ---------- tenants（公開read：LP・法令ページ） ----------
+    match /tenants/{tenantId} {
+      allow read: if true;
+      allow create: if isSuper();                 // 新規テナントはAPI(adminSDK)/運営者
+      allow update: if isMember(tenantId);        // 自テナント設定の更新
+      allow delete: if isSuper();
+
+      match /invoices/{invId} {
+        allow read: if isMember(tenantId);
+        allow write: if isSuper();                // 請求発行は運営者のみ
+      }
+      match /manual_contacts/{cid} {
+        allow read, write: if isMember(tenantId);
+      }
+      match /scheduled_emails/{sid} {
+        allow read, write: if isMember(tenantId);
+      }
+      match /email_drafts/{did} {
+        allow read, write: if isMember(tenantId);
+      }
+    }
+
+    // ---------- admin_users（最重要：権限昇格を防ぐ） ----------
+    match /admin_users/{email} {
+      // 自分自身のアカウントか
+      function isSelf() { return isAuth() && request.auth.token.email == email; }
+
+      allow read: if isSuper()
+                  || isSelf()
+                  || (isAdmin() && resource.data.tenantId == myTenant());
+
+      // 招待は「自テナントへの追加」のみ（他テナントへ付け替え不可）
+      allow create: if isSuper()
+                    || (isAdmin() && request.resource.data.tenantId == myTenant());
+
+      // tenantId の改変を全面禁止（自分の所属を勝手に変えて昇格させない）
+      allow update: if isSuper()
+                    || (isAdmin()
+                        && resource.data.tenantId == myTenant()
+                        && request.resource.data.tenantId == resource.data.tenantId);
+
+      allow delete: if isSuper()
+                    || (isAdmin() && resource.data.tenantId == myTenant());
+    }
+
+    // ---------- mail_queue（セミナーメール予約配信：自テナントのみ） ----------
+    match /mail_queue/{id} {
+      allow read:   if isMember(resource.data.tenantId);
+      allow delete: if isMember(resource.data.tenantId);   // 予約配信の取消
+      allow create, update: if isSuper();                  // 作成はAPI(adminSDK)経由
+    }
+
+    // ---------- contacts（運営元あての問い合わせinbox） ----------
+    match /contacts/{id} {
+      allow create: if true;                  // お問い合わせフォーム（実体はAPI経由）
+      allow read, update, delete: if isSuper();
+    }
+
+    // ---------- announcements（運営からの全体お知らせ） ----------
+    // read=全管理者 / write=運営者のみ（テナントが全体掲示板に投稿できないようにする）
+    match /announcements/{id} {
+      allow read:  if isAdmin() || isSuper();
+      allow write: if isSuper();
+    }
+
+    // ---------- marketing_optouts（配信停止リスト） ----------
+    match /marketing_optouts/{id} {
+      allow read:  if isAdmin() || isSuper();
+      allow write: if isSuper();              // 登録はAPI(adminSDK)経由
+    }
+
+    // ---------- newsletter_archives（DXメルマガ保管） ----------
+    match /newsletter_archives/{id} {
+      allow read, write: if isAdmin() || isSuper();
+    }
+
+    // ---------- 既定：すべて拒否（旧キャッチオールの撤去） ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
