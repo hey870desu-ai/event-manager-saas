@@ -4,7 +4,7 @@ import { sendBatchEmail, sendEmail, buildUnsubscribeHeaders } from '@/lib/mailer
 import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatus, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
-import { createWpPost, findCategoryIdBySlug } from '@/lib/wordpress-bridge';
+import { createWpPost, findCategoryIdBySlug, findCategoryNameBySlug } from '@/lib/wordpress-bridge';
 import { createWpPostXmlRpc } from '@/lib/wordpress-xmlrpc';
 import { scheduleKintaiBroadcastIdempotent } from '@/lib/kintai-line-bridge';
 
@@ -210,11 +210,35 @@ async function processCron() {
     const wpPass = process.env.WP_APP_PASSWORD;
     const blogNotionToken = process.env.NOTION_API_KEY;
     const autoPublish = process.env.HANAHIRO_BLOG_AUTO_PUBLISH === 'true';
+    // hana-hiro.com は 2026-06-12 以降、REST APIの認証付き書き込み(POST)がサーバー側で
+    // 403ブロックされる（GETは通る・福ひろばは同じ仕組みのXML-RPCで公開継続中）。
+    // そのため既定で XML-RPC（/wp/xmlrpc.php）経由に切り替える。
+    // REST書き込みが復旧したら Vercel env に WP_USE_XMLRPC=false を設定すれば従来動作に戻せる。
+    const useXmlRpc = process.env.WP_USE_XMLRPC !== 'false';
     if (blogDbId && wpSite && wpUser && wpPass && blogNotionToken) {
       // WordPress 投稿時に割り当てるカテゴリ（slugで指定 / 1回だけ解決してキャッシュ）
       const categorySlug = process.env.HANAHIRO_BLOG_CATEGORY_SLUG;
       let categoryIds: number[] | undefined = undefined;
-      if (categorySlug) {
+      // XML-RPC は terms_names で「カテゴリ名」を渡すため、名前も解決しておく
+      // （HANAHIRO_BLOG_CATEGORY_NAME 優先、なければ slug から REST GET で正式名称を引く）
+      let categoryNames: string[] | undefined = undefined;
+      if (useXmlRpc) {
+        const explicitName = process.env.HANAHIRO_BLOG_CATEGORY_NAME;
+        if (explicitName) {
+          categoryNames = [explicitName];
+        } else if (categorySlug) {
+          try {
+            const name = await findCategoryNameBySlug(
+              { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
+              categorySlug
+            );
+            if (name) categoryNames = [name];
+            else console.warn(`HANAHIRO_BLOG_CATEGORY_SLUG=${categorySlug} のカテゴリ名を解決できませんでした`);
+          } catch (e: any) {
+            console.error('カテゴリ名取得失敗:', e?.message || e);
+          }
+        }
+      } else if (categorySlug) {
         try {
           const id = await findCategoryIdBySlug(
             { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
@@ -227,24 +251,38 @@ async function processCron() {
         }
       }
 
+      // 公開失敗をまとめて1通だけ通知する（毎ページ通知でのスパム化を防ぐ）
+      const blogFailures: { title: string; error: string }[] = [];
       try {
         const readyBlogPages = await fetchPagesByStatus(blogNotionToken, blogDbId, '🟠 公開準備完了');
         for (const page of readyBlogPages) {
+          let titleForAlert = `(page ${page.id})`;
           try {
             const { title, html } = await fetchPageHtml(blogNotionToken, page);
+            if (title) titleForAlert = title;
             if (!title || !html) {
               await updatePageStatus(blogNotionToken, page.id, '🔴 公開失敗',
                 `⚠ 公開失敗：タイトル or 本文が空です`);
+              blogFailures.push({ title: titleForAlert, error: 'タイトル or 本文が空です' });
               continue;
             }
-            const wpResult = await createWpPost(
-              { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
-              { title, content: html, status: autoPublish ? 'publish' : 'draft', categories: categoryIds }
-            );
+            let wpResult: { id: number; link: string };
+            if (useXmlRpc) {
+              wpResult = await createWpPostXmlRpc(
+                { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
+                { title, content: html, status: autoPublish ? 'publish' : 'draft', categoryNames }
+              );
+            } else {
+              const r = await createWpPost(
+                { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
+                { title, content: html, status: autoPublish ? 'publish' : 'draft', categories: categoryIds }
+              );
+              wpResult = { id: r.id, link: r.link };
+            }
             const newStatus = autoPublish ? '🟢 公開済み' : '🔵 投稿予約済み';
             const note = autoPublish
               ? `🌐 WordPress公開済み（ID: ${wpResult.id}）\n公開URL: ${wpResult.link}`
-              : `📝 WordPress下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${wpSite}/wp-admin/post.php?post=${wpResult.id}&action=edit`;
+              : `📝 WordPress下書きに投稿済み（ID: ${wpResult.id}）。確認後にWP管理画面で公開してください。\n編集URL: ${wpSite}/wp/wp-admin/post.php?post=${wpResult.id}&action=edit`;
             await updatePageStatus(blogNotionToken, page.id, newStatus, note);
             // 公開URLプロパティ更新
             try {
@@ -265,14 +303,42 @@ async function processCron() {
             totalProcessed++;
           } catch (perPageErr: any) {
             console.error(`はなひろブログ投稿失敗 (page=${page.id}):`, perPageErr);
+            const errMsg = perPageErr?.message || 'unknown error';
+            blogFailures.push({ title: titleForAlert, error: errMsg });
             try {
               await updatePageStatus(blogNotionToken, page.id, '🔴 公開失敗',
-                `⚠ 投稿失敗：${perPageErr?.message || 'unknown error'}`);
+                `⚠ 投稿失敗：${errMsg}`);
             } catch { /* ignore */ }
           }
         }
       } catch (blogErr: any) {
         console.error('はなひろブログfetch error:', blogErr);
+      }
+
+      // 公開失敗があれば塙さんにメール通知（2週間気づかなかった再発防止）。
+      // 宛先は BLOG_ALERT_EMAIL（カンマ区切り可）、未設定なら塙さんのGmail。
+      if (blogFailures.length > 0) {
+        try {
+          const alertTo = (process.env.BLOG_ALERT_EMAIL || 'hey870desu@gmail.com')
+            .split(',').map(s => s.trim()).filter(Boolean);
+          const rows = blogFailures
+            .map(f => `<li><b>${f.title}</b><br><span style="color:#b00">${f.error}</span></li>`)
+            .join('');
+          const html =
+            `<p>はなひろHPブログの自動公開が <b>${blogFailures.length}件</b> 失敗しました（${useXmlRpc ? 'XML-RPC' : 'REST API'}経由）。</p>` +
+            `<ul>${rows}</ul>` +
+            `<p>該当記事は Notion「📝 はなひろHPブログ」で 🔴 公開失敗 になっています。` +
+            `<br>Notion: https://www.notion.so/891ea871415a4614be8fcdb6f17079e4</p>`;
+          await sendEmail({
+            from: '絆太郎ブログ自動化 <noreply@event-manager.app>',
+            to: alertTo,
+            subject: `⚠️ はなひろHPブログ公開失敗 ${blogFailures.length}件`,
+            html,
+          });
+          console.log(`はなひろブログ失敗通知メール送信: ${blogFailures.length}件 → ${alertTo.join(',')}`);
+        } catch (notifyErr: any) {
+          console.error('はなひろブログ失敗通知メール送信エラー:', notifyErr?.message || notifyErr);
+        }
       }
     }
 

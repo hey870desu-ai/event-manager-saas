@@ -74,6 +74,18 @@ export async function findCategoryIdBySlug(config: WpConfig, slug: string): Prom
   return data[0].id;
 }
 
+// slug → カテゴリ「名前」変換。XML-RPC は terms_names で名前指定するため、
+// 既存カテゴリの正式名称を REST GET（書き込みと違い 403 されない）で引く。
+// 該当なしの場合に勝手な名前で新規カテゴリを作らないよう null を返す。
+export async function findCategoryNameBySlug(config: WpConfig, slug: string): Promise<string | null> {
+  const url = `${apiBase(config.siteUrl)}/wp/v2/categories?slug=${encodeURIComponent(slug)}`;
+  const res = await fetch(url, { headers: { Authorization: authHeader(config) } });
+  if (!res.ok) return null;
+  const data: any[] = await res.json();
+  if (!Array.isArray(data) || data.length === 0) return null;
+  return data[0].name || null;
+}
+
 // 接続テスト：認証が通ってサイト情報が取れるか
 export async function testWpConnection(config: WpConfig): Promise<{ ok: boolean; siteName?: string; error?: string }> {
   try {
