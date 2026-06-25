@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { doc, getDoc, updateDoc, collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -80,10 +80,13 @@ export default function AdminScanPage() {
   // 2. イベント一覧取得
   useEffect(() => {
     if (loadingAuth || !currentUserTenant) return;
-    const unsub = onSnapshot(collection(db, "events"), (snap) => {
+    // ★テナント分離：運営者は全件、テナント管理者は where で自テナント分のみ取得（防御多層化）
+    const eventsQuery = isSuperAdmin
+      ? collection(db, "events")
+      : query(collection(db, "events"), where("tenantId", "==", currentUserTenant));
+    const unsub = onSnapshot(eventsQuery, (snap) => {
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
-        .filter(e => isSuperAdmin || e.tenantId === currentUserTenant)
         .filter(e => e.status === 'published')
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       setEvents(list);

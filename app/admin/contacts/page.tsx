@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp 
+import { useRouter } from "next/navigation";
+import {
+  collection, query, orderBy, getDocs, doc, updateDoc, serverTimestamp
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { 
-  Mail, CheckCircle2, AlertCircle, Search, Clock, 
-  MessageSquare, User, Building, X 
+import { onAuthStateChanged } from "firebase/auth";
+import { db, auth } from "@/lib/firebase";
+import {
+  Mail, CheckCircle2, AlertCircle, Search, Clock,
+  MessageSquare, User, Building, X, ShieldAlert
 } from "lucide-react";
+
+// お問い合わせ（contacts）はSaaS運営元宛の共通inbox。テナント所属が無いため運営者のみ閲覧可
+const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
 // 型定義
 type Contact = {
@@ -23,10 +28,12 @@ type Contact = {
 };
 
 export default function AdminContactsPage() {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [noteInput, setNoteInput] = useState(""); // メモ入力用
+  const [authState, setAuthState] = useState<"checking" | "allowed" | "denied">("checking"); // 認可判定
 
   // データ取得
   const fetchContacts = async () => {
@@ -46,9 +53,21 @@ export default function AdminContactsPage() {
     }
   };
 
+  // 🔐 運営者ガード：super-admin 以外はデータ取得すらしない
   useEffect(() => {
-    fetchContacts();
-  }, []);
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser?.email) { router.push("/admin/login"); return; }
+      const emailClean = currentUser.email.replace(/\s+/g, "").toLowerCase();
+      const superClean = SUPER_ADMIN_EMAIL.replace(/\s+/g, "").toLowerCase();
+      if (emailClean === superClean) {
+        setAuthState("allowed");
+        fetchContacts();
+      } else {
+        setAuthState("denied");
+      }
+    });
+    return () => unsub();
+  }, [router]);
 
   // 詳細を開く
   const handleOpenDetail = (contact: Contact) => {
@@ -96,6 +115,36 @@ export default function AdminContactsPage() {
       minute: "2-digit",
     });
   };
+
+  // 認可判定中
+  if (authState === "checking") {
+    return (
+      <div className="p-10 bg-slate-50 min-h-screen flex items-center justify-center text-slate-500">
+        読み込み中...
+      </div>
+    );
+  }
+
+  // 権限なし（運営者以外）
+  if (authState === "denied") {
+    return (
+      <div className="p-10 bg-slate-50 min-h-screen flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-10 max-w-md text-center">
+          <ShieldAlert className="mx-auto mb-4 text-red-500" size={40} />
+          <h1 className="text-lg font-bold text-slate-900 mb-2">アクセス権限がありません</h1>
+          <p className="text-sm text-slate-500 mb-6">
+            このページは運営管理者専用です。
+          </p>
+          <button
+            onClick={() => router.push("/admin")}
+            className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
+          >
+            管理画面に戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-10 bg-slate-50 min-h-screen text-slate-900">

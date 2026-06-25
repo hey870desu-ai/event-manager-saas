@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
@@ -39,10 +39,12 @@ export default function AnalyticsPage() {
           const tData = await fetchTenantData(tenantId);
           setTenantData(tData);
 
-          const eventSnaps = await getDocs(collection(db, "events"));
+          // ★テナント分離：全件取得をやめ where で自テナント分のみ取得（防御多層化）
+          const eventSnaps = await getDocs(
+            query(collection(db, "events"), where("tenantId", "==", tenantId))
+          );
           const eventsList = eventSnaps.docs
-            .map(d => ({ id: d.id, ...d.data() } as any))
-            .filter(e => e.tenantId === tenantId);
+            .map(d => ({ id: d.id, ...d.data() } as any));
 
           setEvents(eventsList);
 
