@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
 import { ArrowLeft, Building2, Save, Loader2, User } from "lucide-react";
 
 export default function NewTenantPage() {
@@ -29,14 +28,20 @@ const handleSubmit = async (e: React.FormEvent) => {
     setLoading(true);
     try {
       // 🚨 1. 【全自動APIを呼び出す！】 🚨
-      // これだけで「Firestore保存」と「Googleテナント作成」を同時にやるっぺ！
+      // 「Firestore保存」「Googleテナント作成」「オーナーの管理者登録」をまとめてサーバで実行。
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) { alert("ログインが切れています。再ログインしてください"); setLoading(false); return; }
       const res = await fetch('/api/admin/setup-tenant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           tenantId: tenantId, // "happychoice"
           name: name,          // "ハッピーチョイス"
           plan: plan,          // プラン情報
+          ownerEmail: adminEmail, // 運営者は任意のオーナーを指定できる（サーバ側でadmin_users作成）
         }),
       });
 
@@ -46,18 +51,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         throw new Error(data.error || "APIでエラーが起きたっぺ");
       }
 
-      // 🚨 2. 最初の管理者（オーナー）を作成 🚨
-      // ここは今まで通り Firestore の admin_users に書き込むぞい
-      await setDoc(doc(db, "admin_users", adminEmail), {
-        email: adminEmail,
-        tenantId: tenantId,
-        role: "owner", 
-        branchId: "本部",
-        createdAt: serverTimestamp(),
-        addedBy: "SuperAdmin"
-      });
-
-      // 🚨 3. 【トドメ】招待メールも自動で飛ばす！？ 🚨
+      // 🚨 2. 【トドメ】招待メールも自動で飛ばす！？ 🚨
       // せっかく作ったんだから、そのまま招待メールAPIも叩いちゃうべ！
       await fetch('/api/invite', {
         method: 'POST',

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase"; 
 import { onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { ArrowRight, Loader2, CheckCircle2, HelpCircle } from "lucide-react";
 
 export default function OnboardingPage() {
@@ -84,35 +84,24 @@ export default function OnboardingPage() {
         return;
       }
 
-      // 2. Firebase Auth テナント作成 + Firestore 保存を一括で行う
+      // 2. Firebase Auth テナント作成 + Firestore 保存 + 自分のオーナー登録を
+      //    すべてサーバー側(adminSDK)で一括実行する。
+      //    （新ルール下では未登録ユーザーのクライアント直書きが拒否されるため、サーバ完結が必須）
+      const idToken = await user.getIdToken();
       const setupRes = await fetch('/api/admin/setup-tenant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, name }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ tenantId, name }), // ownerEmail はサーバ側でトークンの本人に固定
       });
       const setupData = await setupRes.json();
       if (!setupRes.ok) {
         throw new Error(setupData.error || "テナント作成に失敗しました");
       }
 
-      // setup-tenant が作った doc に追加フィールドを書き込む
-      await setDoc(docRef, {
-        plan: "free",
-        branches: ["本部"],
-        ownerEmail: user.email,
-      }, { merge: true });
-
-      // 3. 自分を管理者に設定
-      await setDoc(doc(db, "admin_users", user.email), {
-        email: user.email,
-        tenantId: tenantId,
-        role: "owner",
-        branchId: "本部",
-        createdAt: serverTimestamp(),
-        addedBy: "SelfRegistration"
-      });
-
-      // 4. 管理画面へGo!
+      // 3. 管理画面へGo!
       alert("登録完了！管理画面へ移動します 🚀");
       router.push("/admin"); // ★ここも /admin に修正しました
 

@@ -3,13 +3,40 @@ import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const SUPER_ADMIN_EMAIL = 'hey870desu@gmail.com';
 
 export async function POST(request: Request) {
   try {
-    const { tenantId, name } = await request.json(); // tenantIdは "happychoice" など
+    // 🔐 認証必須：匿名での無制限テナント作成（Authテナント乱造）を防ぐ
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+    let decoded: any;
+    try {
+      decoded = await adminAuth.verifyIdToken(token);
+    } catch {
+      return NextResponse.json({ error: 'トークンが無効です' }, { status: 401 });
+    }
+    const callerEmail: string | undefined = decoded.email;
+    if (!callerEmail) {
+      return NextResponse.json({ error: 'トークンにメールがありません' }, { status: 401 });
+    }
+    const isSuper = callerEmail.trim().toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
+    const { tenantId, name, plan, ownerEmail: bodyOwnerEmail } = await request.json();
     if (!tenantId || !name) {
       return NextResponse.json({ error: 'IDと名前が足りねぇぞい' }, { status: 400 });
+    }
+
+    // オーナーは運営者だけが任意指定可。一般のセルフ登録は必ず呼び出し元本人に固定
+    const ownerEmail = (isSuper && bodyOwnerEmail) ? bodyOwnerEmail : callerEmail;
+
+    // 既存テナントの上書きを防止（取り違え・乗っ取り対策）
+    const existing = await adminDb.collection('tenants').doc(tenantId).get();
+    if (existing.exists) {
+      return NextResponse.json({ error: 'このIDは既に使用されています' }, { status: 409 });
     }
 
     // 1. 【Auth自動設定】Googleの門番に新しい「部屋」を作らせる
@@ -23,16 +50,31 @@ export async function POST(request: Request) {
     });
 
     // 2. 【Firestore自動保存】
-    // Googleが発行した「背番号付きの本当のID (tenant.tenantId)」をそのまま保存するっぺ！
+    // Googleが発行した「背番号付きの本当のID (tenant.tenantId)」と、
+    // 以前クライアントから直書きしていた plan/branches/ownerEmail もここで一括保存。
     await adminDb.collection('tenants').doc(tenantId).set({
       name: name,
       slug: tenantId,
       authTenantId: tenant.tenantId, // 👈 これが "-lz9yq" とか付いた本物のIDだばい
+      plan: plan || 'free',
+      branches: ['本部'],
+      ownerEmail: ownerEmail,
       createdAt: new Date(),
       status: 'active'
     });
 
-    console.log(`✅ テナント作成完了だっぺ！ ID: ${tenant.tenantId}`);
+    // 3. 【オーナーを管理者登録】以前クライアントで setDoc していた admin_users 作成をサーバへ移管。
+    //    （新ルール下では未登録ユーザーのクライアント直書きは permission-denied になるため必須）
+    await adminDb.collection('admin_users').doc(ownerEmail).set({
+      email: ownerEmail,
+      tenantId: tenantId,
+      role: 'owner',
+      branchId: '本部',
+      createdAt: new Date(),
+      addedBy: (isSuper && bodyOwnerEmail) ? 'SuperAdmin' : 'SelfRegistration',
+    }, { merge: true });
+
+    console.log(`✅ テナント作成完了だっぺ！ ID: ${tenant.tenantId} / owner: ${ownerEmail}`);
 
     // 3. オーナーに新規テナント登録を通知
     try {
