@@ -549,13 +549,18 @@ useEffect(() => {
     if (!confirm(`${newAdminEmail} を管理者に追加しますか？\n所属: ${newAdminBranch}`)) return;
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) { alert("ログインが切れています。再ログインしてください"); return; }
       const res = await fetch('/api/admin/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-           email: newAdminEmail, 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+           email: newAdminEmail,
            branchId: newAdminBranch,
-           tenantId: newAdminTenantId 
+           tenantId: newAdminTenantId
         }),
       });
       const data = await res.json();
