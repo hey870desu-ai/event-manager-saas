@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, List, MessageSquare, CreditCard,ExternalLink,CheckCircle2 } from "lucide-react"; 
-import { collection, addDoc, serverTimestamp,query, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 
@@ -80,15 +80,18 @@ export default function ReservationForm({
   // マウント確認
   useEffect(() => { setMounted(true); }, []);
 
-  // リアルタイム人数集計（safeEventIdが上で定義されてるからもう赤くならないぞい！）
+  // 参加人数の集計：個人情報(reservations)を直接 read せず、件数だけ返すAPIから取得する
   useEffect(() => {
     if (!safeEventId) return;
-    const q = query(collection(db, "events", safeEventId, "reservations"));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const activePeople = snap.docs.filter(d => d.data().status !== 'cancelled').length;
-      setCurrentCount(activePeople);
-    });
-    return () => unsubscribe();
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/event-capacity?eventId=${encodeURIComponent(safeEventId)}`);
+        const data = await res.json();
+        if (!cancelled && typeof data.count === 'number') setCurrentCount(data.count);
+      } catch { /* 取得失敗時は0のまま（申込自体は止めない） */ }
+    })();
+    return () => { cancelled = true; };
   }, [safeEventId]);
 
   // --- 🏆 【4段目】「判定」を下すぞい ---
@@ -157,10 +160,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       // 🚨 IDチェック
       if (!safeEventId) throw new Error("イベントIDが見つかりません。再読み込みしてくんちぇ。");
 
-      // 🏆 【追加！】最新の参加人数をチェックして、定員オーバーなら弾くっぺ！
+      // 🏆 最新の参加人数をサーバから取り直してチェック（古い画面での定員オーバーを防ぐ）
       // ※ event.capacity が設定されている場合のみチェックするぞい
       if (event.capacity) {
-        const activeReservationsCount = currentCount || 0;
+        let activeReservationsCount = currentCount || 0;
+        try {
+          const capRes = await fetch(`/api/event-capacity?eventId=${encodeURIComponent(safeEventId)}`);
+          const capData = await capRes.json();
+          if (typeof capData.count === 'number') activeReservationsCount = capData.count;
+        } catch { /* 取得失敗時は画面上のcurrentCountで判定 */ }
         if (activeReservationsCount >= event.capacity) {
           throw new Error("【満員御礼】申し訳ございません。たった今、定員に達しました。");
         }
