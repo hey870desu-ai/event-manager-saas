@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, addDoc, setDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ClipboardList, Send, CheckCircle, AlertTriangle } from "lucide-react";
 import { Suspense } from "react";
@@ -31,16 +31,13 @@ function PreSurveyContent() {
           setEvent(snap.data());
         }
 
-        // 既に回答済みかチェック
+        // 既に回答済みかチェック（pre_feedbacksは個人情報のため直接readせず、有無だけ返すAPIで判定）
         if (reservationId) {
-          const q = query(
-            collection(db, "events", eventId, "pre_feedbacks"),
-            where("reservationId", "==", reservationId)
-          );
-          const existing = await getDocs(q);
-          if (!existing.empty) {
-            setAlreadyAnswered(true);
-          }
+          try {
+            const res = await fetch(`/api/pre-survey-status?eventId=${encodeURIComponent(eventId)}&rid=${encodeURIComponent(reservationId)}`);
+            const data = await res.json();
+            if (data.answered) setAlreadyAnswered(true);
+          } catch { /* 取得失敗時は未回答扱いでフォームを出す */ }
         }
       } catch (e) {
         console.error(e);
@@ -84,20 +81,34 @@ function PreSurveyContent() {
         return value;
       }));
 
-      await addDoc(collection(db, "events", eventId, "pre_feedbacks"), {
+      const payload = {
         answers: cleanAnswers,
         reservationId: reservationId || null,
         createdAt: serverTimestamp(),
         tenantId,
         eventId,
         eventTitle: event.title || ""
-      });
+      };
+
+      if (reservationId) {
+        // ドキュメントIDを予約IDに固定 → 2回目の送信はupdate扱いになりルールで拒否され二重回答を防ぐ
+        await setDoc(doc(db, "events", eventId, "pre_feedbacks", reservationId), payload);
+      } else {
+        // 予約ID無し（例: 直接アクセス）は従来通り自動IDで保存（重複防止は効かない）
+        await addDoc(collection(db, "events", eventId, "pre_feedbacks"), payload);
+      }
 
       setCompleted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: any) {
       console.error("Error:", error);
-      alert(`送信に失敗しました。\n${error.message}`);
+      if (error?.code === 'permission-denied') {
+        // 既に回答済み（予約IDのドキュメントが存在し、2回目はupdate拒否）
+        setAlreadyAnswered(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        alert(`送信に失敗しました。\n${error.message}`);
+      }
     } finally {
       setSubmitting(false);
     }
