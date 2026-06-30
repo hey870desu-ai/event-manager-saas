@@ -113,7 +113,7 @@ export default async function EventPage({ params }: Props) {
   }
 
   // 🔒 受付終了の場合
-  if (eventData.status === 'closed') {
+  if (eventData?.status === 'closed') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
         <div className="max-w-sm">
@@ -134,8 +134,8 @@ export default async function EventPage({ params }: Props) {
     );
   }
 
-  // 🔒 下書き状態なら、お客さんには「準備中」の標準的な画面を表示
-  if (eventData.status !== 'published') {
+  // 🔒 下書き(draft)・非公開・取得不可（新ルールでdraftは未認証read不可→null）の場合は「準備中」を表示
+  if (!eventData || eventData.status !== 'published') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
         <div className="max-w-sm">

@@ -49,37 +49,69 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/events/$(eventId)).data.tenantId;
     }
 
-    // 未認証PVカウンタ用：pageViews だけを変更する更新か
+    // 未認証PVカウンタ用：pageViews だけを +1 する更新か（任意値/負数/巨大値への改ざんを防ぐ）
+    // 既存docにpageViewsが無い場合は 0 とみなして +1（初回カウントを壊さない）
     function onlyPageViews() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pageViews']);
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pageViews'])
+        && request.resource.data.pageViews is int
+        && request.resource.data.pageViews == resource.data.get('pageViews', 0) + 1;
     }
 
     // ---------- events（イベント本体：公開read） ----------
     match /events/{eventId} {
-      allow read: if true;                                   // 公開イベントページ（未認証OK）
+      // 公開ページは未認証OK。ただし下書き(draft)だけは未公開なので自テナント管理者のみ。
+      // （status未設定の旧データや published/closed は従来どおり公開）
+      allow read: if resource.data.status != 'draft'
+                  || isMember(resource.data.tenantId);
       allow create: if isMember(request.resource.data.tenantId);
       allow update: if isMember(resource.data.tenantId)      // 自テナントの編集
-                    || onlyPageViews();                      // 未認証の閲覧数カウンタ
+                    || onlyPageViews();                      // 未認証の閲覧数カウンタ(+1のみ)
       allow delete: if isMember(resource.data.tenantId);
 
-      // 申込（未認証作成OK／閲覧・チェックインは自テナント管理者のみ）
+      // 申込（未認証作成OK。なりすまし・スパム対策に最小限の検証を課す）
+      // 許可フィールドは ReservationForm.tsx の保存内容と一致させること
       match /reservations/{resId} {
-        allow create: if true;
+        allow create: if request.resource.data.eventId == eventId
+                      && request.resource.data.status in ['confirmed', 'payment_pending', 'on_site']
+                      && request.resource.data.checkedIn == false
+                      && request.resource.data.price is number
+                      && request.resource.data.name is string && request.resource.data.name.size() < 200
+                      && request.resource.data.email is string && request.resource.data.email.size() < 320
+                      && request.resource.data.keys().hasOnly([
+                           'tenantId','eventId','eventTitle','contactName','contactEmail','contactPhone',
+                           'name','email','phone','type','customAnswers','notes','selectedTicket',
+                           'status','createdAt','emailed','checkedIn','price'
+                         ]);
         allow read, update, delete: if isMember(eventTenant(eventId));
       }
-      // 事後アンケート（未認証作成OK）
+      // 事後アンケート（未認証作成OK＋スパム検証）
       match /feedbacks/{fbId} {
-        allow create: if true;
+        allow create: if request.resource.data.eventId == eventId
+                      && request.resource.data.answers is map
+                      && (!('rating' in request.resource.data)
+                          || (request.resource.data.rating is number
+                              && request.resource.data.rating >= 0
+                              && request.resource.data.rating <= 5))
+                      && request.resource.data.keys().hasOnly([
+                           'rating','answers','createdAt','tenantId','eventId','eventTitle'
+                         ]);
         allow read, update, delete: if isMember(eventTenant(eventId));
       }
-      // 事前アンケート（未認証作成OK）
+      // 事前アンケート（未認証作成OK＋スパム検証。docID=予約IDなら2回目はupdate拒否で二重回答防止）
       match /pre_feedbacks/{pfId} {
-        allow create: if true;
+        allow create: if request.resource.data.eventId == eventId
+                      && request.resource.data.answers is map
+                      && request.resource.data.keys().hasOnly([
+                           'answers','reservationId','createdAt','tenantId','eventId','eventTitle'
+                         ]);
         allow read, update, delete: if isMember(eventTenant(eventId));
       }
     }
 
     // ---------- tenants（公開read：LP・法令ページ） ----------
+    // ⚠️ 後続ハードニング(別途): 現状 read=true で stripeConnectId/ownerEmail 等の機微も
+    //    公開readになる。公開表示に必要な最小フィールドを別ドキュメントに分離し、本体read を
+    //    isMember(tenantId)||isSuper() に絞る予定（公開ページの参照先付け替えが必要なため段階分け）。
     match /tenants/{tenantId} {
       allow read: if true;
       allow create: if isSuper();                 // 新規テナントはAPI(adminSDK)/運営者
@@ -102,6 +134,9 @@ service cloud.firestore {
     }
 
     // ---------- admin_users（最重要：権限昇格を防ぐ） ----------
+    // ⚠️ 後続ハードニング(別途): email の大小文字正規化。現状はドキュメントID＝生email・
+    //    判定も生emailで現行コードと整合。メールリンクで大文字混じりが来ると締め出すため、
+    //    既存docのID小文字化(移行スクリプト)とルール/書込側の .lower() 統一を同時に行う予定。
     match /admin_users/{email} {
       // 自分自身のアカウントか
       function isSelf() { return isAuth() && request.auth.token.email == email; }
@@ -132,8 +167,10 @@ service cloud.firestore {
     }
 
     // ---------- contacts（運営元あての問い合わせinbox） ----------
+    // 問い合わせ作成は app/api/contact(adminSDK)経由のみ。クライアント直書き導線は無いので
+    // 匿名スパム書込面を閉じる。read/update/delete は運営者のみ。
     match /contacts/{id} {
-      allow create: if true;                  // お問い合わせフォーム（実体はAPI経由）
+      allow create: if false;
       allow read, update, delete: if isSuper();
     }
 
