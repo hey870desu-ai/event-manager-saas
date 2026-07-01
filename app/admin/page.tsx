@@ -180,6 +180,7 @@ export default function AdminDashboard() {
   const [sendingMail, setSendingMail] = useState(false);
   const [mailQueueList, setMailQueueList] = useState<any[]>([]);
   const [previewMailQueue, setPreviewMailQueue] = useState<any>(null);
+  const [eventMailHistory, setEventMailHistory] = useState<any[]>([]); // メール送信モーダル内：このイベントの配信履歴
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -487,6 +488,23 @@ useEffect(() => {
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [user, currentUserTenant, isSuperAdminMode]); // 依存配列に currentUserTenant を追加
 // ▲▲▲ 修正ここまで ▲▲▲
+
+  // メール送信モーダルを開いている間、そのイベントの配信予約・送信履歴を読み込む
+  // （eventId で直接引くので、旧データ=tenantId未設定の履歴も表示できる）
+  useEffect(() => {
+    if (!isMailModalOpen || !currentEventForList?.id) { setEventMailHistory([]); return; }
+    const q = query(collection(db, "mail_queue"), where("eventId", "==", currentEventForList.id));
+    const unsub = onSnapshot(q, (s) => {
+      const list = s.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      list.sort((a: any, b: any) => {
+        const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+        const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+        return tb - ta;
+      });
+      setEventMailHistory(list);
+    }, (err) => { console.error("event mail history load error:", err); setEventMailHistory([]); });
+    return () => unsub();
+  }, [isMailModalOpen, currentEventForList]);
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -1115,12 +1133,33 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
       </h3>
       <p className="text-emerald-600/80 text-sm mt-1">新規テナントの契約・発行などの管理業務はこちらから</p>
     </div>
-    <Link 
-      href="/super-admin"
-      className="bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:shadow-md whitespace-nowrap"
-    >
-      管理コンソールへ移動
-    </Link>
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      <button
+        onClick={async () => {
+          if (!confirm('古い配信履歴にテナント情報を紐付けます（1回だけ実行すればOK）。実行しますか？')) return;
+          try {
+            const idToken = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/admin/backfill-mailqueue', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            });
+            const data = await res.json();
+            if (!res.ok) { alert('エラー: ' + (data.error || '不明')); return; }
+            alert(`完了：${data.fixed}件を修復しました（全${data.total}件 / 既存済${data.skippedHasTenant} / event無${data.skippedNoEvent} / 不明${data.skippedNoTenant}）`);
+          } catch { alert('通信エラーが発生しました'); }
+        }}
+        className="bg-white text-amber-700 border border-amber-300 hover:bg-amber-50 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm whitespace-nowrap"
+        title="テナント分離前の配信履歴にテナント情報を紐付けます（1回だけ）"
+      >
+        配信履歴の修復
+      </button>
+      <Link
+        href="/super-admin"
+        className="bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm hover:shadow-md whitespace-nowrap"
+      >
+        管理コンソールへ移動
+      </Link>
+    </div>
   </div>
 )}
 {/* ▲▲▲ 追加ここまで ▲▲▲ */}
@@ -2162,6 +2201,50 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                  <label className="block text-xs text-slate-500 mb-2">本文</label>
                  <textarea value={mailBody} onChange={e=>setMailBody(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:border-indigo-500 outline-none resize-none min-h-[300px] leading-relaxed" placeholder="本文を入力"/>
                </div>
+
+               {/* このイベントの配信予約・送信履歴（予約中は取消・すべて詳細で内容確認） */}
+               {eventMailHistory.length > 0 && (
+                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                   <label className="text-xs text-slate-400 mb-3 font-bold flex items-center gap-2"><Clock size={14} className="text-emerald-400"/> このイベントの配信予約・送信履歴</label>
+                   <div className="space-y-2">
+                     {eventMailHistory.slice(0, 10).map((item) => (
+                       <div key={item.id} className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-center gap-2 mb-0.5">
+                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                               item.status === 'pending' ? 'bg-amber-900/40 text-amber-300' :
+                               item.status === 'sent' ? 'bg-blue-900/40 text-blue-300' :
+                               'bg-slate-800 text-slate-400'
+                             }`}>
+                               {item.status === 'pending' ? '予約中' : item.status === 'sent' ? '送信済み' : item.status}
+                             </span>
+                             <span className="text-[10px] text-slate-500">
+                               {item.scheduledAt?.toDate ? item.scheduledAt.toDate().toLocaleString('ja-JP') : item.sentAt?.toDate ? item.sentAt.toDate().toLocaleString('ja-JP') : ''}
+                             </span>
+                           </div>
+                           <p className="text-xs font-bold text-slate-200 truncate">{item.subject}</p>
+                           <p className="text-[10px] text-slate-500">{item.recipients?.length || 0}名宛</p>
+                         </div>
+                         <div className="flex items-center gap-1.5 shrink-0">
+                           <button onClick={() => setPreviewMailQueue(item)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-slate-700"><Eye size={12}/> 詳細</button>
+                           {item.status === 'pending' && (
+                             <button
+                               onClick={async () => {
+                                 if (!confirm('この予約配信を取り消しますか？\n（取り消すと、このメールは送信されません）')) return;
+                                 try { await deleteDoc(doc(db, "mail_queue", item.id)); }
+                                 catch { alert('取消に失敗しました。時間をおいて再度お試しください。'); }
+                               }}
+                               className="text-[11px] bg-red-900/30 hover:bg-red-900/50 text-red-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-red-500/40"
+                             >
+                               <X size={12}/> 取消
+                             </button>
+                           )}
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
              </div>
 
              {/* 配信タイミング選択 */}
