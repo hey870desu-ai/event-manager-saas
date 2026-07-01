@@ -22,35 +22,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '運営者のみ実行できます' }, { status: 403 });
     }
 
-    const snap = await adminDb.collection('mail_queue').get();
+    // 全イベントを読み込み、タイトル→イベント のマップを作る（タイトル一致での復旧用）
+    const evSnap = await adminDb.collection('events').get();
+    const byTitle: Record<string, Array<{ id: string; tenantId: string }>> = {};
     const eventTenantCache: Record<string, string> = {};
-    let fixed = 0, skippedHasTenant = 0, skippedNoEvent = 0, skippedNoTenant = 0;
+    evSnap.forEach((e: any) => {
+      const data = e.data() as any;
+      eventTenantCache[e.id] = data.tenantId || '';
+      const t = (data.title || '').trim();
+      if (!t) return;
+      (byTitle[t] = byTitle[t] || []).push({ id: e.id, tenantId: data.tenantId || '' });
+    });
+
+    const snap = await adminDb.collection('mail_queue').get();
+    let fixed = 0, skippedHasBoth = 0, skippedUnresolved = 0;
 
     for (const d of snap.docs) {
       const data = d.data() as any;
-      if (data.tenantId) { skippedHasTenant++; continue; }
-      const eventId = data.eventId;
-      if (!eventId) { skippedNoEvent++; continue; }
+      if (data.tenantId && data.eventId) { skippedHasBoth++; continue; }
 
-      let tid = eventTenantCache[eventId];
-      if (tid === undefined) {
-        const ev = await adminDb.collection('events').doc(eventId).get();
-        tid = ev.exists ? ((ev.data() as any)?.tenantId || '') : '';
-        eventTenantCache[eventId] = tid;
+      const update: Record<string, any> = {};
+
+      // 1) eventId があれば、そこから tenantId を引く
+      if (data.eventId && !data.tenantId) {
+        const tid = eventTenantCache[data.eventId];
+        if (tid) update.tenantId = tid;
       }
-      if (!tid) { skippedNoTenant++; continue; }
 
-      await d.ref.update({ tenantId: tid });
+      // 2) eventId が無ければ eventTitle でイベントを一意特定し eventId/tenantId を補完
+      if (!data.eventId) {
+        const title = (data.eventTitle || '').trim();
+        const matches = title ? (byTitle[title] || []) : [];
+        if (matches.length === 1 && matches[0].tenantId) {
+          update.eventId = matches[0].id;
+          if (!data.tenantId) update.tenantId = matches[0].tenantId;
+        }
+      }
+
+      if (Object.keys(update).length === 0) { skippedUnresolved++; continue; }
+      await d.ref.update(update);
       fixed++;
     }
 
     return NextResponse.json({
       success: true,
       total: snap.size,
-      fixed,                 // tenantId を書き込んだ件数
-      skippedHasTenant,      // 既に tenantId 有り
-      skippedNoEvent,        // eventId が無く紐付け不能
-      skippedNoTenant,       // イベントが見つからず tenantId 不明
+      fixed,                 // tenantId/eventId を補完した件数
+      skippedHasBoth,        // 既に両方あり
+      skippedUnresolved,     // eventId も eventTitle一致も無く紐付け不能
     });
   } catch (error: any) {
     console.error('backfill-mailqueue error:', error);
