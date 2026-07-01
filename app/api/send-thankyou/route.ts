@@ -157,6 +157,19 @@ export async function POST(request: Request) {
       await new Promise(resolve => setTimeout(resolve, 700));
     }
 
+    // 📥 送信履歴として保存：即時送信も配信履歴(mail_queue)に残す（予約配信と同じ形・status='sent'）
+    //    ※これが無かったため「今すぐ送信」したお礼・リマインドは履歴に出ていなかった
+    try {
+      await adminDb.collection('mail_queue').add({
+        tenantId: tenantId || null, eventId: eventId || null,
+        recipients, subject, body: bodyWithSurvey, senderName: headerForEmail, tenantName: senderForInbox,
+        eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
+        status: 'sent', sentAt: new Date(), createdAt: new Date(),
+      });
+    } catch (e) {
+      console.warn('mail_queue(sent) 記録に失敗（メール送信自体は成功しています）:', e);
+    }
+
     if (contactEmail) {
       await sendEmail({
         from: `"【絆太郎】申し込み通知" <info@event-manager.app>`,
