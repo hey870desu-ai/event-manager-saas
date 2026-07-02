@@ -180,7 +180,8 @@ export default function AdminDashboard() {
   const [sendingMail, setSendingMail] = useState(false);
   const [mailQueueList, setMailQueueList] = useState<any[]>([]);
   const [previewMailQueue, setPreviewMailQueue] = useState<any>(null);
-  const [eventMailHistory, setEventMailHistory] = useState<any[]>([]); // メール送信モーダル内：このイベントの配信履歴
+  const [eventMailHistory, setEventMailHistory] = useState<any[]>([]); // このイベントの配信履歴
+  const [showEventHistory, setShowEventHistory] = useState(false); // 参加者画面：配信履歴パネルの開閉
   // ✅ これを足すだけで波線は消えるぞい！
   const [modalStep, setModalStep] = useState(1);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -489,10 +490,11 @@ useEffect(() => {
   }, [user, currentUserTenant, isSuperAdminMode]); // 依存配列に currentUserTenant を追加
 // ▲▲▲ 修正ここまで ▲▲▲
 
-  // メール送信モーダルを開いている間、そのイベントの配信予約・送信履歴を読み込む
+  // 参加者画面 or メール送信モーダルを開いている間、そのイベントの配信予約・送信履歴を読み込む
   // （eventId で直接引くので、旧データ=tenantId未設定の履歴も表示できる）
   useEffect(() => {
-    if (!isMailModalOpen || !currentEventForList?.id) { setEventMailHistory([]); return; }
+    const active = (isParticipantsOpen || isMailModalOpen) && currentEventForList?.id;
+    if (!active) { setEventMailHistory([]); return; }
     const q = query(collection(db, "mail_queue"), where("eventId", "==", currentEventForList.id));
     const unsub = onSnapshot(q, (s) => {
       const list = s.docs.map(d => ({ id: d.id, ...d.data() } as any));
@@ -504,7 +506,7 @@ useEffect(() => {
       setEventMailHistory(list);
     }, (err) => { console.error("event mail history load error:", err); setEventMailHistory([]); });
     return () => unsub();
-  }, [isMailModalOpen, currentEventForList]);
+  }, [isParticipantsOpen, isMailModalOpen, currentEventForList]);
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -1518,7 +1520,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
           <div className="bg-[#0f111a] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#0f111a] shrink-0">
               <div><h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2"><ListChecks className="text-orange-400"/> 参加者・受付</h2><p className="text-xs md:text-sm text-slate-400 line-clamp-1">{currentEventForList.title}</p></div>
-              <button onClick={()=>setIsParticipantsOpen(false)} className="text-slate-400 hover:text-white min-w-[40px] flex justify-end"><X/></button>
+              <button onClick={()=>{setIsParticipantsOpen(false); setShowEventHistory(false);}} className="text-slate-400 hover:text-white min-w-[40px] flex justify-end"><X/></button>
             </div>
             
             <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex flex-wrap gap-2 justify-between items-center shrink-0">
@@ -1550,10 +1552,63 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                  <button onClick={()=>copyEmails("checked-in")} className="text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded flex gap-2"><Copy size={14}/> 受付済メアド</button>
                  <button onClick={()=>copyEmails("all")} className="hidden md:flex text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded gap-2"><Copy size={14}/> 全員メアド</button>
                </div>
-               <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
-  <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
-</button>
+               <div className="flex gap-2 items-center">
+                 <button onClick={() => setShowEventHistory(v => !v)} className={`text-xs px-3 py-2 rounded-lg font-bold flex gap-1.5 items-center border transition-colors ${showEventHistory ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`} title="このイベントのメール配信履歴を表示">
+                   <Clock size={15}/> 配信履歴{eventMailHistory.length > 0 ? ` (${eventMailHistory.length})` : ''}
+                 </button>
+                 <button onClick={() => openMailModal()} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-2 rounded-lg font-bold flex gap-2 shadow-lg items-center">
+                   <Mail size={16}/> {selectedParticipantIds.length > 0 ? `${selectedParticipantIds.length}名に送信` : 'メール送信'}
+                 </button>
+               </div>
             </div>
+
+            {/* このイベントのメール配信履歴（「配信履歴」ボタンで開閉） */}
+            {showEventHistory && (
+              <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 shrink-0 max-h-64 overflow-y-auto">
+                <div className="text-xs text-slate-400 font-bold mb-2 flex items-center gap-2"><Clock size={14} className="text-emerald-400"/> このイベントの配信予約・送信履歴</div>
+                {eventMailHistory.length === 0 ? (
+                  <div className="text-xs text-slate-500 py-3 text-center">まだ配信・予約はありません（「今すぐ送信」した分も今後はここに残ります）</div>
+                ) : (
+                  <div className="space-y-2">
+                    {eventMailHistory.slice(0, 20).map((item) => (
+                      <div key={item.id} className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                              item.status === 'pending' ? 'bg-amber-900/40 text-amber-300' :
+                              item.status === 'sent' ? 'bg-blue-900/40 text-blue-300' :
+                              'bg-slate-800 text-slate-400'
+                            }`}>
+                              {item.status === 'pending' ? '予約中' : item.status === 'sent' ? '送信済み' : item.status}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {item.scheduledAt?.toDate ? item.scheduledAt.toDate().toLocaleString('ja-JP') : item.sentAt?.toDate ? item.sentAt.toDate().toLocaleString('ja-JP') : ''}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-200 truncate">{item.subject}</p>
+                          <p className="text-[10px] text-slate-500">{item.recipients?.length || 0}名宛</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button onClick={() => setPreviewMailQueue(item)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-slate-700"><Eye size={12}/> 詳細</button>
+                          {item.status === 'pending' && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('この予約配信を取り消しますか？\n（取り消すと、このメールは送信されません）')) return;
+                                try { await deleteDoc(doc(db, "mail_queue", item.id)); }
+                                catch { alert('取消に失敗しました。時間をおいて再度お試しください。'); }
+                              }}
+                              className="text-[11px] bg-red-900/30 hover:bg-red-900/50 text-red-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-red-500/40"
+                            >
+                              <X size={12}/> 取消
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="flex-1 overflow-y-auto">
                {!participants.length ? <div className="p-10 text-center text-slate-500">参加者なし</div> : (
