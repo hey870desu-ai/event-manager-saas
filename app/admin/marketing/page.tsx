@@ -300,6 +300,9 @@ const fetchTargets = async (overrides?: { branch?: string; eventId?: string }) =
           company: d.company || "",
           phone: d.phone || "",
           role: d.role || "",
+          // ★手動で編集/確定した名前は「固定」し、予約データで上書きしない
+          //   （1つのメールを複数人の代理登録に使っている場合の宛名ズレを防ぐ）
+          _pinned: d.source === 'manual_edit',
         });
       });
 
@@ -314,7 +317,8 @@ const fetchTargets = async (overrides?: { branch?: string; eventId?: string }) =
             } else {
               const createdAt = data.createdAt?.toDate?.()?.getTime?.() || 0;
               const existing = customerMap.get(email);
-              if (!existing || createdAt > (existing._createdAt || 0)) {
+              // 手動確定(_pinned)の宛名は予約で上書きしない。それ以外は最新の予約名を採用。
+              if (!existing || (!existing._pinned && createdAt > (existing._createdAt || 0))) {
                 customerMap.set(email, {
                   name: data.name,
                   company: data.company || data.department || "",
