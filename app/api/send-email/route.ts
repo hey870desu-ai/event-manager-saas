@@ -45,7 +45,15 @@ export async function POST(request: Request) {
       subject: customSubject
     } = body;
 
-    const senderName = tenantName || "HANAHIRO CO.,LTD.";
+    // 差出人名は「渡された名前 → tenantId でテナント実データ参照」で確定（特定社名固定への誤フォールバックを防ぐ）
+    let resolvedSender = (tenantName || "").trim();
+    if (!resolvedSender && tenantId) {
+      try {
+        const tSnap = await adminDb.collection('tenants').doc(tenantId).get();
+        if (tSnap.exists) { const td: any = tSnap.data(); resolvedSender = (td.orgName || td.name || "").trim(); }
+      } catch (e) { console.warn('差出人テナント名の解決に失敗:', e); }
+    }
+    const senderName = resolvedSender || "イベント事務局";
     const brandColor = themeColor || "#0ea5e9";
     const homeUrl = tenantUrl || "#";
     

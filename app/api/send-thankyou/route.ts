@@ -45,12 +45,21 @@ export async function POST(request: Request) {
     // {survey} を全受信者共通で置換（予約配信・即時配信どちらにも反映）
     const bodyWithSurvey = String(baseBody || '').replace(/\{survey\}/g, surveyHtml);
 
-    // 🏆 【名前の修正ロジック】Firestoreのデータ（CARE DESIGN WORKS）を最優先にするぞい
-    const rawName = tenantName || senderName || "CARE DESIGN WORKS";
-    const cleanName = rawName.replace(/[\s　]*事務局$/, "").trim(); // 「事務局」のダブりを掃除
-    
-    const senderForInbox = cleanName;                // 差出人：CARE DESIGN WORKS
-    const headerForEmail = `${cleanName} 事務局`;      // ヘッダー：CARE DESIGN WORKS 事務局
+    // 🏆 差出人名は「呼び出し元が渡した名前 → tenantId からテナント実データ参照」の順で確定。
+    //    以前は未指定時に "CARE DESIGN WORKS" 固定へ落ちており、全テナントのメールが
+    //    その名前で送られてしまっていた（マルチテナント事故）ため、特定テナント名の固定を廃止。
+    let resolvedName = (tenantName || senderName || "").trim();
+    if (!resolvedName && tenantId) {
+      try {
+        const tSnap = await adminDb.collection('tenants').doc(tenantId).get();
+        if (tSnap.exists) { const td: any = tSnap.data(); resolvedName = (td.orgName || td.name || "").trim(); }
+      } catch (e) { console.warn('差出人テナント名の解決に失敗:', e); }
+    }
+    const rawName = resolvedName || "イベント事務局";
+    const cleanName = (rawName.replace(/[\s　]*事務局$/, "").trim()) || "イベント事務局"; // 「事務局」のダブり掃除
+
+    const senderForInbox = cleanName;                // 差出人：テナントの実名
+    const headerForEmail = `${cleanName} 事務局`;      // ヘッダー：〇〇 事務局
 
     // 🅰️ 予約配信ロジック（そのまま維持）
     if (scheduledAt) {

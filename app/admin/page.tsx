@@ -748,6 +748,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
           recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })),
           subject: mailSubject,
           body: mailBody,
+          tenantName: orgName || "", // 差出人名（テナントの表示名）。未指定だとAPIがtenantIdから解決
           tenantId: currentEventForList.tenantId || "",
           eventId: currentEventForList.id,
           eventTitle: currentEventForList.title,
