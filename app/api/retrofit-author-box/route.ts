@@ -28,6 +28,72 @@ function authHeader(username: string, appPassword: string): string {
   return `Basic ${Buffer.from(`${username}:${cleaned}`).toString('base64')}`;
 }
 
+// ===== XML-RPC（福ひろば用: REST Basic認証が通らないサイト） =====
+// lib/wordpress-xmlrpc.ts と同じ方式の最小複製（このエンドポイントは使い捨て）
+function xmlEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function xmlUnescape(s: string): string {
+  return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+}
+async function callRpc(endpoint: string, method: string, params: string[]): Promise<string> {
+  const body = `<?xml version="1.0"?>\n<methodCall>\n  <methodName>${method}</methodName>\n  <params>\n${params.join('\n')}\n  </params>\n</methodCall>`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=UTF-8' },
+    body,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`XML-RPC HTTP ${res.status}: ${text.slice(0, 200)}`);
+  if (text.includes('<fault>')) {
+    const f = text.match(/<name>faultString<\/name>\s*<value>\s*<string>([^<]*)<\/string>/);
+    throw new Error(`XML-RPC fault: ${f?.[1] || text.slice(0, 200)}`);
+  }
+  return text;
+}
+const pStr = (v: string) => `    <param><value><string>${xmlEscape(v)}</string></value></param>`;
+const pInt = (v: number) => `    <param><value><int>${v}</int></value></param>`;
+
+async function retrofitViaXmlRpc(siteUrl: string, username: string, password: string, dryRun: boolean) {
+  const endpoint = `${siteUrl.replace(/\/+$/, '')}/wp/xmlrpc.php`;
+  // 1) 自分が編集できる公開記事のID一覧（100件ずつページング）
+  const ids: number[] = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const filter = `    <param><value><struct><member><name>number</name><value><int>100</int></value></member><member><name>offset</name><value><int>${offset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
+    const fields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
+    const res = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, fields]);
+    const batch = [...res.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)].map((m) => parseInt(m[1], 10));
+    ids.push(...batch);
+    if (batch.length < 100) break;
+  }
+
+  // 2) 1件ずつ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
+  const updated: number[] = [];
+  const skipped: number[] = [];
+  const failed: { id: number; error: string }[] = [];
+  const wouldUpdate: number[] = [];
+  for (const id of ids) {
+    try {
+      const fields = `    <param><value><array><data><value><string>post_content</string></value></data></array></value></param>`;
+      const res = await callRpc(endpoint, 'wp.getPost', [pInt(1), pStr(username), pStr(password), pInt(id), fields]);
+      const m = res.match(/<name>post_content<\/name>\s*<value>\s*<string>([\s\S]*?)<\/string>/);
+      const raw = m ? xmlUnescape(m[1]) : '';
+      if (!raw || raw.includes(MARKER)) { skipped.push(id); continue; }
+      if (dryRun) { wouldUpdate.push(id); continue; }
+      const struct = `    <param><value><struct><member><name>post_content</name><value><string>${xmlEscape(raw + HANAHIRO_AUTHOR_BOX)}</string></value></member></struct></value></param>`;
+      await callRpc(endpoint, 'wp.editPost', [pInt(1), pStr(username), pStr(password), pInt(id), struct]);
+      updated.push(id);
+    } catch (e: any) {
+      failed.push({ id, error: String(e?.message || e).slice(0, 150) });
+    }
+  }
+  return dryRun
+    ? { ok: true, dryRun: true, totalOwn: ids.length, alreadyOrEmpty: skipped.length, willUpdate: wouldUpdate.length }
+    : { ok: failed.length === 0, totalOwn: ids.length, alreadyOrEmpty: skipped.length, updated: updated.length, failed };
+}
+
 export async function POST(request: NextRequest) {
   const { secret, dryRun, site, debug } = await request.json().catch(() => ({}));
   if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
@@ -42,6 +108,17 @@ export async function POST(request: NextRequest) {
   if (!siteUrl || !username || !appPassword) {
     return NextResponse.json({ error: 'WP env not configured' }, { status: 500 });
   }
+  // 福ひろばは REST Basic認証が通らない（Application Password非対応・cronもXML-RPC投稿）
+  // → XML-RPC経由で取得・更新する
+  if (isFuku) {
+    try {
+      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun);
+      return NextResponse.json(result);
+    } catch (e: any) {
+      return NextResponse.json({ error: String(e?.message || e).slice(0, 300) }, { status: 502 });
+    }
+  }
+
   const base = `${siteUrl.replace(/\/+$/, '')}/wp-json/wp/v2`;
   const auth = authHeader(username, appPassword);
 
