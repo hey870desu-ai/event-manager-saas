@@ -204,6 +204,24 @@ async function processCron() {
     // ============================================================
     // env で設定された場合のみ動作。
     // HANAHIRO_BLOG_AUTO_PUBLISH=true のときは即公開、未設定 or false で下書き保存
+    //
+    // 監修者ボックス（AIO/E-E-A-T対策）: AI検索・検索エンジンは「誰が書いているか」を
+    // 信頼性シグナルとして読むため、自動公開する全記事の末尾に監修者情報を付ける。
+    // テーマCSSに依存しないようインラインstyleで自己完結。経歴の正準は
+    // 福ひろばラーニング側（SupervisorSection.jsx）と同期すること。
+    const HANAHIRO_AUTHOR_BOX = `
+<div style="margin-top:2.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fff8f0;padding:1.2em 1.4em;">
+  <div style="font-size:0.8em;font-weight:700;color:#c2410c;margin-bottom:0.8em;">この記事の監修</div>
+  <div style="display:flex;gap:1em;align-items:flex-start;flex-wrap:wrap;">
+    <img src="https://info.hana-hiro.com/photos/representative.jpg" alt="監修者 塙啓之" width="72" height="72" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid #e5e7eb;" loading="lazy">
+    <div style="flex:1;min-width:220px;">
+      <div style="font-weight:800;">塙 啓之<span style="font-size:0.75em;font-weight:400;color:#6b7280;margin-left:0.6em;">はなわ ひろゆき</span></div>
+      <div style="font-size:0.85em;color:#6b7280;margin:0.2em 0 0.5em;">株式会社はなひろ 代表取締役</div>
+      <p style="font-size:0.88em;line-height:1.7;margin:0 0 0.5em;">介護業界で25年以上、現場・介護施設の管理者・ケアマネジャー（介護支援専門員）を経験。2013年に株式会社はなひろを設立し、福島県須賀川市・郡山市・矢祭町でデイサービスなどの介護事業所を運営しています。一般社団法人 全国介護事業者連盟 福島県支部 副支部長。</p>
+      <a href="https://info.hana-hiro.com/company.html" style="font-size:0.85em;font-weight:700;color:#ea580c;text-decoration:none;">会社概要を見る →</a>
+    </div>
+  </div>
+</div>`;
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
     const wpSite = process.env.WP_SITE_URL;
     const wpUser = process.env.WP_USERNAME;
@@ -267,16 +285,18 @@ async function processCron() {
               blogFailures.push({ title: titleForAlert, error: 'タイトル or 本文が空です' });
               continue;
             }
+            // 監修者ボックスを本文末尾に付けて投稿（全記事共通・AIO/E-E-A-T）
+            const contentWithAuthor = html + HANAHIRO_AUTHOR_BOX;
             let wpResult: { id: number; link: string };
             if (useXmlRpc) {
               wpResult = await createWpPostXmlRpc(
                 { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
-                { title, content: html, status: autoPublish ? 'publish' : 'draft', categoryNames }
+                { title, content: contentWithAuthor, status: autoPublish ? 'publish' : 'draft', categoryNames }
               );
             } else {
               const r = await createWpPost(
                 { siteUrl: wpSite, username: wpUser, appPassword: wpPass },
-                { title, content: html, status: autoPublish ? 'publish' : 'draft', categories: categoryIds }
+                { title, content: contentWithAuthor, status: autoPublish ? 'publish' : 'draft', categories: categoryIds }
               );
               wpResult = { id: r.id, link: r.link };
             }
