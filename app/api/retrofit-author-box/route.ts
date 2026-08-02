@@ -64,7 +64,7 @@ async function retrofitViaXmlRpc(siteUrl: string, username: string, password: st
     const filter = `    <param><value><struct><member><name>number</name><value><int>100</int></value></member><member><name>offset</name><value><int>${offset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
     const fields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
     const res = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, fields]);
-    const batch = [...res.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)].map((m) => parseInt(m[1], 10));
+    const batch = Array.from(res.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)).map((m) => parseInt(m[1], 10));
     ids.push(...batch);
     if (batch.length < 100) break;
   }
