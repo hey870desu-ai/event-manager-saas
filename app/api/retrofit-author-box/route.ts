@@ -46,11 +46,21 @@ export async function POST(request: NextRequest) {
   const auth = authHeader(username, appPassword);
 
   // 全公開記事を取得（context=edit で raw 本文をもらう。rendered を書き戻すと
-  // wpautop 由来の <p> が二重に固定されるため、必ず raw を使う）
+  // wpautop 由来の <p> が二重に固定されるため、必ず raw を使う）。
+  // 権限が管理者でないサイト（福ひろば）では全投稿のeditが401になるため、
+  // 自分名義の投稿に絞る（cron投稿は全てAPIユーザー名義なので実質全対象）。
+  let authorFilter = '';
+  {
+    const meRes = await fetch(`${base}/users/me`, { headers: { Authorization: auth } });
+    if (meRes.ok) {
+      const me = await meRes.json();
+      if (me?.id) authorFilter = `&author=${me.id}`;
+    }
+  }
   const posts: { id: number; title: string; raw: string; link: string }[] = [];
   for (let page = 1; page <= 10; page++) {
     const res = await fetch(
-      `${base}/posts?status=publish&per_page=100&page=${page}&context=edit`,
+      `${base}/posts?status=publish&per_page=100&page=${page}&context=edit${authorFilter}`,
       { headers: { Authorization: auth } }
     );
     if (res.status === 400) break; // ページ超過
