@@ -62,20 +62,13 @@ async function retrofitViaXmlRpc(
   batchOffset: number, batchLimit: number
 ) {
   const endpoint = `${siteUrl.replace(/\/+$/, '')}/wp/xmlrpc.php`;
-  // 1) 自分が編集できる公開記事のID一覧（100件ずつページング・post_idのみで軽量）
-  const ids: number[] = [];
-  for (let offset = 0; offset < 3000; offset += 100) {
-    const filter = `    <param><value><struct><member><name>number</name><value><int>100</int></value></member><member><name>offset</name><value><int>${offset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
-    const fields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
-    const res = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, fields]);
-    const batch = Array.from(res.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)).map((m) => parseInt(m[1], 10));
-    ids.push(...batch);
-    if (batch.length < 100) break;
-  }
+  // 1) このバッチ分のIDだけを直接取得（全件一覧を毎回取るとmaxDurationを超えるため）
+  const filter = `    <param><value><struct><member><name>number</name><value><int>${batchLimit}</int></value></member><member><name>offset</name><value><int>${batchOffset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
+  const idFields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
+  const listRes = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, idFields]);
+  const slice = Array.from(listRes.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)).map((m) => parseInt(m[1], 10));
 
-  // 2) 指定バッチ分だけ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
-  //   （全件を1リクエストで回すとVercelのmaxDurationを超えるため、呼び出し側でループする）
-  const slice = ids.slice(batchOffset, batchOffset + batchLimit);
+  // 2) バッチ分だけ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
   const updated: number[] = [];
   const skipped: number[] = [];
   const failed: { id: number; error: string }[] = [];
@@ -98,13 +91,12 @@ async function retrofitViaXmlRpc(
   return {
     ok: failed.length === 0,
     dryRun,
-    totalOwn: ids.length,
     batchOffset,
     processed: slice.length,
     alreadyOrEmpty: skipped.length,
     ...(dryRun ? { willUpdate: wouldUpdate.length } : { updated: updated.length }),
     failed,
-    hasMore: batchOffset + batchLimit < ids.length,
+    hasMore: slice.length === batchLimit,
   };
 }
 
@@ -131,7 +123,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ site: siteUrl, xmlrpcTest: t });
     }
     try {
-      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun, Number(offset) || 0, Math.min(Number(limit) || 40, 60));
+      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun, Number(offset) || 0, Math.min(Number(limit) || 20, 30));
       return NextResponse.json(result);
     } catch (e: any) {
       const cause = e?.cause ? ` cause=${String(e.cause?.code || e.cause?.message || e.cause).slice(0, 120)}` : '';
