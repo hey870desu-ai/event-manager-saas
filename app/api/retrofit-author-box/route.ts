@@ -57,11 +57,14 @@ async function callRpc(endpoint: string, method: string, params: string[]): Prom
 const pStr = (v: string) => `    <param><value><string>${xmlEscape(v)}</string></value></param>`;
 const pInt = (v: number) => `    <param><value><int>${v}</int></value></param>`;
 
-async function retrofitViaXmlRpc(siteUrl: string, username: string, password: string, dryRun: boolean) {
+async function retrofitViaXmlRpc(
+  siteUrl: string, username: string, password: string, dryRun: boolean,
+  batchOffset: number, batchLimit: number
+) {
   const endpoint = `${siteUrl.replace(/\/+$/, '')}/wp/xmlrpc.php`;
-  // 1) 自分が編集できる公開記事のID一覧（100件ずつページング）
+  // 1) 自分が編集できる公開記事のID一覧（100件ずつページング・post_idのみで軽量）
   const ids: number[] = [];
-  for (let offset = 0; offset < 1000; offset += 100) {
+  for (let offset = 0; offset < 3000; offset += 100) {
     const filter = `    <param><value><struct><member><name>number</name><value><int>100</int></value></member><member><name>offset</name><value><int>${offset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
     const fields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
     const res = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, fields]);
@@ -70,12 +73,14 @@ async function retrofitViaXmlRpc(siteUrl: string, username: string, password: st
     if (batch.length < 100) break;
   }
 
-  // 2) 1件ずつ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
+  // 2) 指定バッチ分だけ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
+  //   （全件を1リクエストで回すとVercelのmaxDurationを超えるため、呼び出し側でループする）
+  const slice = ids.slice(batchOffset, batchOffset + batchLimit);
   const updated: number[] = [];
   const skipped: number[] = [];
   const failed: { id: number; error: string }[] = [];
   const wouldUpdate: number[] = [];
-  for (const id of ids) {
+  for (const id of slice) {
     try {
       const fields = `    <param><value><array><data><value><string>post_content</string></value></data></array></value></param>`;
       const res = await callRpc(endpoint, 'wp.getPost', [pInt(1), pStr(username), pStr(password), pInt(id), fields]);
@@ -90,13 +95,21 @@ async function retrofitViaXmlRpc(siteUrl: string, username: string, password: st
       failed.push({ id, error: String(e?.message || e).slice(0, 150) });
     }
   }
-  return dryRun
-    ? { ok: true, dryRun: true, totalOwn: ids.length, alreadyOrEmpty: skipped.length, willUpdate: wouldUpdate.length }
-    : { ok: failed.length === 0, totalOwn: ids.length, alreadyOrEmpty: skipped.length, updated: updated.length, failed };
+  return {
+    ok: failed.length === 0,
+    dryRun,
+    totalOwn: ids.length,
+    batchOffset,
+    processed: slice.length,
+    alreadyOrEmpty: skipped.length,
+    ...(dryRun ? { willUpdate: wouldUpdate.length } : { updated: updated.length }),
+    failed,
+    hasMore: batchOffset + batchLimit < ids.length,
+  };
 }
 
 export async function POST(request: NextRequest) {
-  const { secret, dryRun, site, debug } = await request.json().catch(() => ({}));
+  const { secret, dryRun, site, debug, offset, limit } = await request.json().catch(() => ({}));
   if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -118,7 +131,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ site: siteUrl, xmlrpcTest: t });
     }
     try {
-      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun);
+      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun, Number(offset) || 0, Math.min(Number(limit) || 40, 60));
       return NextResponse.json(result);
     } catch (e: any) {
       const cause = e?.cause ? ` cause=${String(e.cause?.code || e.cause?.message || e.cause).slice(0, 120)}` : '';
