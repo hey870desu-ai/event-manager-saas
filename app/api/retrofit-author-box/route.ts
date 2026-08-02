@@ -29,7 +29,7 @@ function authHeader(username: string, appPassword: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const { secret, dryRun, site } = await request.json().catch(() => ({}));
+  const { secret, dryRun, site, debug } = await request.json().catch(() => ({}));
   if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -44,6 +44,27 @@ export async function POST(request: NextRequest) {
   }
   const base = `${siteUrl.replace(/\/+$/, '')}/wp-json/wp/v2`;
   const auth = authHeader(username, appPassword);
+
+  // debug: true → 権限まわりの診断だけ返して終了（書き込みなし）
+  if (debug) {
+    const out: Record<string, unknown> = { site: siteUrl };
+    const me = await fetch(`${base}/users/me?context=edit`, { headers: { Authorization: auth } });
+    out.me = { status: me.status, body: (await me.text()).slice(0, 250) };
+    const pub = await fetch(`${base}/posts?per_page=1`, { headers: { Authorization: auth } });
+    out.listPublic = { status: pub.status };
+    let firstId: number | null = null;
+    if (pub.ok) {
+      const arr = await pub.json();
+      firstId = Array.isArray(arr) && arr[0] ? arr[0].id : null;
+    }
+    const listEdit = await fetch(`${base}/posts?per_page=1&context=edit`, { headers: { Authorization: auth } });
+    out.listEdit = { status: listEdit.status, body: (await listEdit.text()).slice(0, 200) };
+    if (firstId) {
+      const single = await fetch(`${base}/posts/${firstId}?context=edit`, { headers: { Authorization: auth } });
+      out.singleEdit = { id: firstId, status: single.status, body: (await single.text()).slice(0, 200) };
+    }
+    return NextResponse.json(out);
+  }
 
   // 全公開記事を取得（context=edit で raw 本文をもらう。rendered を書き戻すと
   // wpautop 由来の <p> が二重に固定されるため、必ず raw を使う）。
