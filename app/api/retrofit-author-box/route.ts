@@ -59,14 +59,20 @@ const pInt = (v: number) => `    <param><value><int>${v}</int></value></param>`;
 
 async function retrofitViaXmlRpc(
   siteUrl: string, username: string, password: string, dryRun: boolean,
-  batchOffset: number, batchLimit: number
+  batchOffset: number, batchLimit: number, explicitIds?: number[]
 ) {
   const endpoint = `${siteUrl.replace(/\/+$/, '')}/wp/xmlrpc.php`;
-  // 1) このバッチ分のIDだけを直接取得（全件一覧を毎回取るとmaxDurationを超えるため）
-  const filter = `    <param><value><struct><member><name>number</name><value><int>${batchLimit}</int></value></member><member><name>offset</name><value><int>${batchOffset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
-  const idFields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
-  const listRes = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, idFields]);
-  const slice = Array.from(listRes.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)).map((m) => parseInt(m[1], 10));
+  // 対象IDが明示されていればそれを使う（公開REST APIでカテゴリ絞りしたIDを渡す運用）。
+  // 無ければこのバッチ分のIDをwp.getPostsで直接取得。
+  let slice: number[];
+  if (explicitIds && explicitIds.length) {
+    slice = explicitIds.slice(0, batchLimit).map(Number).filter(Number.isFinite);
+  } else {
+    const filter = `    <param><value><struct><member><name>number</name><value><int>${batchLimit}</int></value></member><member><name>offset</name><value><int>${batchOffset}</int></value></member><member><name>post_status</name><value><string>publish</string></value></member></struct></value></param>`;
+    const idFields = `    <param><value><array><data><value><string>post_id</string></value></data></array></value></param>`;
+    const listRes = await callRpc(endpoint, 'wp.getPosts', [pInt(1), pStr(username), pStr(password), filter, idFields]);
+    slice = Array.from(listRes.matchAll(/<name>post_id<\/name>\s*<value>\s*<string>(\d+)<\/string>/g)).map((m) => parseInt(m[1], 10));
+  }
 
   // 2) バッチ分だけ raw 本文を取り、マーカーが無ければ末尾にボックスを付けて更新
   const updated: number[] = [];
@@ -101,7 +107,7 @@ async function retrofitViaXmlRpc(
 }
 
 export async function POST(request: NextRequest) {
-  const { secret, dryRun, site, debug, offset, limit } = await request.json().catch(() => ({}));
+  const { secret, dryRun, site, debug, offset, limit, ids } = await request.json().catch(() => ({}));
   if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -123,7 +129,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ site: siteUrl, xmlrpcTest: t });
     }
     try {
-      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun, Number(offset) || 0, Math.min(Number(limit) || 20, 30));
+      const result = await retrofitViaXmlRpc(siteUrl, username, appPassword, !!dryRun, Number(offset) || 0, Math.min(Number(limit) || 20, 30), Array.isArray(ids) ? ids : undefined);
       return NextResponse.json(result);
     } catch (e: any) {
       const cause = e?.cause ? ` cause=${String(e.cause?.code || e.cause?.message || e.cause).slice(0, 120)}` : '';
