@@ -402,13 +402,15 @@ async function processCron() {
                 `⚠ 公開失敗：タイトル or 本文が空です`);
               continue;
             }
+            // 監修者ボックス（セクション4と共通・AIO/E-E-A-T）を本文末尾に付けて投稿
+            const fukuContentWithAuthor = html + HANAHIRO_AUTHOR_BOX;
             let wpResult: { id: number; link: string };
             if (fukuUseXmlRpc) {
               const r = await createWpPostXmlRpc(
                 { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
                 {
                   title,
-                  content: html,
+                  content: fukuContentWithAuthor,
                   status: fukuAutoPublish ? 'publish' : 'draft',
                   categoryNames: fukuCategorySlug ? [fukuCategorySlug] : undefined,
                 }
@@ -417,7 +419,7 @@ async function processCron() {
             } else {
               const r = await createWpPost(
                 { siteUrl: fukuWpSite, username: fukuWpUser, appPassword: fukuWpPass },
-                { title, content: html, status: fukuAutoPublish ? 'publish' : 'draft', categories: fukuCategoryIds }
+                { title, content: fukuContentWithAuthor, status: fukuAutoPublish ? 'publish' : 'draft', categories: fukuCategoryIds }
               );
               wpResult = { id: r.id, link: r.link };
             }
