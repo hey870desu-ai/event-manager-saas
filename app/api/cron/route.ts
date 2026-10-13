@@ -225,16 +225,7 @@ async function processCron() {
     // 会社のインスタグラムへの誘導（はなひろHPブログのみ・福ひろばには付けない）。
     // 既存記事への一括追記・取り外しのため、前後をコメントで囲んで目印にしている。
     const HANAHIRO_INSTAGRAM_BOX = `
-<!-- hanahiro-instagram -->
-<div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;">
-  <div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div>
-  <p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p>
-  <div style="display:flex;gap:0.8em;flex-wrap:wrap;">
-    <a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a>
-    <a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a>
-  </div>
-</div>
-<!-- /hanahiro-instagram -->`;
+<!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
     const wpSite = process.env.WP_SITE_URL;
     const wpUser = process.env.WP_USERNAME;
