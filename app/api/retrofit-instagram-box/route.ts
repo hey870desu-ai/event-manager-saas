@@ -1,7 +1,8 @@
 // 【一時エンドポイント】hana-hiro.com の既存公開記事の末尾に、インスタ誘導と福ひろばラーニングの記事案内を一括で付ける。
 // 実行後は削除する前提。cron と同じ secret ガード。
 // - 付ける中身は cron（app/api/cron/route.ts セクション4）と同じ。並びも新しい記事と同じ（監修→インスタ→福ひろばラーニング）
-// - 古い形（改行入り）のインスタ枠は取り除いて付け直す。両方そろっている記事は飛ばす（二重に付かない・再実行しても安全）
+// - 2つとも今の形で付いている記事は飛ばす。どちらかが違う形（改行入り・行末の指定なし）なら、2つとも外して付け直す
+//   （二重に付かない・再実行しても安全）。想定外の形の記事は触らず、dryRun の unexpected に出す
 // - dryRun: true で件数と一覧だけ返す（書き込みなし）
 // - 1回の呼び出しで最大 limit 件（既定40）だけ更新。残りは再度呼べば続きから進む（新しい記事から順に）
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,12 +11,14 @@ export const maxDuration = 300;
 
 // cron route セクション4と同一のインスタ誘導ボックス（このエンドポイントは使い捨てのため複製）
 const HANAHIRO_INSTAGRAM_BOX = `
-<!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
+<!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
 
 const IG_MARKER = 'hanahiro-instagram';
 const LEARNING_MARKER = 'class="hanahiro-learning"';
-// 古い版（改行入り）のインスタ枠。目印の範囲ごと取り除いてから付け直す
+// 今と違う形のインスタ枠（改行入りの版・行末の指定が無い版）。目印の範囲ごと取り除いてから付け直す
 const OLD_IG_BLOCK = /\n?<!-- hanahiro-instagram -->[\s\S]*?<!-- \/hanahiro-instagram -->/;
+// 今と違う形の記事案内（いつも本文の最後に1行で付いている）。取り除いてから付け直す
+const OLD_LEARNING_BLOCK = /\n?<div class="hanahiro-learning"[^\n]*記事の一覧を見る →<\/a><\/p><\/div>\s*$/;
 
 // cron route セクション4の getLearningBox と同じ中身（記事が取れないときは書き込まずに止める点だけ違う）
 async function buildLearningBox(): Promise<string | null> {
@@ -30,16 +33,20 @@ async function buildLearningBox(): Promise<string | null> {
     .join('');
   if (!items) return null;
   return `
-<div class="hanahiro-learning" style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#f0f9ff;padding:1.2em 1.4em;word-break:auto-phrase;"><div style="font-size:0.8em;font-weight:700;color:#0369a1;margin-bottom:0.4em;">福ひろばラーニングのブログ</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.8em;">株式会社はなひろが運営する、介護・障がい福祉の事業所向けのeラーニングです。ブログでは、法定研修の回数や加算の研修要件、記録の残し方を解説しています。</p><p style="font-size:0.8em;color:#4b5563;margin:0 0 0.3em;">よく読まれている記事</p>${items}<p style="margin:0.6em 0 0;font-size:0.85em;"><a href="https://learning.hana-hiro.com/blog" style="color:#0369a1;text-decoration:none;">記事の一覧を見る →</a></p></div>`;
+<div class="hanahiro-learning" style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#f0f9ff;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#0369a1;margin-bottom:0.4em;">福ひろばラーニングのブログ</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.8em;">株式会社はなひろが運営する、介護・障がい福祉の事業所向けのeラーニングです。ブログでは、法定研修の回数や加算の研修要件、記録の残し方を解説しています。</p><p style="font-size:0.8em;color:#4b5563;margin:0 0 0.3em;">よく読まれている記事</p>${items}<p style="margin:0.6em 0 0;font-size:0.85em;"><a href="https://learning.hana-hiro.com/blog" style="color:#0369a1;text-decoration:none;">記事の一覧を見る →</a></p></div>`;
 }
 
-// 記事の末尾をどう変えるか（変えないなら raw のまま返す）
+// 記事の末尾をどう変えるか（変えないなら raw のまま返す）。
+// 2つとも今の形で付いている記事はそのまま。どちらかが違えば、2つとも外して 監修→インスタ→記事案内 の順に付け直す
+// （インスタ枠だけ付け直すと、記事案内の後ろに回ってしまうため）
+const lbCurrent = (raw: string) => /\n<div class="hanahiro-learning" style="[^"]*text-wrap:pretty;"/.test(raw);
+const isCurrent = (raw: string) => raw.includes(HANAHIRO_INSTAGRAM_BOX) && lbCurrent(raw);
 function nextContent(raw: string, learningBox: string): string {
-  let next = raw;
-  if (next.includes(IG_MARKER) && !next.includes(HANAHIRO_INSTAGRAM_BOX)) next = next.replace(OLD_IG_BLOCK, '');
-  if (!next.includes(IG_MARKER)) next += HANAHIRO_INSTAGRAM_BOX;
-  if (!next.includes(LEARNING_MARKER)) next += learningBox;
-  return next;
+  if (isCurrent(raw)) return raw;
+  let base = raw.replace(OLD_LEARNING_BLOCK, '');
+  base = base.replace(OLD_IG_BLOCK, '');
+  if (base.includes(IG_MARKER) || base.includes(LEARNING_MARKER)) return raw; // 想定外の形は触らない
+  return base + HANAHIRO_INSTAGRAM_BOX + learningBox;
 }
 
 function authHeader(username: string, appPassword: string): string {
@@ -116,7 +123,11 @@ export async function POST(request: NextRequest) {
       emptyContent: posts.length - plans.length,
       oldInstagramBox: plans.filter((p) => p.raw.includes(IG_MARKER) && !p.raw.includes(HANAHIRO_INSTAGRAM_BOX)).length,
       noInstagramBox: plans.filter((p) => !p.raw.includes(IG_MARKER)).length,
+      oldLearningBox: plans.filter((p) => p.raw.includes(LEARNING_MARKER) && !lbCurrent(p.raw)).length,
       noLearningBox: plans.filter((p) => !p.raw.includes(LEARNING_MARKER)).length,
+      alreadyCurrent: plans.filter((p) => isCurrent(p.raw)).length,
+      // 想定外の形で、触らずに残す記事（0 のはず）
+      unexpected: plans.filter((p) => p.next === p.raw && !isCurrent(p.raw)).map((p) => ({ id: p.id, link: p.link })),
       willUpdate: pending.length,
       learningBox,
       first: pending.slice(0, 5).map((t) => ({ id: t.id, title: t.title, link: t.link })),
