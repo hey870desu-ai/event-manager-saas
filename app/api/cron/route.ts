@@ -226,6 +226,33 @@ async function processCron() {
     // 既存記事への一括追記・取り外しのため、前後をコメントで囲んで目印にしている。
     const HANAHIRO_INSTAGRAM_BOX = `
 <!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
+    // 福ひろばラーニング（はなひろの事業所向けeラーニング）の記事への案内（はなひろHPブログのみ）。
+    // Google に登録済みの hana-hiro.com の記事からリンクをたどって、learning.hana-hiro.com の記事を
+    // 見つけてもらうため（2026-10-16）。記事は投稿した時点の「よく読まれている記事」上位3本
+    // （learning の /blog/popular.json）。取れなければ記事一覧へのリンクだけ付ける。
+    // wpautop で <br> や空の <p> が入らないよう改行なしの1行にし、目印はコメントでなく class にしている。
+    let learningBox: string | null = null;
+    const getLearningBox = async (): Promise<string> => {
+      if (learningBox !== null) return learningBox;
+      const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+      let items = '';
+      try {
+        const r = await fetch('https://learning.hana-hiro.com/blog/popular.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+        if (r.ok) {
+          const list = await r.json();
+          items = (Array.isArray(list) ? list : [])
+            .filter((p: any) => p && typeof p.slug === 'string' && typeof p.title === 'string' && p.slug && p.title)
+            .slice(0, 3)
+            .map((p: any) => `<p style="margin:0 0 0.35em;font-size:0.88em;line-height:1.6;"><a href="https://learning.hana-hiro.com/blog/${encodeURIComponent(p.slug)}" style="color:#0369a1;">${esc(p.title)}</a></p>`)
+            .join('');
+        }
+      } catch (e: any) {
+        console.warn('福ひろばラーニングのよく読まれている記事を取れませんでした:', e?.message || e);
+      }
+      learningBox = `
+<div class="hanahiro-learning" style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#f0f9ff;padding:1.2em 1.4em;word-break:auto-phrase;"><div style="font-size:0.8em;font-weight:700;color:#0369a1;margin-bottom:0.4em;">福ひろばラーニングのブログ</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.8em;">株式会社はなひろが運営する、介護・障がい福祉の事業所向けのeラーニングです。ブログでは、法定研修の回数や加算の研修要件、記録の残し方を解説しています。</p>${items ? `<p style="font-size:0.8em;color:#4b5563;margin:0 0 0.3em;">よく読まれている記事</p>${items}` : ''}<p style="margin:0.6em 0 0;font-size:0.85em;"><a href="https://learning.hana-hiro.com/blog" style="color:#0369a1;text-decoration:none;">記事の一覧を見る →</a></p></div>`;
+      return learningBox;
+    };
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
     const wpSite = process.env.WP_SITE_URL;
     const wpUser = process.env.WP_USERNAME;
@@ -289,8 +316,8 @@ async function processCron() {
               blogFailures.push({ title: titleForAlert, error: 'タイトル or 本文が空です' });
               continue;
             }
-            // 監修者ボックス＋インスタ誘導を本文末尾に付けて投稿（全記事共通・AIO/E-E-A-T）
-            const contentWithAuthor = html + HANAHIRO_AUTHOR_BOX + HANAHIRO_INSTAGRAM_BOX;
+            // 監修者ボックス＋インスタ誘導＋福ひろばラーニングの記事案内を本文末尾に付けて投稿（全記事共通・AIO/E-E-A-T）
+            const contentWithAuthor = html + HANAHIRO_AUTHOR_BOX + HANAHIRO_INSTAGRAM_BOX + (await getLearningBox());
             let wpResult: { id: number; link: string };
             if (useXmlRpc) {
               wpResult = await createWpPostXmlRpc(
