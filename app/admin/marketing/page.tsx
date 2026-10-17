@@ -1213,7 +1213,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                     onClick={async () => {
                       if (!confirm('予約中のメールを今すぐ配信チェックしますか？')) return;
                       try {
-                        const res = await fetch('/api/cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: 'manual-trigger' }) });
+                        const res = await fetch('/api/cron', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, body: '{}' }); // ログインした管理者として呼ぶ（合言葉 'manual-trigger' は 2026-10-17 に廃止）
                         const data = await res.json();
                         if (res.ok) {
                           alert(`配信チェック完了！ ${data.processed || 0}件処理しました。`);

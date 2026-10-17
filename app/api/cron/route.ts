@@ -6,24 +6,35 @@ import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newslett
 import { decrypt } from '@/lib/encryption';
 import { createWpPost, findCategoryIdBySlug, findCategoryNameBySlug } from '@/lib/wordpress-bridge';
 import { createWpPostXmlRpc } from '@/lib/wordpress-xmlrpc';
-import { scheduleKintaiBroadcastIdempotent } from '@/lib/kintai-line-bridge';
+import { verifyAdminRequest } from '@/lib/admin-auth';
 
 const BATCH_SIZE = 100;
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Vercel Pro: 最大60秒
 
-// 手動実行用（管理画面から呼ぶ）
+// 手動実行用（管理画面の「今すぐ配信チェック」から呼ぶ）。ログインした管理者（admin_users）だけ。
+// 以前は合言葉 'manual-trigger' でも動いた＝画面のJSに書いてあり、誰でも動かせた
+// （2026-10-17 塙さん「定期処理とブログ、出して」で外した）。サーバー側から CRON_SECRET で呼ぶのは残す
 export async function POST(request: Request) {
   const { secret } = await request.json().catch(() => ({}));
-  if (secret !== process.env.CRON_SECRET && secret !== 'manual-trigger') {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && secret === cronSecret) return processCron();
+  try {
+    await verifyAdminRequest(request);
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return processCron();
 }
 
-// Vercel Cron自動実行用
-export async function GET() {
+// Vercel Cron自動実行用（10分ごと）。Vercel は CRON_SECRET を「Authorization: Bearer …」で付けて呼ぶ。
+// 付いていない呼び出しは断る（以前は鍵なしで誰でも全処理を動かせた・2026-10-17）
+export async function GET(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   return processCron();
 }
 
@@ -223,9 +234,11 @@ async function processCron() {
   </div>
 </div>`;
     // 会社のインスタグラムへの誘導（はなひろHPブログのみ・福ひろばには付けない）。
+    // 説明文の最後の語は inline-block でまとめる（古い Safari は word-break:auto-phrase・text-wrap:pretty が効かず、
+    // 幅375で最後の行が「す。」だけになった・2026-10-17。記事案内の枠も同じ）
     // 既存記事への一括追記・取り外しのため、前後をコメントで囲んで目印にしている。
     const HANAHIRO_INSTAGRAM_BOX = `
-<!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひフォローしてください。</p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
+<!-- hanahiro-instagram --><div style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#fdf2f8;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#be185d;margin-bottom:0.4em;">Instagramでも発信しています</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.9em;">事業所の毎日の様子や、イベント・お知らせを写真でお届けしています。ぜひ<span style="display:inline-block;">フォローしてください。</span></p><div style="display:flex;gap:0.8em;flex-wrap:wrap;"><a href="https://www.instagram.com/hanahiro_com/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">株式会社はなひろ<br><span style="font-size:0.8em;font-weight:400;">@hanahiro_com</span></a><a href="https://www.instagram.com/poem_de_reha0601/" target="_blank" rel="noopener" style="flex:1;min-width:200px;display:block;text-align:center;padding:0.75em 1em;border-radius:999px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;font-weight:700;font-size:0.9em;text-decoration:none;">poem de reha<br><span style="font-size:0.8em;font-weight:400;">@poem_de_reha0601</span></a></div></div><!-- /hanahiro-instagram -->`;
     // 福ひろばラーニング（はなひろの事業所向けeラーニング）の記事への案内（はなひろHPブログのみ）。
     // Google に登録済みの hana-hiro.com の記事からリンクをたどって、learning.hana-hiro.com の記事を
     // 見つけてもらうため（2026-10-16）。記事は投稿した時点の「よく読まれている記事」上位3本
@@ -250,7 +263,7 @@ async function processCron() {
         console.warn('福ひろばラーニングのよく読まれている記事を取れませんでした:', e?.message || e);
       }
       learningBox = `
-<div class="hanahiro-learning" style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#f0f9ff;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#0369a1;margin-bottom:0.4em;">福ひろばラーニングのブログ</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.8em;">株式会社はなひろが運営する、介護・障がい福祉の事業所向けのeラーニングです。ブログでは、法定研修の回数や加算の研修要件、記録の残し方を解説しています。</p>${items ? `<p style="font-size:0.8em;color:#4b5563;margin:0 0 0.3em;">よく読まれている記事</p>${items}` : ''}<p style="margin:0.6em 0 0;font-size:0.85em;"><a href="https://learning.hana-hiro.com/blog" style="color:#0369a1;text-decoration:none;">記事の一覧を見る →</a></p></div>`;
+<div class="hanahiro-learning" style="margin-top:1.5em;border:1px solid #e5e7eb;border-radius:12px;background:#f0f9ff;padding:1.2em 1.4em;word-break:auto-phrase;text-wrap:pretty;"><div style="font-size:0.8em;font-weight:700;color:#0369a1;margin-bottom:0.4em;">福ひろばラーニングのブログ</div><p style="font-size:0.88em;line-height:1.7;margin:0 0 0.8em;">株式会社はなひろが運営する、介護・障がい福祉の事業所向けのeラーニングです。ブログでは、法定研修の回数や加算の研修要件、記録の残し方を<span style="display:inline-block;">解説しています。</span></p>${items ? `<p style="font-size:0.8em;color:#4b5563;margin:0 0 0.3em;">よく読まれている記事</p>${items}` : ''}<p style="margin:0.6em 0 0;font-size:0.85em;"><a href="https://learning.hana-hiro.com/blog" style="color:#0369a1;text-decoration:none;">記事の一覧を見る →</a></p></div>`;
       return learningBox;
     };
     const blogDbId = process.env.HANAHIRO_BLOG_DATABASE_ID;
@@ -488,89 +501,7 @@ async function processCron() {
       }
     }
 
-    // ============================================================
-    // 6. 一隅を照らす：Notion → 勤怠SaaS scheduled_messages（LINE配信予約）
-    // ============================================================
-    // Notion 「🕯️ 一隅を照らす」DB から ステータス=配信予定 の本日記事を取得し、
-    // 勤怠SaaS（kintai-saas-v1）の scheduled_messages に予約として書き込む。
-    // 実配信は勤怠SaaS の processScheduledMessages（5分毎）が担当。
-    const ichiguDbId = process.env.ICHIGU_NOTION_DATABASE_ID;
-    const ichiguNotionToken = process.env.NOTION_API_KEY;
-    const ichiguCompanyId = process.env.ICHIGU_KINTAI_COMPANY_ID;
-    const ichiguDeliveryTime = process.env.ICHIGU_DELIVERY_TIME_JST || '07:45';
-    const ichiguTestLineId = process.env.ICHIGU_TEST_LINE_USER_ID; // 設定時はこの1人にのみ配信
-    if (ichiguDbId && ichiguNotionToken && ichiguCompanyId) {
-      try {
-        // 本日JSTの 日付 と スケジュール時刻
-        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-        const yyyy = nowJst.getUTCFullYear();
-        const mm = String(nowJst.getUTCMonth() + 1).padStart(2, '0');
-        const dd = String(nowJst.getUTCDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        const [hh, min] = ichiguDeliveryTime.split(':').map(n => parseInt(n, 10));
-        // 配信予定時刻（JST）を UTC Date に変換
-        const scheduledAtUtc = new Date(Date.UTC(yyyy, parseInt(mm, 10) - 1, parseInt(dd, 10), hh - 9, min, 0));
-
-        const readyPages = await fetchPagesByStatus(ichiguNotionToken, ichiguDbId, '配信予定');
-        for (const page of readyPages) {
-          try {
-            const pageDateProp = page.properties?.['日付']?.date?.start;
-            // 本日分のみ処理（過去・未来分はスキップ）
-            if (!pageDateProp || pageDateProp.slice(0, 10) !== dateKey) continue;
-
-            const { title, body } = await fetchPagePlainText(ichiguNotionToken, page);
-            if (!title || !body) {
-              await updatePageStatus(ichiguNotionToken, page.id, '保留',
-                `⚠ 配信予約失敗：タイトル or 本文が空です`);
-              continue;
-            }
-
-            // LINEメッセージは1メッセージ5000文字までだが、念のため4500文字で分割
-            const MAX_LEN = 4500;
-            const segments: string[] = [];
-            let remaining = body;
-            while (remaining.length > 0 && segments.length < 3) {
-              if (remaining.length <= MAX_LEN) {
-                segments.push(remaining);
-                break;
-              }
-              // 改行で分割を試みる
-              const cutAt = remaining.lastIndexOf('\n', MAX_LEN);
-              const cut = cutAt > MAX_LEN / 2 ? cutAt : MAX_LEN;
-              segments.push(remaining.slice(0, cut));
-              remaining = remaining.slice(cut).trimStart();
-            }
-            // タイトルを先頭メッセージの冒頭に付与
-            if (segments.length > 0) {
-              segments[0] = `🕯️ ${title}\n\n${segments[0]}`;
-            }
-
-            const result = await scheduleKintaiBroadcastIdempotent({
-              companyId: ichiguCompanyId,
-              messages: segments,
-              targetLineUserIds: ichiguTestLineId ? [ichiguTestLineId] : [],
-              scheduledAt: scheduledAtUtc,
-              dateKey,
-              source: 'ichigu-daily',
-            });
-
-            const note = result.alreadyExists
-              ? `🔁 既に本日分の配信予約あり（schedule_id: ${result.scheduleId}）`
-              : `✅ 配信予約完了（${ichiguTestLineId ? 'テスト1名' : '全員'}・配信予定: ${ichiguDeliveryTime} JST・schedule_id: ${result.scheduleId}）`;
-            await updatePageStatus(ichiguNotionToken, page.id, '配信済み', note);
-            totalProcessed++;
-          } catch (perPageErr: any) {
-            console.error(`一隅を照らす予約失敗 (page=${page.id}):`, perPageErr);
-            try {
-              await updatePageStatus(ichiguNotionToken, page.id, '保留',
-                `⚠ 配信予約失敗：${perPageErr?.message || 'unknown error'}`);
-            } catch { /* ignore */ }
-          }
-        }
-      } catch (ichiguErr: any) {
-        console.error('一隅を照らすfetch error:', ichiguErr);
-      }
-    }
+    // 6. 一隅を照らす（毎朝の社員向けLINE）は 2026-10-17 に終了（塙さん「一隅は終了」）。Notion から予約する処理を外した
 
     console.log(`✅ CRON完了: ${totalProcessed}件処理`);
     return NextResponse.json({ success: true, processed: totalProcessed });
