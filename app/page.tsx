@@ -5,6 +5,7 @@ import {
   LayoutTemplate, ShieldCheck, BarChart3, Check,
   FileSpreadsheet, QrCode, Mail, Smartphone, Users,
   Link as LinkIcon, Share2, Copy, Terminal, ChevronRight,
+  Clock, MessageCircle, ScanLine,
 } from "lucide-react";
 import { JetBrains_Mono } from "next/font/google";
 
@@ -369,8 +370,8 @@ export default function Home() {
                   <span style={{ color: ORANGE_BRIGHT }}>テーマを選ぶだけ</span>
                 </>
               }
-              body="Tech系、ビジネス系、ポップ系、医療・福祉系。イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます。"
-              bullets={["全8種テンプレート", "1クリック切替"]}
+              body="Tech系、ビジネス系、ポップ系、医療・福祉系に、黒と金のエグゼクティブ、雑誌風のエディトリアルも。イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます。"
+              bullets={["全11種テンプレート", "1クリック切替"]}
               video="/scroll-demo.mp4"
             />
             <ZigzagFeature
@@ -499,7 +500,7 @@ export default function Home() {
                       >
                         ¥3,300
                       </span>
-                      <span className="text-xs text-[#888] ml-1">/月</span>
+                      <span className="text-xs text-[#888] ml-1">〜/月</span>
                     </td>
                     <td className="p-5 text-center whitespace-nowrap">
                       <span className="text-base font-bold text-[#F08856]">
@@ -570,13 +571,16 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <BentoCard icon={<QrCode size={22} />} title="QRチェックイン" body="受付アプリ不要。参加証のQRコードをリーダーで読み取るだけで受付完了" />
             <BentoCard icon={<FileSpreadsheet size={22} />} title="CSV一括出力" body="参加者データをExcelやスプレッドシートで扱える形式で出力" />
-            <BentoCard icon={<ShieldCheck size={22} />} title="堅牢なセキュリティ" body="Google認証基盤（Firebase）を採用し、最高レベルのセキュリティを確保" />
+            <BentoCard icon={<ShieldCheck size={22} />} title="セキュリティ" body="ログインはGoogleの認証基盤（Firebase）。参加者のデータは会社ごとに分けて管理します" />
             <BentoCard icon={<Smartphone size={22} />} title="完全レスポンシブ" body="PC、タブレット、スマホ。どんなデバイスからでも美しく表示" />
             <BentoCard icon={<Mail size={22} />} title="リッチな自動返信" body="申し込み完了時に、参加証QRコード付きのメールを自動送信" />
             <BentoCard icon={<Mail size={22} />} title="スマートなメール配信" body="蓄積された顧客リストから、ターゲットを絞って一斉送信" />
+            <BentoCard icon={<Clock size={22} />} title="メールの予約配信" body="日時を決めて送信予約。送る前なら取り消せて、送ったメールは配信履歴で確かめられます" />
             <BentoCard icon={<LinkIcon size={22} />} title="URL即時発行" body="イベントを作成した瞬間に公開URLを発行。ワンクリックでコピー" />
+            <BentoCard icon={<MessageCircle size={22} />} title="フォームだけのページ" body="案内文を省いた申し込みフォームだけのページ。Lステップのボタンに貼れば、LINEの中で申し込めます" />
             <BentoCard icon={<Share2 size={22} />} title="SNSシェア対応" body="LINEやXにURLを貼るだけで、美しいOGPカードが自動表示" />
             <BentoCard icon={<Copy size={22} />} title="イベント複製" body="定例会や定期セミナーは「コピーして作成」すれば5秒で準備完了" />
+            <BentoCard icon={<ScanLine size={22} />} title="名刺スキャン" body="交流会でいただいた名刺を撮影するだけで、文字を読み取って顧客リストに登録" />
           </div>
         </Section>
 
@@ -629,6 +633,7 @@ export default function Home() {
                   { text: "開催数・登録数 無制限" },
                   { text: "CRM機能フル開放" },
                   { text: "リピート率の自動集計" },
+                  { text: "管理の人3人まで（4人目から1人 月550円）" },
                 ]}
                 ctaText="絆を資産に変える"
                 highlight
@@ -639,17 +644,20 @@ export default function Home() {
                 name="プロプラン"
                 price="¥11,000"
                 priceUnit="/ 月額 (税込)"
-                desc="組織や法人での運営に。複数スタッフ、複数拠点のデータを一つのプラットフォームで。"
+                desc="支部や拠点が複数ある法人に。拠点ごとのイベントと集計を、一つの画面で。"
                 features={[
-                  { text: "スタッフ招待（共同管理）" },
-                  { text: "複数拠点の管理" },
+                  { text: "支部・拠点を増やせる" },
+                  { text: "拠点ごと・全体の集計" },
+                  { text: "管理の人は何人でも" },
                   { text: "優先カスタマーサポート" },
-                  { text: "横断レポート出力" },
                   { text: "スタンダードの全機能" },
                 ]}
-                ctaText="チームで利用する"
+                ctaText="複数の拠点で使う"
               />
             </div>
+            <p className="text-center text-xs text-[#888] mt-8">
+              まずはフリー（イベント1件まで）でお試しいただけます。
+            </p>
           </div>
         </section>
       </main>
@@ -860,7 +868,7 @@ function ZigzagFeature({
         <h2 className="text-2xl md:text-3xl font-bold text-[#E8E8E8] leading-tight tracking-tight">
           {title}
         </h2>
-        <p className="text-[#888] text-sm md:text-base leading-relaxed">{body}</p>
+        <p className="text-[#888] text-sm md:text-base leading-relaxed [word-break:auto-phrase] text-pretty">{body}</p>
         {bullets && (
           <ul className="space-y-2 pt-2">
             {bullets.map((b) => (
@@ -963,7 +971,8 @@ function BentoCard({
         {icon}
       </div>
       <h3 className="text-base font-bold text-[#E8E8E8] mb-1.5">{title}</h3>
-      <p className="text-xs text-[#888] leading-relaxed">{body}</p>
+      {/* 文節で折る・最後の行を短くしない */}
+      <p className="text-xs text-[#888] leading-relaxed [word-break:auto-phrase] text-pretty">{body}</p>
     </div>
   );
 }
@@ -1039,7 +1048,7 @@ function PricingCard({
         </span>
         <span className="text-[11px] text-[#888]">{priceUnit}</span>
       </div>
-      <p className="text-[13px] text-[#888] leading-relaxed mb-6 min-h-[3em]">{desc}</p>
+      <p className="text-[13px] text-[#888] leading-relaxed mb-6 min-h-[3em] [word-break:auto-phrase] text-pretty">{desc}</p>
 
       <div className="space-y-3 mb-7 flex-1 border-t border-[#2A2A2A] pt-6">
         {features.map((f, i) => (

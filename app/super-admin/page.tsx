@@ -9,6 +9,7 @@ import Link from "next/link";
 import { LogOut, Plus, ChevronRight, Building2, Shield, Search, Wallet, Send, Loader2, CheckCircle2, AlertTriangle, Printer, X } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { BatchInvoicePDF } from "@/components/InvoicePDF";
+import { extraAdmins, monthlyInvoiceItems, totalWithTax } from "@/lib/plans";
 
 // 本部オーナーのメアド
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -38,6 +39,20 @@ export default function SuperAdminDashboard() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const router = useRouter();
 
+  // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
+  const [adminCounts, setAdminCounts] = useState<Record<string, number>>({});
+  const loadAdminCounts = async () => {
+    const snap = await getDocs(collection(db, "admin_users"));
+    const counts: Record<string, number> = {};
+    snap.forEach(d => {
+      const u = d.data();
+      if (!u.tenantId || d.id === SUPER_ADMIN_EMAIL) return;
+      counts[u.tenantId] = (counts[u.tenantId] || 0) + 1;
+    });
+    setAdminCounts(counts);
+    return counts;
+  };
+
   useEffect(() => {
     // 1. 先月を初期値にセット (今日が2月なら "2026-01")
     const today = new Date();
@@ -50,7 +65,8 @@ export default function SuperAdminDashboard() {
         return;
       }
       setUser(currentUser);
-      
+      loadAdminCounts().catch(console.error);
+
       const q = query(collection(db, "tenants"), orderBy("createdAt", "desc"));
       const unsubTenants = onSnapshot(q, (snapshot) => {
         setTenants(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant)));
@@ -66,9 +82,9 @@ export default function SuperAdminDashboard() {
 
   // ★★★ 機能1: 請求データ一括作成 ★★★
   const handleBatchCreateInvoices = async () => {
-    // 対象: フリープラン以外 かつ まだその月のデータがない人
-    const targets = tenants.filter(t => 
-      t.plan && t.plan !== 'free' && 
+    // 対象: 月額のプラン（スタンダード・プロ） かつ まだその月のデータがない人（スポットは月の請求なし）
+    const targets = tenants.filter(t =>
+      (t.plan === 'standard' || t.plan === 'pro') &&
       t.lastBilling?.month !== targetMonth
     );
 
@@ -78,15 +94,16 @@ export default function SuperAdminDashboard() {
     setProcessing(true);
     try {
       let count = 0;
+      const counts = await loadAdminCounts(); // 作るときの人数で数える
       for (const t of targets) {
-        // 金額計算
-        const price = t.plan === 'pro' ? 29800 : t.plan === 'standard' ? 9800 : 0;
-        const tax = Math.floor(price * 0.1);
-        const total = price + tax;
+        // 金額計算（lib/plans：スタンダードは4人目から1人ずつ足す）
+        const items = monthlyInvoiceItems(t.plan, counts[t.id] || 0, targetMonth);
+        const total = totalWithTax(items);
 
         // 1. サブコレクションに追加
         await addDoc(collection(db, "tenants", t.id, "invoices"), {
           month: targetMonth,
+          items,
           amount: total,
           status: "unbilled", // 作成時は「未請求」
           createdAt: serverTimestamp()
@@ -311,6 +328,12 @@ export default function SuperAdminDashboard() {
                       <span className="font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800">ID: {t.id}</span>
                       <span className={`font-bold uppercase px-1.5 rounded ${t.plan === 'pro' ? 'text-orange-400 bg-orange-900/20' : t.plan === 'standard' ? 'text-blue-400 bg-blue-900/20' : 'text-slate-400'}`}>
                         {t.plan || "Free"}
+                      </span>
+                      <span>
+                        管理 {adminCounts[t.id] ?? "-"}人
+                        {extraAdmins(t.plan, adminCounts[t.id] || 0) > 0 && (
+                          <span className="text-orange-400">（追加 {extraAdmins(t.plan, adminCounts[t.id] || 0)}人）</span>
+                        )}
                       </span>
 
                       {/* 請求ステータスバッジ */}

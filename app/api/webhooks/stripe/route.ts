@@ -148,14 +148,14 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
             email: session.customer_details?.email || session.metadata?.email,
             name: "お客様", // 必要に応じてテナント名を取得して入れてください
             type: 'upgrade_confirmation', // メールの種類
-            planName: planType === 'standard' ? 'スタンダードプラン' : 'プロプラン',
+            planName: planType === 'standard' ? 'スタンダードプラン' : planType === 'spot' ? 'スポット5500円プラン' : 'プロプラン',
           }),
         });
         
         console.log("✅ Plan updated and Confirmation email sent.");
 
         // オーナーに通知
-        await notifyOwnerUpgrade(tenantId, planType === 'standard' ? 'スタンダードプラン' : 'プロプラン', session.customer_details?.email || session.metadata?.email || null);
+        await notifyOwnerUpgrade(tenantId, planType === 'standard' ? 'スタンダードプラン' : planType === 'spot' ? 'スポット5500円プラン' : 'プロプラン', session.customer_details?.email || session.metadata?.email || null);
       } catch (e) {
         console.error('Update or Email failed:', e);
       }

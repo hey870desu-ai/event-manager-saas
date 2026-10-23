@@ -8,6 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/InvoicePDF";
+import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax } from "@/lib/plans";
 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -170,6 +171,10 @@ const handleSave = async () => {
       console.error("Sync Error:", e);
     }
   };
+  // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
+  const adminCount = admins.filter(a => a.email !== SUPER_ADMIN_EMAIL).length;
+  const extraCount = extraAdmins(tenantData.plan, adminCount);
+
 // ★ 1. 請求レコード作成（同期付き）
   const handleCreateInvoiceRecord = async () => {
     if (!tenantData.plan) return alert("プランが設定されていません");
@@ -179,12 +184,14 @@ const handleSave = async () => {
       const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
       
-      const price = tenantData.plan === 'pro' ? 3000 : 0;
-      const tax = Math.floor(price * 0.1);
-      const total = price + tax;
+      // 金額計算（lib/plans：スタンダードは4人目から1人ずつ足す）
+      const items = monthlyInvoiceItems(tenantData.plan, adminCount, monthStr);
+      if (items.length === 0) { alert("フリー・スポットは月の請求がありません"); return; }
+      const total = totalWithTax(items);
 
       await addDoc(collection(db, "tenants", tenantId, "invoices"), {
         month: monthStr,
+        items,
         amount: total,
         status: "unbilled",
         createdAt: serverTimestamp()
@@ -381,6 +388,11 @@ const handleSave = async () => {
               <div className="col-span-2"><label className="text-xs font-bold text-emerald-400 block mb-1">インボイス番号</label><input type="text" value={tenantData.invoiceNumber || ""} onChange={(e)=>handleChange("invoiceNumber", e.target.value)} className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg p-3 text-white outline-none font-mono" /></div>
               <div><label className="text-xs font-bold text-slate-500 block mb-1">プラン</label><select value={tenantData.plan || "standard"} onChange={(e)=>handleChange("plan", e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none"><option value="free">Free</option><option value="standard">Standard</option><option value="pro">Pro</option></select></div>
               <div><label className="text-xs font-bold text-slate-500 block mb-1">更新日</label><input type="date" value={tenantData.renewalDate || ""} onChange={(e)=>handleChange("renewalDate", e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none" /></div>
+              <div className="col-span-2 text-xs text-slate-400">
+                管理の人 {adminCount}人
+                {tenantData.plan === 'standard' && `（${INCLUDED_ADMINS}人まで込み・${INCLUDED_ADMINS + 1}人目から1人 月${withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円）`}
+                {extraCount > 0 && <span className="text-orange-400"> 追加 {extraCount}人・月{withTax(EXTRA_ADMIN_PRICE * extraCount).toLocaleString()}円（税込）</span>}
+              </div>
               <div className="col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">請求メール</label><input type="email" value={tenantData.billingEmail || ""} onChange={(e)=>handleChange("billingEmail", e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none" /></div>
             </div>
           </section>

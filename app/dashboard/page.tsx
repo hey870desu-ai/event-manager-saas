@@ -178,7 +178,7 @@ export default function TenantBillingPage() {
                   <span className="text-4xl font-black text-indigo-600">3,300</span>
                   <span className="text-sm text-slate-500">円/月（税込）</span>
                 </div>
-                <p className="text-sm text-slate-500 mb-6">全機能が使い放題。継続的にイベントを開催する方に。</p>
+                <p className="text-sm text-slate-500 mb-6">全機能が使い放題。継続的にイベントを開催する方に。<br />管理の人は3人まで（4人目から1人 月550円・税込）。</p>
                 <button onClick={() => handleUpgrade('standard')}
                   className="w-full py-3.5 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
                   <Sparkles size={18}/> スタンダードを始める

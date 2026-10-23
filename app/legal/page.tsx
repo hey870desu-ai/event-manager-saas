@@ -51,8 +51,11 @@ export default function LegalPage() {
                 <tr className="border-b border-slate-100">
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">販売価格</th>
                   <td className="py-5 px-6">
-                    各プラン詳細ページに表示された価格に基づきます。<br />
-                    （プロプラン：月額3,300円 税込）
+                    スポット利用：1イベント 5,500円<br />
+                    スタンダード：月額 3,300円<br />
+                    <span className="text-sm text-slate-600 [word-break:auto-phrase]">（管理の人3人まで。4人目から1人につき月額 550円）</span><br />
+                    プロプラン：月額 11,000円<br />
+                    （いずれも税込）
                   </td>
                 </tr>
                 <tr className="border-b border-slate-100">

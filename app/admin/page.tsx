@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
-import { auth, db } from "@/lib/firebase"; 
+import { auth, db } from "@/lib/firebase";
+import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins } from "@/lib/plans";
 import { useRouter } from "next/navigation";
 import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
@@ -271,7 +272,10 @@ export default function AdminDashboard() {
   
   // 両方の判定を持っておくのがコツだばい！
   const isFreePlan = currentTenantData?.plan?.toUpperCase() === 'FREE';
-  const isStandard = currentTenantData?.plan?.toUpperCase() === 'STANDARD';
+  // プロはスタンダードの全機能を含む（複製・2件目からの作成をフリーと同じに止めない）
+  const isStandard = ['STANDARD', 'PRO'].includes(currentTenantData?.plan?.toUpperCase() || '');
+  // 管理の人の数（運営のアカウントは数えない）。スタンダードは3人まで込み・4人目から1人ずつ料金が加わる
+  const myMemberCount = adminUsers.filter(u => u.tenantId === currentUserTenant && u.email !== SUPER_ADMIN_EMAIL).length;
   // ❌ 参加者のキャンセル処理（返金対応・通知メール統合版）
   const handleCancelParticipant = async (p: ReservationData) => {
     if (!currentEventForList) return;
@@ -599,7 +603,13 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
   e.preventDefault();
   if (!targetEmail || !targetName || !targetTenantId) return alert("名前とメアドを入れてくんちぇ！");
 
-  if (!confirm(`${targetName} さんを「絆太郎」に招待してもいいべか？`)) return;
+  // 4人目からは料金が加わることを、招待の前に伝える（もういる人の招待し直しは数えない）
+  const isNewMember = !adminUsers.some(u => u.email === targetEmail);
+  const feeNote = isNewMember && extraAdmins(currentTenantData?.plan?.toLowerCase(), myMemberCount + 1) > 0
+    ? `\n\n※スタンダードは管理の人${INCLUDED_ADMINS}人までです。${myMemberCount + 1}人目になるので、1人あたり月${withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円（税込）が加わります。`
+    : "";
+
+  if (!confirm(`${targetName} さんを「絆太郎」に招待してもいいべか？${feeNote}`)) return;
 
   setInviting(true);
   try {
@@ -2619,6 +2629,10 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                     <h3 className="text-xs font-bold text-slate-500 mb-2 uppercase">現在のプラン・拠点</h3>
                     <div className="text-sm text-slate-900 mb-2">
                       プラン: <span className="font-bold text-indigo-600 uppercase">{tenantList.find(t=>t.id===currentUserTenant)?.plan || "Free"}</span>
+                    </div>
+                    <div className="text-xs text-slate-600 mb-2">
+                      管理の人: {myMemberCount}人
+                      {currentTenantData?.plan?.toLowerCase() === 'standard' && `（${INCLUDED_ADMINS}人まで込み・${INCLUDED_ADMINS + 1}人目から1人 月${withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円 税込）`}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {tenantList.find(t=>t.id===currentUserTenant)?.branches?.map((b:any) => {
