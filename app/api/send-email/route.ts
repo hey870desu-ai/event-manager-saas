@@ -1,7 +1,70 @@
 // 📂 app/api/send-email/route.ts (完全統合版)
 import { NextResponse } from 'next/server';
+import type { DocumentReference, Transaction } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/mailer';
+
+// 名前など、申し込んだ人が入れた文字を HTML に入れるときの置き換え
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+// 申込フォーム（ログインなし）から呼ばれたとき：申込の確認メールだけを、申込とイベントの記録から作る。
+// 画面から来た宛先・件名・本文の材料は使わない（以前は誰でも好きな宛先・件名でメールを出せた・2026-10-24）。
+// 同じ申込で送るのは1回だけ（emailed）・申込から30分以内だけ
+const REGISTRATION_WINDOW_MS = 30 * 60 * 1000;
+async function registrationFromRecords(raw: any): Promise<{ body: Record<string, any>; ref: DocumentReference } | { error: string; status: number }> {
+  const eventId = typeof raw?.eventId === 'string' ? raw.eventId : '';
+  const reservationId = typeof raw?.reservationId === 'string' ? raw.reservationId : '';
+  if (!eventId || !reservationId || eventId.includes('/') || reservationId.includes('/')) return { error: 'bad request', status: 400 };
+
+  const eventSnap = await adminDb.collection('events').doc(eventId).get();
+  if (!eventSnap.exists) return { error: 'not found', status: 404 };
+  const ev: any = eventSnap.data();
+  const ref: DocumentReference = eventSnap.ref.collection('reservations').doc(reservationId);
+  const r: any = await adminDb.runTransaction(async (tx: Transaction) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return null;
+    const d: any = snap.data();
+    const createdMs = d.createdAt?.toMillis?.() || 0;
+    if (d.emailed === true || !['confirmed', 'on_site'].includes(d.status) || Date.now() - createdMs > REGISTRATION_WINDOW_MS) return null;
+    tx.update(ref, { emailed: true, emailedAt: new Date() });
+    return d;
+  });
+  if (!r) return { error: 'not allowed', status: 403 };
+
+  const tenantId = ev.tenantId || '';
+  const tenant: any = tenantId ? (await adminDb.collection('tenants').doc(tenantId).get()).data() || {} : {};
+  const onSite = r.status === 'on_site'; // 有料で、カードの決済の連携がない＝当日会場で払う
+  const price = Number(r.price) || 0;
+  return {
+    ref,
+    body: {
+      subject: onSite ? `【当日払い受付】${ev.title}` : `【受付完了】${ev.title}`,
+      name: r.name,
+      email: r.email,
+      type: r.type,
+      eventTitle: ev.title,
+      eventDate: ev.date,
+      eventTime: `${ev.startTime} - ${ev.endTime}`,
+      venueName: ev.venueName,
+      zoomUrl: ev.zoomUrl,
+      meetingId: ev.meetingId,
+      zoomPasscode: ev.zoomPasscode,
+      reservationId,
+      eventId,
+      tenantId,
+      tenantName: tenant.orgName || tenant.name,
+      themeColor: tenant.themeColor || '#f97316',
+      replyTo: ev.contactEmail || tenant.ownerEmail || '',
+      contactName: ev.contactName || tenant.name || '運営事務局',
+      contactEmail: ev.contactEmail || '',
+      contactPhone: ev.contactPhone || '',
+      replyMessage: ev.replyMessage || '',
+      preSurveyUrl: ev.preSurveyUrl || '',
+      hasPreSurveyFields: !!(ev.preSurveyFields?.length > 0),
+      eventPrice: onSite ? (price > 0 ? `${price}円（当日会場にてお支払い）` : '当日会場にてお支払い') : '無料',
+    },
+  };
+}
 
 // 日付フォーマット
 function formatToJapaneseDate(dateString: string): string {
@@ -32,8 +95,22 @@ function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string
 }
 
 export async function POST(request: Request) {
+  let claimedRef: DocumentReference | null = null; // 申込フォームからのとき、送ったしるしを付けた申込
+  let mainSent = false;
   try {
-    const body = await request.json();
+    const raw = await request.json();
+    // サーバーの中（Stripe の知らせの処理）からは合言葉（CRON_SECRET）つきで呼ぶ。渡された中身をそのまま使う
+    const internalKey = process.env.CRON_SECRET;
+    const trusted = !!internalKey && request.headers.get('authorization') === `Bearer ${internalKey}`;
+    let body: any = raw;
+    if (!trusted) {
+      const built = await registrationFromRecords(raw);
+      if ('error' in built) return NextResponse.json({ success: false, error: built.error }, { status: built.status });
+      body = built.body;
+      claimedRef = built.ref;
+    }
+    // メールの種類。申込フォームからは申込の確認メールだけ（type は参加の形＝online などとしても使われるため、種類は別に決める）
+    const kind = trusted ? body.type : 'registration';
     const { 
       name, email, company, tenantId,type, eventTitle, 
       eventDate, eventTime, venueName, 
@@ -44,6 +121,7 @@ export async function POST(request: Request) {
       inviteUrl, replyMessage, preSurveyUrl, hasPreSurveyFields,
       subject: customSubject
     } = body;
+    const nameHtml = esc(name);
 
     // 差出人名は「渡された名前 → tenantId でテナント実データ参照」で確定（特定社名固定への誤フォールバックを防ぐ）
     let resolvedSender = (tenantName || "").trim();
@@ -84,12 +162,12 @@ export async function POST(request: Request) {
     let mainHtml = "";
 
     // 🔄 メールの種類による条件分岐
-    if (type === 'upgrade_confirmation') {
+    if (kind === 'upgrade_confirmation') {
       // 💎 1. アップグレード完了メール
       subject = customSubject || `【重要】${planName || "スタンダード"}へのアップグレードが完了しました`;
       mainHtml = `
         <p style="${styles.greeting}">
-          <strong>${name || "お客様"} 様</strong><br><br>
+          <strong>${nameHtml || "お客様"} 様</strong><br><br>
           いつも本システムをご利用いただき、誠にありがとうございます。<br>
           この度、<strong>${planName || "スタンダードプラン"}</strong> へのアップグレードのお手続きが完了いたしました。
         </p>
@@ -107,14 +185,14 @@ export async function POST(request: Request) {
           引き続き、よろしくお願いいたします。
         </p>
       `;
-      } else if (type === 'cancellation_notice') {
+      } else if (kind === 'cancellation_notice') {
       // ❌ 【新機能】キャンセル完了通知メール
       subject = `【重要】${eventTitle} キャンセル完了のお知らせ`;
       const formattedDate = formatToJapaneseDate(eventDate);
       
       mainHtml = `
         <p style="${styles.greeting}">
-          <strong>${name} 様</strong><br><br>
+          <strong>${nameHtml} 様</strong><br><br>
           「${eventTitle}」のお申し込みキャンセルを承りました。<br>
           お手続きが完了しましたので、お知らせいたします。
         </p>
@@ -169,7 +247,7 @@ export async function POST(request: Request) {
 
       mainHtml = `
         <p style="${styles.greeting}">
-          <strong>${name} 様</strong><br>
+          <strong>${nameHtml} 様</strong><br>
           「${eventTitle}」にお申し込みいただき、ありがとうございます。
         </p>
         <div style="${styles.card}">
@@ -295,9 +373,10 @@ mainHtml += `
       subject: subject,
       html: finalHtml,
     });
+    mainSent = true;
 
     // オーナーへの通知
-    if (type !== 'upgrade_confirmation') {
+    if (kind !== 'upgrade_confirmation') {
       let ownerEmail = "";
       if (tenantId) {
         const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
@@ -318,9 +397,9 @@ mainHtml += `
               <h2 style="color: #0ea5e9; margin-top: 0;">新しいお申し込みがありました</h2>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
               <p><strong>イベント名:</strong> ${eventTitle}</p>
-              <p><strong>参加者氏名:</strong> ${name} 様</p>
-              <p><strong>メールアドレス:</strong> ${email}</p>
-              ${company ? `<p><strong>会社名:</strong> ${company}</p>` : ''}
+              <p><strong>参加者氏名:</strong> ${nameHtml} 様</p>
+              <p><strong>メールアドレス:</strong> ${esc(email)}</p>
+              ${company ? `<p><strong>会社名:</strong> ${esc(company)}</p>` : ''}
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;" />
               <p style="font-size: 11px; color: #64748b;">※この通知は事務局およびテナントオーナーに自動送信されています。</p>
             </div>
@@ -333,6 +412,8 @@ mainHtml += `
 
   } catch (error: any) {
     console.error('Email Send Error:', error);
+    // 確認メールを送れなかったら、送ったしるしを戻す
+    if (claimedRef && !mainSent) await claimedRef.update({ emailed: false }).catch(() => {});
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -145,7 +145,7 @@ export async function POST(req: Request) {
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CRON_SECRET}` }, // メール送信の入口はサーバーの中からの呼び出しだけ中身をそのまま使う
               body: JSON.stringify({
                 email: session.customer_details?.email,
                 name: "お客様",
@@ -187,7 +187,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
         await fetch(`${baseUrl}/api/send-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CRON_SECRET}` }, // メール送信の入口はサーバーの中からの呼び出しだけ中身をそのまま使う
           body: JSON.stringify({
             email: session.customer_details?.email || session.metadata?.email,
             name: "お客様", // 必要に応じてテナント名を取得して入れてください
@@ -289,7 +289,7 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
           try {
             await fetch(`${baseUrl}/api/send-email`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CRON_SECRET}` }, // メール送信の入口はサーバーの中からの呼び出しだけ中身をそのまま使う
               body: JSON.stringify({
                 subject: `【受講票】${eData?.title || 'イベント'} 受付完了`,
                 name: rData?.name,
