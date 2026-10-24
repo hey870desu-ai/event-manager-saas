@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
+import { notifyOperator } from '@/lib/stripe-monthly';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -86,6 +87,24 @@ export async function POST(req: Request) {
     const { tenantId, startMonth } = session.metadata;
     if (tenantId) {
       try {
+        // 2本のリンクの両方で登録された（二重の月額）ときは、あとの方を止めて運営者に知らせる。前の月額はそのまま
+        const before = (await adminDb.collection('tenants').doc(tenantId).get()).data() || {};
+        if (before.stripeSubscriptionId && before.stripeSubscriptionId !== session.subscription) {
+          let beforeStatus = 'canceled';
+          try {
+            beforeStatus = (await stripe.subscriptions.retrieve(before.stripeSubscriptionId)).status;
+          } catch (e: any) {
+            if (e?.code !== 'resource_missing') throw e;
+          }
+          if (!['canceled', 'incomplete_expired'].includes(beforeStatus)) {
+            await stripe.subscriptions.cancel(session.subscription as string);
+            await notifyOperator(
+              `【絆太郎】カードの月額が二重に登録されたので、あとの方を止めました: ${tenantId}`,
+              `テナント ${tenantId} には続いている Stripe の月額（${before.stripeSubscriptionId}・${beforeStatus}）があるので、いま登録された月額（${session.subscription}）を止めました（決済の前なので、お金は動いていません）。`
+            );
+            return NextResponse.json({ received: true });
+          }
+        }
         await adminDb.collection('tenants').doc(tenantId).update({
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription as string,
@@ -319,15 +338,48 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
 
     if (tenantId) {
       try {
-        await adminDb.collection('tenants').doc(tenantId).update({
-          plan: 'free', // 期間が終わったので無料プランに戻すぞい
-          updatedAt: new Date(),
-        });
-        console.log(`📉 [Webhook] Tenant ${tenantId} has been returned to free plan.`);
+        // テナントがいま使っている月額と違うもの（二重の登録で止めた方など）が終わっても、プランは変えない
+        const current = (await adminDb.collection('tenants').doc(tenantId).get()).data()?.stripeSubscriptionId;
+        if (current && current !== subscription.id) {
+          console.log(`ℹ️ [Webhook] ${subscription.id} is not the current subscription of ${tenantId}. Plan unchanged.`);
+        } else {
+          await adminDb.collection('tenants').doc(tenantId).update({
+            plan: 'free', // 期間が終わったので無料プランに戻すぞい
+            updatedAt: new Date(),
+          });
+          console.log(`📉 [Webhook] Tenant ${tenantId} has been returned to free plan.`);
+        }
       } catch (e) {
         console.error('❌ Failed to revert to free plan:', e);
       }
     }
+  }
+
+  // ============================================================
+  // 💳 4. 月額のカードの決済ができなかった（毎月1日の決済など）→ 運営者に知らせる
+  //    Stripe は日を置いて決済をやり直す。やり直しても払えないと、Stripe の設定によっては月額が終わり、上の 3. でフリーに戻る
+  //    お客さまで探す（Stripe の版で invoice の中の月額の書き方が変わるため）
+  // ============================================================
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    if (customerId) {
+      try {
+        const snap = await adminDb.collection('tenants').where('stripeCustomerId', '==', customerId).limit(1).get();
+        const tenant = snap.docs[0];
+        const next = invoice.next_payment_attempt
+          ? `次は ${new Date(invoice.next_payment_attempt * 1000).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} にやり直します。`
+          : 'Stripe はこれ以上やり直しません。';
+        await notifyOperator(
+          `【絆太郎】カードの決済ができませんでした: ${tenant?.data().name || customerId}`,
+          `${tenant ? `${tenant.data().name}（${tenant.id}）` : `Stripe のお客さま ${customerId}`} の ${(invoice.amount_due || 0).toLocaleString()}円 の決済ができませんでした（${invoice.attempt_count || 1}回目）。${next}\n` +
+          `${invoice.hosted_invoice_url ? `請求書: ${invoice.hosted_invoice_url}\n` : ''}カードの確かめを、お客さまにお願いしてください。`
+        );
+      } catch (e) {
+        console.error('❌ payment_failed notify failed:', e);
+      }
+    }
+    return NextResponse.json({ received: true });
   }
 
   return NextResponse.json({ received: true });

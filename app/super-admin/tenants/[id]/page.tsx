@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit, CreditCard, Copy, ExternalLink } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/InvoicePDF";
-import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst } from "@/lib/plans";
+import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst, isCountedAdmin } from "@/lib/plans";
 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -178,7 +178,7 @@ const handleSave = async () => {
     }
   };
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
-  const adminCount = admins.filter(a => a.email !== SUPER_ADMIN_EMAIL).length;
+  const adminCount = admins.filter(a => isCountedAdmin(a.email)).length;
   const extraCount = extraAdmins(tenantData.plan, adminCount);
 
   // ★ カードの月額（毎月1日に決済）：Stripe の申し込みリンクを作る（金額と人数はサーバーで数え直す）
@@ -438,6 +438,9 @@ const handleSave = async () => {
                   Stripe の月額の記録があります{tenantData.stripeMonthly?.startMonth ? `（${Number(String(tenantData.stripeMonthly.startMonth).slice(5))}月1日から毎月1日に決済）` : ""}。続いている月額があるときは、新しいリンクは作りません。
                 </div>
               )}
+              {tenantData.stripeMonthly?.seatsError && (
+                <div className="text-xs text-red-400">Stripe の人数を合わせられません：{tenantData.stripeMonthly.seatsError}</div>
+              )}
               <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-500 block mb-1">1回目の決済の月（その月の1日）</label>
@@ -446,6 +449,9 @@ const handleSave = async () => {
                 <button onClick={handleCreateCardLink} disabled={creatingLink || !linkMonth} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-lg flex items-center gap-2">
                   {creatingLink ? <Loader2 className="animate-spin" size={16}/> : <CreditCard size={16}/>} カード登録のリンクを作る
                 </button>
+              </div>
+              <div className="text-xs text-slate-500 leading-relaxed">
+                決済は毎月1日の朝（日本時間）です。登録のあとに管理の人が増えたり減ったりしたら、次の1日の決済から金額が変わります（日割りはしません）。Stripe の画面では、払う方がメールアドレスを入れます。
               </div>
               {linkError && <div className="text-xs text-red-400">{linkError}</div>}
               {cardLink && (
@@ -557,7 +563,7 @@ const handleSave = async () => {
                <div className="flex gap-2"><input type="email" value={newAdminEmail} onChange={(e)=>setNewAdminEmail(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white min-w-0" placeholder="追加するメアド" /><button onClick={handleAddAdmin} disabled={!newAdminEmail} className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg text-xs font-bold disabled:opacity-50">追加</button></div>
                <div className="bg-slate-950 rounded-lg border border-slate-800 divide-y divide-slate-800/50">
                  {admins.map(admin => (
-                   <div key={admin.email} className="p-3 flex justify-between items-center group"><div className="min-w-0"><div className="text-sm text-slate-300 truncate">{admin.email}</div></div><button onClick={()=>handleRemoveAdmin(admin.email)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button></div>
+                   <div key={admin.email} className="p-3 flex justify-between items-center group"><div className="min-w-0"><div className="text-sm text-slate-300 truncate">{admin.email}</div>{!isCountedAdmin(admin.email) && <div className="text-xs text-slate-500">運営のアカウント（人数に数えない）</div>}</div><button onClick={()=>handleRemoveAdmin(admin.email)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button></div>
                  ))}
                </div>
              </div>

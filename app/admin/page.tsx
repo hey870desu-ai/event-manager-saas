@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins } from "@/lib/plans";
+import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, isCountedAdmin } from "@/lib/plans";
 import { useRouter } from "next/navigation";
 import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
   // プロはスタンダードの全機能を含む（複製・2件目からの作成をフリーと同じに止めない）
   const isStandard = ['STANDARD', 'PRO'].includes(currentTenantData?.plan?.toUpperCase() || '');
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは3人まで込み・4人目から1人ずつ料金が加わる
-  const myMemberCount = adminUsers.filter(u => u.tenantId === currentUserTenant && u.email !== SUPER_ADMIN_EMAIL).length;
+  const myMemberCount = adminUsers.filter(u => u.tenantId === currentUserTenant && isCountedAdmin(u.email)).length;
   // ❌ 参加者のキャンセル処理（返金対応・通知メール統合版）
   const handleCancelParticipant = async (p: ReservationData) => {
     if (!currentEventForList) return;
@@ -2614,7 +2614,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
                      .filter(u => isSuperAdminMode || u.tenantId === currentUserTenant)
                      .map(u=>(
                       <div key={u.email} className="flex justify-between items-center p-3 bg-white rounded-lg border border-slate-200">
-                        <div><div className="text-sm text-slate-900">{u.email}</div><div className="text-xs text-indigo-500">{formatBranchName(safeStr(u.branchId))}</div></div>
+                        <div><div className="text-sm text-slate-900">{u.email}</div><div className="text-xs text-indigo-500">{formatBranchName(safeStr(u.branchId))}</div>{!isCountedAdmin(u.email) && <div className="text-xs text-slate-500">運営のアカウントです（管理の人の数に入れません）</div>}</div>
                         {(isSuperAdminMode || (u.email !== user?.email && u.role !== 'owner')) && ( 
                           <button onClick={()=>handleRemoveAdmin(u.email)} className="text-slate-500 hover:text-red-400"><Trash2 size={16}/></button> 
                         )}

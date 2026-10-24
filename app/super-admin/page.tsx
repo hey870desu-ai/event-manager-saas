@@ -9,7 +9,7 @@ import Link from "next/link";
 import { LogOut, Plus, ChevronRight, Building2, Shield, Search, Wallet, Send, Loader2, CheckCircle2, AlertTriangle, Printer, X } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { BatchInvoicePDF } from "@/components/InvoicePDF";
-import { extraAdmins, monthlyInvoiceItems, totalWithTax } from "@/lib/plans";
+import { extraAdmins, monthlyInvoiceItems, totalWithTax, isCountedAdmin } from "@/lib/plans";
 
 // 本部オーナーのメアド
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -46,7 +46,7 @@ export default function SuperAdminDashboard() {
     const counts: Record<string, number> = {};
     snap.forEach(d => {
       const u = d.data();
-      if (!u.tenantId || d.id === SUPER_ADMIN_EMAIL) return;
+      if (!u.tenantId || !isCountedAdmin(d.id)) return;
       counts[u.tenantId] = (counts[u.tenantId] || 0) + 1;
     });
     setAdminCounts(counts);

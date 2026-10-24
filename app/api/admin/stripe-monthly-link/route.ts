@@ -1,10 +1,12 @@
 // 運営者だけ：スタンダードの月額をカードで払ってもらうための、Stripe の申し込みリンクを作る。
-// 1回目の決済は、選んだ月の1日 0時（日本時間）。それまでは無料の期間（trial）にして、以降は毎月1日に決済する。
+// 1回目の決済は、選んだ月の1日 9時（日本時間）。それまでは無料の期間（trial）にして、以降は毎月1日に決済する。
 // 金額は 3,300円（スタンダード）＋ 550円 ×（4人目からの管理の人）。人数は admin_users で数える（運営のアカウントは数えない）
+// 登録のあとに人数が変わったら、毎時の処理（/api/cron/stripe-seats）が Stripe の数を合わせる
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { PLANS, EXTRA_ADMIN_PRICE, INCLUDED_ADMINS, withTax, extraAdmins, cardMonthlyTotal, nextMonthJst, firstOfMonthJstUnix } from '@/lib/plans';
+import { PLANS, withTax, extraAdmins, cardMonthlyTotal, nextMonthJst, firstChargeUnix } from '@/lib/plans';
+import { countAdmins, extraAdminPriceId } from '@/lib/stripe-monthly';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
     if (tenant.plan !== 'standard') return NextResponse.json({ error: 'スタンダードのテナントだけ作れます' }, { status: 400 });
 
     const startMonth = typeof requestedMonth === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : nextMonthJst();
-    const trialEnd = firstOfMonthJstUnix(startMonth);
+    const trialEnd = firstChargeUnix(startMonth);
     if (trialEnd * 1000 - Date.now() < MIN_LEAD_MS) {
       return NextResponse.json({ error: '1回目の決済日まで2日を切っています。次の月を選んでください' }, { status: 400 });
     }
@@ -63,42 +65,21 @@ export async function POST(request: Request) {
     }
 
     // 5. 管理の人の数（運営のアカウントは数えない）
-    const adminSnap = await adminDb.collection('admin_users').where('tenantId', '==', tenantId).get();
-    const adminCount = adminSnap.docs.filter((d: { id: string }) => d.id.trim().toLowerCase() !== SUPER_ADMIN_EMAIL).length;
+    const adminCount = await countAdmins(tenantId);
     const extra = extraAdmins('standard', adminCount);
-
-    // 6. 前に作った Stripe のお客さまがあれば使う（無い・消えていれば Stripe の画面で新しく作られる）
-    let customerId: string | undefined;
-    if (tenant.stripeCustomerId) {
-      try {
-        const c = await stripe.customers.retrieve(tenant.stripeCustomerId);
-        if (!(c as any).deleted) customerId = c.id;
-      } catch (e: any) {
-        if (e?.code !== 'resource_missing') throw e;
-      }
-    }
 
     const month = Number(startMonth.slice(5));
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: basePriceId, quantity: 1 }];
-    if (extra > 0) {
-      lineItems.push({
-        price_data: {
-          currency: 'jpy',
-          unit_amount: withTax(EXTRA_ADMIN_PRICE),
-          recurring: { interval: 'month' },
-          product_data: { name: `追加の管理者（${INCLUDED_ADMINS + 1}人目から）` },
-        },
-        quantity: extra,
-      });
-    }
+    if (extra > 0) lineItems.push({ price: await extraAdminPriceId(stripe), quantity: extra });
 
-    // 7. Stripe の申し込みの画面を作る（24時間有効）
+    // 6. Stripe の申し込みの画面を作る（24時間有効）
+    //    前に作った Stripe のお客さまは使わない（メールが固定で出て直せないため。以前の登録は別の人のメールのことがある）。
+    //    払う方が Stripe の画面でメールを入れ、領収などのメールはそこに届く
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       locale: 'ja',
-      ...(customerId ? { customer: customerId } : {}),
       line_items: lineItems,
       subscription_data: {
         trial_end: trialEnd,

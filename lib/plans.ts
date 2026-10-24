@@ -11,6 +11,12 @@ export const PLANS = {
 export const INCLUDED_ADMINS = 3;     // スタンダードに込みの管理の人
 export const EXTRA_ADMIN_PRICE = 500; // 4人目から1人あたり（税抜）
 
+// 管理の人に数えないアカウント（運営のもの）。料金・請求・カードの月額の人数は、これ以外の admin_users を数える
+//   saastukuruzo@gmail.com は塙さんのテスト用（ハッピー・チョイスに管理者として入っている・2026-10-24 塙さん「僕のテストアドレス」）
+export const NOT_COUNTED_ADMINS = ["hey870desu@gmail.com", "saastukuruzo@gmail.com"];
+export const isCountedAdmin = (email: string | undefined) =>
+  !NOT_COUNTED_ADMINS.includes((email || "").trim().toLowerCase());
+
 // 税込（InvoicePDF と同じく10%の切り捨て）
 export const withTax = (price: number) => price + Math.floor(price * 0.1);
 
@@ -43,8 +49,11 @@ export const nextMonthJst = (now: Date = new Date()) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-// "YYYY-MM" の1日 0時（日本時間）を UNIX 秒で返す
-export const firstOfMonthJstUnix = (ym: string) => {
+// "YYYY-MM" の1日 9時（日本時間）＝1日 0時（UTC）を UNIX 秒で返す。カードの月額の1回目の決済の時刻
+//   Stripe は毎月の決済日を UTC の日で数える（起点が30日なら毎月30日・31日なら月末）。
+//   1日 0時（日本時間）は UTC では前の月の末日なので、11月30日 15時（UTC）が起点だと12月31日（日本時間）に決済されてしまう。
+//   UTC でも1日になる時刻にすれば、どの月から始めても毎月1日になる
+export const firstChargeUnix = (ym: string) => {
   const [y, m] = ym.split("-").map(Number);
-  return Math.floor((Date.UTC(y, m - 1, 1) - 9 * 3600 * 1000) / 1000);
+  return Math.floor(Date.UTC(y, m - 1, 1) / 1000);
 };
