@@ -65,7 +65,24 @@ export async function syncMonthlySeats(stripe: Stripe): Promise<SeatSyncResult[]
         const sub = await stripe.subscriptions.retrieve(d.stripeSubscriptionId);
         const base = sub.items.data.filter(i => i.price.id === basePriceId);
         const extras = sub.items.data.filter(i => i.price.id !== basePriceId);
-        if (['canceled', 'incomplete_expired'].includes(sub.status)) {
+        const ended = ['canceled', 'incomplete_expired'].includes(sub.status);
+        // 1日の決済ができず、Stripe がやり直している（past_due・unpaid）ときは運営者に1回だけ知らせる。払われたら、もう1回知らせる。
+        // Webhook の知らせ（invoice.payment_failed）が届かない設定でも、ここで分かる
+        const unpaid = ['past_due', 'unpaid'].includes(sub.status);
+        if (!ended && unpaid !== !!d.stripeMonthly?.unpaidSince) {
+          try {
+            await notifyOperator(
+              unpaid ? `【絆太郎】カードの月額が払われていません: ${name}` : `【絆太郎】カードの月額が払われました: ${name}`,
+              unpaid
+                ? `${name}（${t.id}）の Stripe の月額（${sub.id}）が「${sub.status}」になっています。1日の決済ができなかったため、Stripe が日を置いて決済をやり直します。\nお客さまに、カードの確かめをお願いしてください。`
+                : `${name}（${t.id}）の Stripe の月額（${sub.id}）は払われて、「${sub.status}」に戻りました。`
+            );
+            await t.ref.update({ 'stripeMonthly.unpaidSince': unpaid ? new Date() : null });
+          } catch (e) {
+            console.error('❌ stripe-seats unpaid notify failed:', t.id, e);
+          }
+        }
+        if (ended) {
           r = { tenantId: t.id, name, result: 'skipped', note: `Stripe の月額が終わっている（${sub.status}）` };
         } else if (!basePriceId || sub.items.has_more || base.length !== 1 || extras.length > 1 || extras.some(i => !isExtraAdminPrice(i.price))) {
           // 想定と違う中身には手を付けない（運営者が Stripe の画面で見る）
