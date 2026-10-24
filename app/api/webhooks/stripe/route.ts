@@ -78,6 +78,31 @@ export async function POST(req: Request) {
   const session = event.data.object as Stripe.Checkout.Session;
 
   // ============================================================
+  // 💳 カードの月額（毎月1日に決済）のカード登録が済んだ
+  //    運営者の画面で作ったリンク（/api/admin/stripe-monthly-link）から。1回目の決済は1日なので、いまは支払いなし（trial）
+  //    テナントに Stripe の月額を結びつけるだけで、プランは変えない
+  // ============================================================
+  if (event.type === 'checkout.session.completed' && session.metadata?.type === 'kizuna_taro_monthly') {
+    const { tenantId, startMonth } = session.metadata;
+    if (tenantId) {
+      try {
+        await adminDb.collection('tenants').doc(tenantId).update({
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date() },
+          updatedAt: new Date(),
+        });
+        const month = Number((startMonth || '').slice(5)) || '';
+        await notifyOwnerUpgrade(tenantId, `スタンダードプラン（カード登録・${month}月1日から毎月1日に決済）`, session.customer_details?.email || null);
+      } catch (e) {
+        console.error('❌ Monthly card registration update failed:', e);
+        return NextResponse.json({ error: 'update failed' }, { status: 500 }); // Stripe にやり直してもらう
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // ============================================================
   // 🏆 0. 🆕 絆太郎サービス決済（3300円スタンダード / 5500円スポット）
   // ============================================================
   if (session.metadata?.type === 'kizuna_taro_service') {

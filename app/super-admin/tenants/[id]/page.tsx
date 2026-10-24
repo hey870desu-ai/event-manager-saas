@@ -5,10 +5,10 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, setDoc, deleteDoc, serverTimestamp, addDoc, orderBy, deleteField, limit } from "firebase/firestore";
 import { useRouter, useParams } from "next/navigation";
-import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit } from "lucide-react";
+import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit, CreditCard, Copy, ExternalLink } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/InvoicePDF";
-import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax } from "@/lib/plans";
+import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst } from "@/lib/plans";
 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -42,6 +42,12 @@ export default function TenantDetailPage() {
   // ★請求管理用のState
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+
+  // カードの月額（毎月1日に決済）のリンク
+  const [linkMonth, setLinkMonth] = useState(() => nextMonthJst());
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [cardLink, setCardLink] = useState<{ url: string; startMonth: string; adminCount: number; extraAdmins: number; monthlyTotal: number } | null>(null);
+  const [linkError, setLinkError] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -174,6 +180,27 @@ const handleSave = async () => {
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
   const adminCount = admins.filter(a => a.email !== SUPER_ADMIN_EMAIL).length;
   const extraCount = extraAdmins(tenantData.plan, adminCount);
+
+  // ★ カードの月額（毎月1日に決済）：Stripe の申し込みリンクを作る（金額と人数はサーバーで数え直す）
+  const handleCreateCardLink = async () => {
+    if (!auth.currentUser) return;
+    setCreatingLink(true); setCardLink(null); setLinkError("");
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch("/api/admin/stripe-monthly-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId, startMonth: linkMonth }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "リンクを作れませんでした");
+      setCardLink(data);
+    } catch (e: any) {
+      setLinkError(e.message);
+    } finally {
+      setCreatingLink(false);
+    }
+  };
 
 // ★ 1. 請求レコード作成（同期付き）
   const handleCreateInvoiceRecord = async () => {
@@ -396,6 +423,47 @@ const handleSave = async () => {
               <div className="col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">請求メール</label><input type="email" value={tenantData.billingEmail || ""} onChange={(e)=>handleChange("billingEmail", e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none" /></div>
             </div>
           </section>
+
+          {/* カードの月額（毎月1日に決済）：Stripe の申し込みリンク */}
+          {tenantData.plan === 'standard' && (
+          <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <h2 className="text-white font-bold mb-4 flex items-center gap-2 pb-2 border-b border-slate-800"><CreditCard className="text-indigo-400" size={20}/> カードの月額（毎月1日に決済）</h2>
+            <div className="space-y-4 text-sm">
+              <div className="text-slate-300">
+                月額 <span className="font-bold text-white">{cardMonthlyTotal(adminCount).toLocaleString()}円</span>（税込）
+                <span className="text-xs text-slate-500">＝{withTax(PLANS.standard.price).toLocaleString()}円＋{withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円×{extraCount}人（管理の人 {adminCount}人）</span>
+              </div>
+              {tenantData.stripeSubscriptionId && (
+                <div className="text-xs text-amber-400">
+                  Stripe の月額の記録があります{tenantData.stripeMonthly?.startMonth ? `（${Number(String(tenantData.stripeMonthly.startMonth).slice(5))}月1日から毎月1日に決済）` : ""}。続いている月額があるときは、新しいリンクは作りません。
+                </div>
+              )}
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 block mb-1">1回目の決済の月（その月の1日）</label>
+                  <input type="month" value={linkMonth} onChange={(e) => setLinkMonth(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none" />
+                </div>
+                <button onClick={handleCreateCardLink} disabled={creatingLink || !linkMonth} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-lg flex items-center gap-2">
+                  {creatingLink ? <Loader2 className="animate-spin" size={16}/> : <CreditCard size={16}/>} カード登録のリンクを作る
+                </button>
+              </div>
+              {linkError && <div className="text-xs text-red-400">{linkError}</div>}
+              {cardLink && (
+                <div className="bg-slate-950 border border-indigo-500/30 rounded-lg p-4 space-y-3">
+                  <div className="text-xs text-slate-300">
+                    月額 {cardLink.monthlyTotal.toLocaleString()}円（管理の人 {cardLink.adminCount}人・追加 {cardLink.extraAdmins}人）・1回目の決済は{Number(cardLink.startMonth.slice(5))}月1日
+                  </div>
+                  <input readOnly value={cardLink.url} onFocus={(e) => e.target.select()} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 font-mono outline-none" />
+                  <div className="flex gap-2">
+                    <button onClick={() => navigator.clipboard.writeText(cardLink.url)} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Copy size={14}/> コピー</button>
+                    <a href={cardLink.url} target="_blank" rel="noopener noreferrer" className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"><ExternalLink size={14}/> 開く</a>
+                  </div>
+                  <div className="text-xs text-slate-500">リンクは24時間有効です。登録が済むと、運営者のメールに知らせが届きます。</div>
+                </div>
+              )}
+            </div>
+          </section>
+          )}
 
           {/* ★★★ 新機能: 請求・入金管理ボード ★★★ */}
           <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">

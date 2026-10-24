@@ -31,3 +31,20 @@ export const monthlyInvoiceItems = (plan: string | undefined, adminCount: number
 
 // 明細の税込の合計（InvoicePDF と同じ：小計＋小計の10%の切り捨て）
 export const totalWithTax = (items: InvoiceItem[]) => withTax(items.reduce((acc, i) => acc + i.price * i.quantity, 0));
+
+// カードの月額（Stripe・税込）：スタンダード 3,300円＋4人目から1人 550円
+export const cardMonthlyTotal = (adminCount: number) =>
+  withTax(PLANS.standard.price) + withTax(EXTRA_ADMIN_PRICE) * extraAdmins("standard", adminCount);
+
+// 日本時間で見た「次の月」を "YYYY-MM" で返す（毎月1日に決済する月額の、1回目の月の初期値）
+export const nextMonthJst = (now: Date = new Date()) => {
+  const jst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const d = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth() + 1, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+// "YYYY-MM" の1日 0時（日本時間）を UNIX 秒で返す
+export const firstOfMonthJstUnix = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return Math.floor((Date.UTC(y, m - 1, 1) - 9 * 3600 * 1000) / 1000);
+};
