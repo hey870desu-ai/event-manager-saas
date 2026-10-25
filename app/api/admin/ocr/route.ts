@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { verifyCaller, authErrorResponse } from "@/lib/admin-auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -7,6 +8,7 @@ export const maxDuration = 30;
 
 export async function POST(request: Request) {
   try {
+    await verifyCaller(request); // ログインした管理者だけ（Gemini の料金がかかるため）
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "GEMINI_API_KEY が未設定です" }, { status: 500 });
     }
@@ -53,9 +55,11 @@ export async function POST(request: Request) {
     const jsonStr = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
     const parsed = JSON.parse(jsonStr);
 
-    console.log("✅ OCR結果:", JSON.stringify(parsed));
+    console.log("✅ OCR結果: 読めた項目", Object.keys(parsed).filter(k => parsed[k]).join(",")); // 名刺の中身（個人の情報）は記録に残さない
     return NextResponse.json(parsed);
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error("🔥 OCR Error:", error?.status, error?.message || error);
     return NextResponse.json({ error: error?.message || "解析失敗" }, { status: 500 });
   }

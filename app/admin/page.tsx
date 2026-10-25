@@ -495,11 +495,15 @@ useEffect(() => {
 // ▲▲▲ 修正ここまで ▲▲▲
 
   // 参加者画面 or メール送信モーダルを開いている間、そのイベントの配信予約・送信履歴を読み込む
-  // （eventId で直接引くので、旧データ=tenantId未設定の履歴も表示できる）
+  // （Firestore のルールは自分のテナントの分しか読ませないので、テナントの管理者は tenantId でも絞る。
+  //   旧データの tenantId は 2026-07 の修復で全件に入っている）
   useEffect(() => {
     const active = (isParticipantsOpen || isMailModalOpen) && currentEventForList?.id;
     if (!active) { setEventMailHistory([]); return; }
-    const q = query(collection(db, "mail_queue"), where("eventId", "==", currentEventForList.id));
+    if (!isSuperAdminMode && !currentUserTenant) return;
+    const q = isSuperAdminMode
+      ? query(collection(db, "mail_queue"), where("eventId", "==", currentEventForList.id))
+      : query(collection(db, "mail_queue"), where("eventId", "==", currentEventForList.id), where("tenantId", "==", currentUserTenant));
     const unsub = onSnapshot(q, (s) => {
       const list = s.docs.map(d => ({ id: d.id, ...d.data() } as any));
       list.sort((a: any, b: any) => {
@@ -510,7 +514,7 @@ useEffect(() => {
       setEventMailHistory(list);
     }, (err) => { console.error("event mail history load error:", err); setEventMailHistory([]); });
     return () => unsub();
-  }, [isParticipantsOpen, isMailModalOpen, currentEventForList]);
+  }, [isParticipantsOpen, isMailModalOpen, currentEventForList, isSuperAdminMode, currentUserTenant]);
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -599,8 +603,9 @@ useEffect(() => {
   const [inviting, setInviting] = useState(false); // 送信中フラグ
 
   // ✨ targetName を追加したぞい！
-const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, targetName: string, targetTenantId: string, targetBranch: string) => {
+const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetName: string, targetTenantId: string, targetBranch: string) => {
   e.preventDefault();
+  const targetEmail = rawEmail.trim().toLowerCase(); // admin_users のIDは小文字（ログインのメールと Firestore のルールがそれで探す）
   if (!targetEmail || !targetName || !targetTenantId) return alert("名前とメアドを入れてくんちぇ！");
 
   // 4人目からは料金が加わることを、招待の前に伝える（もういる人の招待し直しは数えない）
@@ -626,7 +631,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     // 2. メール送信APIにお名前もバトンタッチするぞい！
     const res = await fetch('/api/invite', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
       body: JSON.stringify({ 
         email: targetEmail, 
         name: targetName, // ✨ これでメールに名前がいくっぺ！
@@ -753,7 +758,7 @@ const handleInviteStaff = async (e: React.FormEvent, targetEmail: string, target
     try {
       const res = await fetch('/api/send-thankyou', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ（宛先はサーバーが申込の記録から決める）
         body: JSON.stringify({
           recipients: targets.map(p => ({ name: p.name, email: p.email, id: p.id })),
           subject: mailSubject,

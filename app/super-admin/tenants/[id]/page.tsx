@@ -137,8 +137,9 @@ const handleSave = async () => {
     if (!newAdminEmail) return;
     if (!confirm(`${newAdminEmail} を管理者に追加しますか？`)) return;
     try {
-      await setDoc(doc(db, "admin_users", newAdminEmail), {
-        email: newAdminEmail, tenantId: tenantId, role: "admin", createdAt: serverTimestamp(), addedBy: "SuperAdmin"
+      const email = newAdminEmail.trim().toLowerCase(); // admin_users のIDは小文字にそろえる
+      await setDoc(doc(db, "admin_users", email), {
+        email, tenantId: tenantId, role: "admin", createdAt: serverTimestamp(), addedBy: "SuperAdmin"
       });
       setNewAdminEmail(""); fetchData(tenantId); alert("追加しました");
     } catch (e) { alert("エラー"); }

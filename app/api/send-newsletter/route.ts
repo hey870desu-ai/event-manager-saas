@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
+import { verifyCaller, assertTenant, authErrorResponse, tenantAudienceEmails } from '@/lib/admin-auth';
 
 const FONT_MAP: Record<string, string> = {
   sans: "'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif",
@@ -12,7 +14,24 @@ const escAttr = (s: any) => String(s || "").replace(/&/g, "&amp;").replace(/"/g,
 
 export async function POST(req: Request) {
   try {
-    const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData, recipients, mainFontFamily, mainTitleFontSize, mainBodyFontSize } = await req.json();
+    // ログインした管理者だけ。テナントの名前・住所・SNS などは記録から、送れる相手はそのテナントの絆リストと申込者・自分（テスト）だけ
+    const caller = await verifyCaller(req);
+    const { subject, mainTitle, mainMessage, mainImageUrl, snaps, tenantData: bodyTenant, recipients: bodyRecipients, mainFontFamily, mainTitleFontSize, mainBodyFontSize } = await req.json();
+    const tenantId = assertTenant(caller, bodyTenant?.id);
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) return NextResponse.json({ error: 'テナントが見つかりません' }, { status: 404 });
+    const tenantData: any = { id: tenantId, ...tenantSnap.data() };
+    const allowed = await tenantAudienceEmails(tenantId);
+    allowed.add(caller.email);
+    const recipients: string[] = [];
+    for (const r of Array.isArray(bodyRecipients) ? bodyRecipients : []) {
+      const email = String(r || '').trim();
+      if (!email) continue;
+      if (!allowed.has(email.toLowerCase())) return NextResponse.json({ error: '絆リストや申込者にない宛先が含まれています' }, { status: 400 });
+      if (!recipients.includes(email)) recipients.push(email);
+    }
+    if (recipients.length === 0) return NextResponse.json({ error: '宛先がありません' }, { status: 400 });
+    if (!Array.isArray(snaps)) return NextResponse.json({ error: '本文がありません' }, { status: 400 });
 
     // 🏆 送信元の名前
     const senderName = tenantData.orgName || "BANTARO Partner";
@@ -313,6 +332,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, successCount, errorCount });
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error("Resend Batch API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

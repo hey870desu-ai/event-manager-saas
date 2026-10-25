@@ -1,21 +1,42 @@
 // 📂 app/api/send-marketing/route.ts
 import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
+import { verifyCaller, assertTenant, authErrorResponse, tenantAudienceEmails } from '@/lib/admin-auth';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 1500;
+// 宛名を HTML に入れるときの置き換え（名刺や申込で入った名前）
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 export async function POST(request: Request) {
   try {
+    // ログインした管理者だけ。送れる相手はそのテナントの絆リスト（名刺・CSV）と申込者、テスト送信の自分だけ。
+    // 差出人名・色はテナントの記録から、返信先はログインした本人
+    const caller = await verifyCaller(request);
     const body = await request.json();
-    const {
-      recipients,
-      subject,
-      body: emailBody,
-      senderName,
-      replyTo,
-      themeColor
-    } = body;
+    const tenantId = assertTenant(caller, body.tenantId);
+    const { subject, body: emailBody } = body;
+    if (!subject || !emailBody) return NextResponse.json({ error: '件名と本文を入力してください' }, { status: 400 });
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) return NextResponse.json({ error: 'テナントが見つかりません' }, { status: 404 });
+    const tenant: any = tenantSnap.data();
+    const senderName = String(tenant.name || '絆太郎').replace(/["\r\n]/g, '');
+    const themeColor = tenant.themeColor;
+    const replyTo = caller.email;
+
+    const allowed = await tenantAudienceEmails(tenantId);
+    allowed.add(caller.email);
+    const recipients: { name: string; email: string }[] = [];
+    for (const r of Array.isArray(body.recipients) ? body.recipients : []) {
+      const email = String(r?.email || '').trim();
+      if (!email) continue;
+      if (!allowed.has(email.toLowerCase())) {
+        return NextResponse.json({ error: '絆リストや申込者にない宛先が含まれています' }, { status: 400 });
+      }
+      recipients.push({ name: String(r?.name || ''), email });
+    }
+    if (recipients.length === 0) return NextResponse.json({ error: '宛先がありません' }, { status: 400 });
 
     const brandColor = themeColor || "#3b82f6";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
@@ -89,19 +110,19 @@ export async function POST(request: Request) {
       const emails = batch.map((recipient: any) => {
         // 差し込み変数: {name}→お名前 / {email}→メールアドレス（独立行で実施し二重置換を防ぐ）
         let personalizedBody = emailBody
-          .replace(/\{name\}/g, recipient.name || 'お客様')
+          .replace(/\{name\}/g, esc(recipient.name || 'お客様'))
           .replace(/\{email\}/g, recipient.email || '');
         // 後方互換: 旧テンプレの「参加者各位」等は引き続き「○○様」へ
         personalizedBody = personalizedBody.replace(
           /(参加者各位|ご利用者様各位|お客様各位|お取引先様各位)/g,
-          `${recipient.name || 'お客様'} 様`
+          `${esc(recipient.name || 'お客様')} 様`
         );
         personalizedBody = personalizedBody.replace(/\n/g, '<br>');
 
         return {
           from: `"${senderName}" <info@event-manager.app>`,
           to: recipient.email,
-          replyTo: replyTo || "info@event-manager.app",
+          replyTo,
           subject: subject,
           html: buildHtml(recipient, personalizedBody),
           headers: buildUnsubscribeHeaders(recipient.email),
@@ -136,6 +157,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, successCount, errorCount, total: recipients.length });
 
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error('Marketing Send Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

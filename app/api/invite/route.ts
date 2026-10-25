@@ -2,17 +2,32 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { Resend } from 'resend';
+import { verifyCaller, assertTenant, authErrorResponse } from "@/lib/admin-auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 export async function POST(req: Request) {
   try {
+    // ログインした管理者が、自分のテナントに登録した人（admin_users）にだけ送る。テナント名は記録から
+    const caller = await verifyCaller(req);
     const body = await req.json();
-    const { email, name, tenantId, tenantName } = body;
+    const tenantId = assertTenant(caller, body.tenantId);
+    const email = String(body.email || '').trim();
+    if (!email || email.includes('/')) return NextResponse.json({ error: 'メールアドレスがありません' }, { status: 400 });
+    let member = await adminDb.collection('admin_users').doc(email).get();
+    if (!member.exists && email.toLowerCase() !== email) member = await adminDb.collection('admin_users').doc(email.toLowerCase()).get();
+    if (!member.exists || member.data()?.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'このテナントの管理者として登録されていない宛先です' }, { status: 403 });
+    }
 
     // 1. Firestore から、テナントの「本物の背番号」を呼んでくるっぺ
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantDoc.exists) return NextResponse.json({ error: 'テナントが見つかりません' }, { status: 404 });
     const tenantData = tenantDoc.data();
+    const tenantNameRaw = String(tenantData?.orgName || tenantData?.name || tenantId).replace(/["\r\n]/g, ''); // 差出人・件名用
+    const tenantName = esc(tenantNameRaw); // 本文（HTML）用
+    const name = esc(member.data()?.name || body.name || '');
 
     // authTenantId の取得 or 自動作成（既存テナントの補完対応）
     let realAuthId = tenantData?.authTenantId;
@@ -52,9 +67,9 @@ export async function POST(req: Request) {
     // 3. メール送信（From の表示名を "" で囲むのが、不着を防ぐコツだっぺ！）
     const { error } = await resend.emails.send({
       // 🏆 日本語の表示名は "" で囲ってやらないと、メールサーバーに蹴られることがあるんだばい！
-      from: `"${tenantName} 招待事務局" <info@event-manager.app>`,
+      from: `"${tenantNameRaw} 招待事務局" <info@event-manager.app>`,
       to: [email],
-      subject: `【絆太郎】${tenantName} 管理画面への招待があったっぺ！`,
+      subject: `【絆太郎】${tenantNameRaw} 管理画面への招待があったっぺ！`,
       html: `
         <div style="font-family: sans-serif; color: #334155; padding: 20px; background-color: #f8fafc;">
           <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
@@ -86,6 +101,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error("Invite API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -605,6 +605,9 @@ async function sendBatch(data: any) {
 }
 
 // セミナー参加者向けメール（mail_queue用）- send-thankyouと同等のHTML
+// 申込者が入れた名前を HTML に入れるときの置き換え
+const escName = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
 async function sendEventMail(data: any) {
   const { recipients, subject, body: baseBody, senderName, tenantName, eventTitle, eventDate, venueName, replyTo } = data;
   const displaySender = tenantName || senderName || "イベント事務局";
@@ -617,9 +620,9 @@ async function sendEventMail(data: any) {
     let personalBody = baseBody || '';
     personalBody = personalBody.replace(/{email}/g, recipient.email);
     if (personalBody.includes("参加者各位")) {
-      personalBody = personalBody.replace(/参加者各位/g, `${recipient.name} 様`);
+      personalBody = personalBody.replace(/参加者各位/g, `${escName(recipient.name)} 様`);
     } else {
-      personalBody = `${recipient.name} 様\n\n${personalBody}`;
+      personalBody = `${escName(recipient.name)} 様\n\n${personalBody}`;
     }
 
     // QRコード

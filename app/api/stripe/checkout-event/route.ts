@@ -12,15 +12,26 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { 
-      tenantId, 
-      eventId,
-      reservationId, 
-      eventTitle, 
-      amount,       // セミナー作成画面で入力された金額（例：5000）
-      email,        // 参加者のメールアドレス
-      stripeAccountId // テナント側のStripeアカウントID
-    } = body;
+    // 金額・送金先・宛先は記録から決める（以前は画面から来た amount・stripeAccountId をそのまま使い、1円でも払えた）
+    const eventId = String(body.eventId || '');
+    const reservationId = String(body.reservationId || '');
+    if (!eventId || !reservationId || eventId.includes('/') || reservationId.includes('/')) {
+      return NextResponse.json({ error: 'bad request' }, { status: 400 });
+    }
+    const eventSnap = await adminDb.collection('events').doc(eventId).get();
+    if (!eventSnap.exists) return NextResponse.json({ error: 'イベントが見つかりません' }, { status: 404 });
+    const ev: any = eventSnap.data();
+    const resSnap = await eventSnap.ref.collection('reservations').doc(reservationId).get();
+    const rsv: any = resSnap.exists ? resSnap.data() : null;
+    if (!rsv || rsv.status !== 'payment_pending') return NextResponse.json({ error: 'お支払いを待っている申込が見つかりません' }, { status: 404 });
+    const tickets: any[] = Array.isArray(ev.tickets) ? ev.tickets : [];
+    const ticket = tickets.find(t => t?.name === rsv.selectedTicket) || (tickets.length === 1 ? tickets[0] : null);
+    const amount = Math.round(Number(ticket?.price) || 0);
+    if (!ticket || amount <= 0) return NextResponse.json({ error: 'チケットの金額が分かりません' }, { status: 400 });
+    if (Number(rsv.price) !== amount) console.warn(`⚠️ 申込の金額 ${rsv.price} とチケットの金額 ${amount} が違うので、チケットの金額で決済します: ${eventId}/${reservationId}`);
+    const tenantId = ev.tenantId;
+    const eventTitle = `${ev.title || ''} (${ticket.name || ''})`;
+    const email = rsv.email;
 
 
     // --- 🛠️ ここから差し替え開始だっぺ！ ---
@@ -30,12 +41,15 @@ export async function POST(request: Request) {
 
     // テナント名を取得（カード明細に表示するため）
     let tenantName = "";
+    let stripeAccountId = "";
     try {
       const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
       tenantName = tenantSnap.data()?.orgName || tenantSnap.data()?.name || "";
+      stripeAccountId = tenantSnap.data()?.stripeConnectId || "";
     } catch (e) {
       console.warn("テナント名取得失敗:", e);
     }
+    if (!isEmergencyMode && !stripeAccountId) return NextResponse.json({ error: 'このテナントはカード決済の準備ができていません' }, { status: 400 });
 
     // 通常時（子アカウント送金用）の手数料計算
     const applicationFeeAmount = Math.floor(Number(amount) * 0.02);

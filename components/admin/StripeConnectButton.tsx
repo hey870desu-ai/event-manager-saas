@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { auth } from '@/lib/firebase';
 import { CheckCircle2, ExternalLink, CreditCard, FileText, Building2, Landmark, Shield, Copy, Check, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 
 type LegalInfo = {
@@ -31,8 +32,20 @@ export default function StripeConnectButton({ tenantId, isConnected, legalPageUr
   const [showGuide, setShowGuide] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleConnect = () => {
-    window.location.href = `/api/stripe/connect?tenantId=${tenantId}`;
+  const handleConnect = async () => {
+    // ログインした管理者として連携の入口を呼び、署名つきの Stripe の URL へ移る
+    try {
+      const res = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` },
+        body: JSON.stringify({ tenantId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) throw new Error(data.error || '連携を始められませんでした');
+      window.location.href = data.url;
+    } catch (e: any) {
+      alert(e?.message || '連携を始められませんでした');
+    }
   };
 
   const handleCopyUrl = () => {

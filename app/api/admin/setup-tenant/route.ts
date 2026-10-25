@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     }
 
     // オーナーは運営者だけが任意指定可。一般のセルフ登録は必ず呼び出し元本人に固定
-    const ownerEmail = (isSuper && bodyOwnerEmail) ? bodyOwnerEmail : callerEmail;
+    // admin_users のIDは小文字にそろえる（ログインの ID トークンのメールは小文字・Firestore のルールもそれで探す）
+    const ownerEmail = String((isSuper && bodyOwnerEmail) ? bodyOwnerEmail : callerEmail).trim().toLowerCase();
 
     // 既存テナントの上書きを防止（取り違え・乗っ取り対策）
     const existing = await adminDb.collection('tenants').doc(tenantId).get();

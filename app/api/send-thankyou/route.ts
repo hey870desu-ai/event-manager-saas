@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/mailer';
+import { verifyCaller, assertTenant, authErrorResponse } from '@/lib/admin-auth';
+
+// 申込者が入れた名前を HTML に入れるときの置き換え
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 // 📅 カレンダーURL生成（既存機能を完全維持）
 function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string, details: string) {
@@ -20,14 +24,36 @@ function createGoogleCalendarUrl(title: string, dateStr: string, timeStr: string
 
 export async function POST(request: Request) {
   try {
+    // ログインした管理者だけ。イベント・テナント・宛先は記録から決め、画面から来た宛先・差出人名・返信先は使わない
+    const caller = await verifyCaller(request);
     const body = await request.json();
-    const {
-       recipients, subject, body: baseBody,
-       eventTitle, eventDate, venueName,
-       tenantName, senderName,
-       scheduledAt, contactEmail, replyTo,
-       tenantId, eventId,
-    } = body;
+    const { subject, body: baseBody, scheduledAt, eventId } = body;
+    if (typeof eventId !== 'string' || !eventId || eventId.includes('/')) {
+      return NextResponse.json({ success: false, error: 'イベントが指定されていません' }, { status: 400 });
+    }
+    if (!subject || !baseBody) return NextResponse.json({ success: false, error: '件名と本文を入力してください' }, { status: 400 });
+    const eventSnap = await adminDb.collection('events').doc(eventId).get();
+    if (!eventSnap.exists) return NextResponse.json({ success: false, error: 'イベントが見つかりません' }, { status: 404 });
+    const ev: any = eventSnap.data();
+    const tenantId = assertTenant(caller, ev.tenantId);
+
+    // 宛先はこのイベントの申込者だけ（名前とメールアドレスは申込の記録のもの）
+    const resSnap = await eventSnap.ref.collection('reservations').get();
+    const byId = new Map<string, any>(resSnap.docs.map((d: any) => [d.id, d.data()]));
+    const recipients: { name: string; email: string; id: string }[] = [];
+    for (const r of Array.isArray(body.recipients) ? body.recipients : []) {
+      const id = String(r?.id || '');
+      const rec = byId.get(id);
+      if (!rec) return NextResponse.json({ success: false, error: 'このイベントの申込者でない宛先が含まれています' }, { status: 400 });
+      const email = String(rec.email || '').trim();
+      if (email && !recipients.some(x => x.id === id)) recipients.push({ name: String(rec.name || ''), email, id });
+    }
+    if (recipients.length === 0) return NextResponse.json({ success: false, error: '送る相手がいません' }, { status: 400 });
+
+    const eventTitle = ev.title || '';
+    const eventDate = ev.date || '';
+    const venueName = ev.venueName || '詳細は本文をご確認ください';
+    const contactEmail = ev.contactEmail || '';
 
     // 事後アンケートのURL（本文に {survey} があれば回答ボタンに置換）
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.event-manager.app';
@@ -45,16 +71,14 @@ export async function POST(request: Request) {
     // {survey} を全受信者共通で置換（予約配信・即時配信どちらにも反映）
     const bodyWithSurvey = String(baseBody || '').replace(/\{survey\}/g, surveyHtml);
 
-    // 🏆 差出人名は「呼び出し元が渡した名前 → tenantId からテナント実データ参照」の順で確定。
+    // 🏆 差出人名はテナントの記録（orgName → name）から決める（画面から来た名前は使わない）。
     //    以前は未指定時に "CARE DESIGN WORKS" 固定へ落ちており、全テナントのメールが
     //    その名前で送られてしまっていた（マルチテナント事故）ため、特定テナント名の固定を廃止。
-    let resolvedName = (tenantName || senderName || "").trim();
-    if (!resolvedName && tenantId) {
-      try {
-        const tSnap = await adminDb.collection('tenants').doc(tenantId).get();
-        if (tSnap.exists) { const td: any = tSnap.data(); resolvedName = (td.orgName || td.name || "").trim(); }
-      } catch (e) { console.warn('差出人テナント名の解決に失敗:', e); }
-    }
+    let resolvedName = "";
+    try {
+      const tSnap = await adminDb.collection('tenants').doc(tenantId).get();
+      if (tSnap.exists) { const td: any = tSnap.data(); resolvedName = (td.orgName || td.name || "").trim(); }
+    } catch (e) { console.warn('差出人テナント名の解決に失敗:', e); }
     const rawName = resolvedName || "イベント事務局";
     const cleanName = (rawName.replace(/[\s　]*事務局$/, "").trim()) || "イベント事務局"; // 「事務局」のダブり掃除
 
@@ -81,9 +105,9 @@ export async function POST(request: Request) {
       // 1. 本文置換
       personalBody = personalBody.replace(/{email}/g, recipient.email);
       if (personalBody.includes("参加者各位")) {
-        personalBody = personalBody.replace(/参加者各位/g, `${recipient.name} 様`);
+        personalBody = personalBody.replace(/参加者各位/g, `${esc(recipient.name)} 様`);
       } else {
-        personalBody = `${recipient.name} 様\n\n${personalBody}`;
+        personalBody = `${esc(recipient.name)} 様\n\n${personalBody}`;
       }
 
       // 2. 🏆 【QRデザイン修正】メールソフトで崩れない「Table固定デザイン」だっぺ！
@@ -159,7 +183,7 @@ export async function POST(request: Request) {
         from: `"${senderForInbox}" <info@event-manager.app>`,
         to: recipient.email,
         subject: subject,
-        replyTo: replyTo || contactEmail || "info@event-manager.app",
+        replyTo: contactEmail || "info@event-manager.app",
         html: htmlContent,
       });
 
@@ -198,6 +222,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error('Email Send Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

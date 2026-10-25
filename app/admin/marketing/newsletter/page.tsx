@@ -732,7 +732,7 @@ export default function NewsletterStudio() {
 
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
         body: JSON.stringify({ subject: `【テスト】${subject}`, mainTitle, mainMessage, mainImageUrl: finalMainImageUrl, snaps: finalSnaps, tenantData, recipients: [myEmail], mainFontFamily, mainTitleFontSize, mainBodyFontSize }),
       });
 
@@ -783,7 +783,7 @@ export default function NewsletterStudio() {
       // 2. APIを叩いてメール発射！！（調整データが finalSnaps に入ってるぞい）
       const response = await fetch("/api/send-newsletter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
         body: JSON.stringify({
           subject, mainTitle, mainMessage,
           mainImageUrl: finalMainImageUrl,

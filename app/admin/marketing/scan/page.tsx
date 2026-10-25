@@ -62,7 +62,7 @@ export default function ReliableScanner() {
     try {
       const res = await fetch("/api/admin/ocr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
         body: JSON.stringify({ image: base64Image }),
       });
       const data = await res.json();

@@ -796,8 +796,9 @@ const handleSaveMemo = async (email: string, memo: string) => {
     try {
       const res = await fetch('/api/send-marketing', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ（宛先は絆リストと申込者だけ）
         body: JSON.stringify({
+          tenantId: tenantData?.id,
           // 🏆 ここで名前をクリーニングするっぺ！
       recipients: finalRecipients.map(r => {
         // 🚨 変な名前リスト（これに当てはまったら「お客様」にする）

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin'; // ★あなたのファイルからインポート
+import { verifyConnectState } from '@/lib/stripe-connect-state';
 
 // Stripe初期化
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10,7 +11,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');      // 認証コード
-  const tenantId = searchParams.get('state'); // 出発時に持たせたテナントID
+  // 出発時（/api/stripe/connect）に持たせたテナントID。署名と期限を確かめる（合わなければ何も書かない）
+  const tenantId = verifyConnectState(searchParams.get('state'));
   const error = searchParams.get('error');
 
   // エラーチェック

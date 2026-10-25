@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebase-admin';
+import { verifyCaller, assertTenant, authErrorResponse } from '@/lib/admin-auth';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -7,9 +9,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   try {
-    // 1. 画面から送られてきた情報をしっかり受け取る
-    const { priceId, email, name, tenantId, mode, planType } = await request.json();
-    
+    // 1. ログインした管理者が、自分のテナントの申し込みをする。料金（price）と決済の形はサーバーが決める
+    //    （以前は画面から来た priceId・mode をそのまま使っていて、安い価格でスタンダードになれた）
+    const caller = await verifyCaller(request);
+    const body = await request.json();
+    const tenantId = assertTenant(caller, body.tenantId);
+    const planType = body.planType === 'standard' ? 'standard' : body.planType === 'spot' ? 'spot' : null;
+    if (!planType) return NextResponse.json({ error: 'プランが指定されていません' }, { status: 400 });
+    const priceId = planType === 'standard' ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STANDARD : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_SPOT;
+    if (!priceId) return NextResponse.json({ error: '料金の設定がありません' }, { status: 500 });
+    const mode: 'subscription' | 'payment' = planType === 'standard' ? 'subscription' : 'payment';
+    const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantSnap.exists) return NextResponse.json({ error: 'テナントが見つかりません' }, { status: 404 });
+    const name = tenantSnap.data()?.name;
+    const email = caller.email;
+
 
     console.log(`💳 決済処理開始: mode=${mode}, tenantId=${tenantId}`);
 
@@ -62,6 +76,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url });
 
   } catch (error: any) {
+    const denied = authErrorResponse(error);
+    if (denied) return denied;
     console.error("❌ Checkout Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

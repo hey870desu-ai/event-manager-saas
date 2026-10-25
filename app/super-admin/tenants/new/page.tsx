@@ -55,7 +55,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       // せっかく作ったんだから、そのまま招待メールAPIも叩いちゃうべ！
       await fetch('/api/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }, // 運営者として呼ぶ
         body: JSON.stringify({ 
           email: adminEmail, 
           name: "管理者", 

@@ -72,7 +72,7 @@ export default function TenantBillingPage() {
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ（料金はサーバーが決める）
         body: JSON.stringify({
           tenantId: tenant.id, email: user.email, name: tenant.name,
           priceId, mode, planType
@@ -90,7 +90,7 @@ export default function TenantBillingPage() {
     try {
       const res = await fetch('/api/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
         body: JSON.stringify({ tenantId: tenant.id }),
       });
       const data = await res.json();
