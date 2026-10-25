@@ -61,10 +61,13 @@ service cloud.firestore {
     match /events/{eventId} {
       // 公開ページは未認証OK。ただし下書き(draft)だけは未公開なので自テナント管理者のみ。
       // （status未設定の旧データや published/closed は従来どおり公開）
+      // ⚠ resource.data.get('status', '') にしてはいけない：get() にすると、絞りのない一覧の問い合わせが
+      //   ログインなしでも通り、下書きまで返る（2026-10-25 エミュレーターで確かめた）。status はイベントに必ず入れる
       allow read: if resource.data.status != 'draft'
                   || isMember(resource.data.tenantId);
       allow create: if isMember(request.resource.data.tenantId);
-      allow update: if isMember(resource.data.tenantId)      // 自テナントの編集
+      allow update: if (isMember(resource.data.tenantId)     // 自テナントの編集（別のテナントへ移すのは運営者だけ）
+                        && (isSuper() || request.resource.data.tenantId == resource.data.tenantId))
                     || onlyPageViews();                      // 未認証の閲覧数カウンタ(+1のみ)
       allow delete: if isMember(resource.data.tenantId);
 
@@ -72,6 +75,9 @@ service cloud.firestore {
       // 許可フィールドは ReservationForm.tsx の保存内容と一致させること
       match /reservations/{resId} {
         allow create: if request.resource.data.eventId == eventId
+                      && request.resource.data.tenantId == eventTenant(eventId)
+                      && request.resource.data.createdAt == request.time
+                      && request.resource.data.emailed == false
                       && request.resource.data.status in ['confirmed', 'payment_pending', 'on_site']
                       && request.resource.data.checkedIn == false
                       && request.resource.data.price is number
@@ -131,6 +137,9 @@ service cloud.firestore {
       match /email_drafts/{did} {
         allow read, write: if isMember(tenantId);
       }
+      match /kizuna_memos/{mid} {                 // 絆リストの顧客メモ（marketing の画面）
+        allow read, write: if isMember(tenantId);
+      }
     }
 
     // ---------- admin_users（最重要：権限昇格を防ぐ） ----------
@@ -147,16 +156,19 @@ service cloud.firestore {
 
       // 招待は「自テナントへの追加」のみ（他テナントへ付け替え不可）
       allow create: if isSuper()
-                    || (isAdmin() && request.resource.data.tenantId == myTenant());
+                    || (isAdmin() && request.resource.data.tenantId == myTenant()
+                        && request.resource.data.get('role', 'staff') == 'staff');
 
       // tenantId の改変を全面禁止（自分の所属を勝手に変えて昇格させない）
       allow update: if isSuper()
                     || (isAdmin()
                         && resource.data.tenantId == myTenant()
-                        && request.resource.data.tenantId == resource.data.tenantId);
+                        && request.resource.data.tenantId == resource.data.tenantId
+                        && request.resource.data.get('role', '') == resource.data.get('role', ''));
 
       allow delete: if isSuper()
-                    || (isAdmin() && resource.data.tenantId == myTenant());
+                    || (isAdmin() && resource.data.tenantId == myTenant()
+                        && resource.data.get('role', '') != 'owner');
     }
 
     // ---------- mail_queue（セミナーメール予約配信：自テナントのみ） ----------

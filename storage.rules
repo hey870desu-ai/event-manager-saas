@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// ============================================================================
+// 絆太郎 Storage のルール（画像の置き場）
+//
+// 2026-01-28 からの本番は「ログインした人ならどこでも書ける・消せる」だった。
+// Google のアカウントがあればだれでもログインできるので、ほかのテナントの画像の差し替えや
+// 削除、画像でないファイルの置き場にもできてしまう。
+//
+// ・読むのはだれでも（イベントページ・メールで画像を見せるため。これまでどおり）
+// ・置くのはログインした人だけで、画像（15MB まで）を新しく置くことだけ
+//   （画面は uploads/・uploads/lecturers/・newsletters/ に毎回ちがう名前で置く。上書き・削除は画面に無い）
+// ・本番の画像は 268 枚・いちばん大きいもので 7.3MB（2026-10-25）
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // resource == null＝まだ無い場所だけ（上書きさせない）
+    function canUpload() {
+      return resource == null
+        && request.auth != null
+        && request.auth.token.email_verified == true
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow create: if canUpload();
+    }
+    match /newsletters/{allPaths=**} {
+      allow read: if true;
+      allow create: if canUpload();
+    }
+    // そのほかの場所は読むだけ（書くのはだれもできない）
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+  }
+}
