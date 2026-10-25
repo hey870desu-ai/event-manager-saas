@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai"; // @google/generative-ai（提供終了）の後継
 import { verifyCaller, authErrorResponse } from "@/lib/admin-auth";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export const maxDuration = 30;
 
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
 
     console.log(`📸 OCR受信: ${(base64Data.length / 1024).toFixed(0)}KB`);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const result = await model.generateContent([
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
       {
         inlineData: {
           mimeType,
@@ -48,9 +48,10 @@ export async function POST(request: Request) {
   "phone": "電話番号"
 }`,
       },
-    ]);
+      ],
+    });
 
-    const text = result.response.text().trim();
+    const text = (result.text || "").trim();
     // ```json ... ``` のマークダウンブロックを除去
     const jsonStr = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
     const parsed = JSON.parse(jsonStr);
