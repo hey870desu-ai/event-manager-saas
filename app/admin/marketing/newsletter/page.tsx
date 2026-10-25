@@ -8,6 +8,9 @@ import {
 import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, auth, storage } from "@/lib/firebase";
+import NewsletterPreview, { type PreviewDraft } from "@/components/admin/NewsletterPreview";
+import { MAIN_FRAME_ASPECT, BLOCK_PHOTO_ASPECT, fillName, type NlContent, type NlBlock, type NlFrame, type NlTenant } from "@/lib/newsletter-email";
+import { bakeCached, type BakeOptions } from "@/lib/newsletter-image";
 
 interface SnapItem {
   id: number;
@@ -36,6 +39,11 @@ interface SnapItem {
   fontFamily?: string;
   titleFontSize?: number;  // px
   bodyFontSize?: number;   // px
+  // 元の写真を Storage に置いた URL（下書きから戻したときに切り抜き直せるように）
+  originalUrl?: string;
+  // 送るときに Storage に置いた「焼き込み済み」の写真（同じ切り抜きなら置き直さない）
+  bakedUrl?: string;
+  bakedKey?: string;
 }
 
 const FILTER_PRESETS = [
@@ -87,6 +95,12 @@ export default function NewsletterStudio() {
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]); 
   const [eventFilter, setEventFilter] = useState<string>("all"); 
   const [events, setEvents] = useState<any[]>([]);
+  const [searchText, setSearchText] = useState('');            // 宛先の名前・メール・会社で探す
+  const [excludedCount, setExcludedCount] = useState(0);       // 配信停止で外れた人数
+  const [scheduleAt, setScheduleAt] = useState('');            // 予約配信の日時（datetime-local）
+  const [mainOriginalUrl, setMainOriginalUrl] = useState<string>(''); // メイン写真の元（Storage）
+  const [mainBakedUrl, setMainBakedUrl] = useState<string>(''); // メイン写真の焼き込み済み（Storage）
+  const [mainBakedKey, setMainBakedKey] = useState<string>('');
   
   // 📝 メール本文の入力用
   const [subject, setSubject] = useState('【絆レター】活動報告をお届けします');
@@ -257,33 +271,20 @@ export default function NewsletterStudio() {
     });
 
     const fetchKizunaList = async (tid: string) => {
-      const { collection, getDocs, query, where } = await import("firebase/firestore");
-      
-      // 🎯 1. まずは「配信停止」を希望した人のリストを読み込むぞい
-      const optOutSnap = await getDocs(collection(db, "marketing_optouts"));
-      // 配信停止IDは小文字正規化（大文字混じりの旧データの取りこぼし防止）
-      const blockedEmails = new Set(optOutSnap.docs.map(d => d.id.trim().toLowerCase()));
-      // 🎯 ここ！ループの前に箱を作るのを忘れちゃいけねぇだばい！
-      const q = query(collection(db, "events"), where("tenantId", "==", tid));
-      const evSnap = await getDocs(q);
-      const evList = evSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      const userMap = new Map();
-
-      for (const edoc of evSnap.docs) {
-        const resSnap = await getDocs(collection(db, "events", edoc.id, "reservations"));
-        resSnap.forEach(rdoc => {
-          const data = rdoc.data();
-          const email = (data.email || "").trim().toLowerCase();
-          if (email && !blockedEmails.has(email)) {
-            userMap.set(email, {
-              email, name: data.name,
-              eventId: edoc.id, eventTitle: edoc.data().title
-            });
-          }
+      // 宛先＝絆リスト（名刺・CSV・手入力と、イベントの申込者）。配信停止の人はサーバーで外してある
+      try {
+        const res = await fetch(`/api/admin/kizuna-list?tenantId=${encodeURIComponent(tid)}`, {
+          headers: { Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` },
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '絆リストを読み込めませんでした');
+        setEvents(data.events || []);
+        setAllRecipients(data.recipients || []);
+        setExcludedCount(data.excluded || 0);
+      } catch (e: any) {
+        console.error(e);
+        alert(e?.message || '絆リストを読み込めませんでした');
       }
-      setEvents(evList);
-      setAllRecipients(Array.from(userMap.values()));
     };
 
     return () => unsubAuth();
@@ -300,12 +301,102 @@ export default function NewsletterStudio() {
     return parts.join(' ');
   };
 
+  // ===== 見本と送信で同じメールを作る =====
+  // 写真は見本と同じ形に焼き込んでから置く（lib/newsletter-image.ts）。メールの組み立ては lib/newsletter-email.ts
+  const getToken = useCallback(async () => auth.currentUser?.getIdToken(), []);
+  const PHOTO_LAYOUTS = ['full', 'grid', 'triple'];
+  const frame = (FRAME_TYPES.some(f => f.id === mainFrameType) ? mainFrameType : 'full') as NlFrame;
+  const mainBake = (): BakeOptions => ({
+    aspect: MAIN_FRAME_ASPECT[frame],
+    scale: mainScale,
+    position: mainPosition,
+    filter: mainFilterStyle(),
+    // 写真に重ねる見出しは全員に同じ写真を送るので、{name} は「お客様」にする
+    overlay: frame === 'overlay' && mainTitle ? { title: fillName(mainTitle, ''), fontFamily: mainFontFamily, titlePx: mainTitleFontSize } : undefined,
+  });
+  const snapBake = (snap: SnapItem): BakeOptions => ({
+    aspect: BLOCK_PHOTO_ASPECT,
+    scale: snap.scale || 1,
+    position: snap.position || { x: 50, y: 50 },
+    filter: buildFilterStyle(snap),
+  });
+  const toBlock = (snap: SnapItem): NlBlock => ({
+    layout: snap.layout as NlBlock['layout'], title: snap.title, comment: snap.comment,
+    buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor,
+    titleColor: snap.titleColor, fontFamily: snap.fontFamily, titleFontSize: snap.titleFontSize, bodyFontSize: snap.bodyFontSize,
+  });
+  // 写真の入っていない写真ブロックは送らない（これまでどおり）
+  const mailSnaps = snaps.filter(s => !PHOTO_LAYOUTS.includes(s.layout) || s.preview);
+  const previewDraft: PreviewDraft = {
+    content: { subject, mainFrameType: frame, mainTitle, mainMessage, mainFontFamily, mainTitleFontSize, mainBodyFontSize },
+    main: mainImagePreview ? { src: mainImagePreview, options: mainBake() } : null,
+    blocks: mailSnaps.map(s => ({ ...toBlock(s), photo: PHOTO_LAYOUTS.includes(s.layout) && s.preview ? { src: s.preview, options: snapBake(s) } : null })),
+  };
+  const nlTenant: NlTenant = {
+    name: tenantData?.orgName || tenantData?.name || '',
+    address: tenantData?.address, homepage: tenantData?.homepage,
+    instagramUrl: tenantData?.instagramUrl, lineUrl: tenantData?.lineUrl, facebookUrl: tenantData?.facebookUrl,
+    themeColor: tenantData?.themeColor,
+  };
+  // 見本の宛名：選んだ人の1人目（だれも選んでいなければ絆リストの1人目）
+  const sampleName = allRecipients.find(r => selectedEmails.includes(r.email))?.name || allRecipients[0]?.name || '';
+
+  // 元の写真（切り抜き直せるよう幅 1600px まで）と、焼き込み済みの写真を Storage に置く
+  const putImage = async (blob: Blob, folder: 'originals' | 'main' | 'snaps') => {
+    const r = ref(storage, `newsletters/${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`);
+    await uploadBytes(r, blob, { contentType: 'image/jpeg' });
+    return await getDownloadURL(r);
+  };
+  const keepOriginal = async (file: File | null, preview: string | null, originalUrl?: string) => {
+    if (originalUrl) return originalUrl;
+    if (preview && /^https:/.test(preview)) return preview;
+    const src: Blob | null = file || (preview && preview.startsWith('blob:') ? await (await fetch(preview)).blob() : null);
+    return src ? await putImage(await resizeImage(src, 1600), 'originals') : '';
+  };
+
+  // 送る・予約・テスト・下書きの前に：写真を置き、見本と同じメールの中身（https の写真）と、画面に戻すための状態を作る
+  const prepareMail = async (): Promise<{ content: NlContent; editor: any }> => {
+    let mainUrl = '';
+    let mainOrig = mainOriginalUrl;
+    if (mainImagePreview) {
+      const { key, promise } = bakeCached(mainImagePreview, mainBake(), getToken);
+      if (key === mainBakedKey && mainBakedUrl) mainUrl = mainBakedUrl;
+      else { mainUrl = await putImage((await promise).blob, 'main'); setMainBakedUrl(mainUrl); setMainBakedKey(key); }
+      mainOrig = await keepOriginal(mainFile, mainImagePreview, mainOriginalUrl);
+      setMainOriginalUrl(mainOrig);
+    }
+    const next: SnapItem[] = [];
+    for (const snap of snaps) {
+      const s2: SnapItem = { ...snap };
+      if (PHOTO_LAYOUTS.includes(s2.layout) && s2.preview) {
+        const { key, promise } = bakeCached(s2.preview, snapBake(s2), getToken);
+        if (!(key === s2.bakedKey && s2.bakedUrl)) { s2.bakedUrl = await putImage((await promise).blob, 'snaps'); s2.bakedKey = key; }
+        s2.originalUrl = await keepOriginal(s2.file, s2.preview, s2.originalUrl);
+      }
+      next.push(s2);
+    }
+    setSnaps(next);
+    const content: NlContent = {
+      subject, mainFrameType: frame, mainTitle, mainMessage, mainImageUrl: mainUrl,
+      mainFontFamily, mainTitleFontSize, mainBodyFontSize,
+      snaps: next.filter(s => !PHOTO_LAYOUTS.includes(s.layout) || s.preview).map(s => ({ ...toBlock(s), imageUrl: PHOTO_LAYOUTS.includes(s.layout) ? s.bakedUrl : undefined })),
+    };
+    const editor = {
+      v: 2, subject, mainTitle, mainMessage, mainImageUrl: mainOrig || null, mainBakedUrl: mainUrl || null,
+      mainScale, mainPosition, mainFilter, mainBrightness, mainContrast, mainSaturate,
+      mainFrameType: frame, mainFontFamily, mainTitleFontSize, mainBodyFontSize,
+      snaps: next.map(({ file, preview, ...rest }) => ({ ...rest, preview: rest.originalUrl || null })),
+    };
+    return { content, editor };
+  };
+
   // --- 📸 写真選択の処理 ---
   const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setMainImagePreview(URL.createObjectURL(file));
       setMainFile(file);
+      setMainOriginalUrl('');
     }
   };
 
@@ -313,8 +404,7 @@ export default function NewsletterStudio() {
     const file = e.target.files?.[0];
     if (file) {
       const newSnaps = [...snaps];
-      newSnaps[idx].preview = URL.createObjectURL(file);
-      newSnaps[idx].file = file;
+      newSnaps[idx] = { ...newSnaps[idx], preview: URL.createObjectURL(file), file, originalUrl: undefined, bakedUrl: undefined, bakedKey: undefined };
       setSnaps(newSnaps);
     }
   };
@@ -433,7 +523,7 @@ export default function NewsletterStudio() {
   const duplicateSnap = (idx: number) => {
     if (snaps.length >= 12) return alert("ブロック数の上限（12個）に達しています");
     const original = snaps[idx];
-    const clone: SnapItem = { ...original, id: Date.now(), file: null };
+    const clone: SnapItem = { ...original, id: Date.now() };
     const newSnaps = [...snaps];
     newSnaps.splice(idx + 1, 0, clone);
     setSnaps(newSnaps);
@@ -546,7 +636,7 @@ export default function NewsletterStudio() {
   const [showInsertMenu, setShowInsertMenu] = useState<number | null>(null);
 
   // --- 📦 Firebase Storageへアップロード（メール用にリサイズ） ---
-  const resizeImage = (file: File, maxWidth: number): Promise<Blob> => {
+  const resizeImage = (file: Blob, maxWidth: number): Promise<Blob> => {
     return new Promise((resolve) => {
       createImageBitmap(file).then((bitmap) => {
         const scale = Math.min(maxWidth / bitmap.width, 1);
@@ -570,15 +660,19 @@ export default function NewsletterStudio() {
     return await getDownloadURL(storageRef);
   };
 
-  // 絞り込み後のリスト
-  const filteredList = eventFilter === "all" 
-    ? allRecipients 
-    : allRecipients.filter(r => r.eventId === eventFilter);
+  // 絞り込み後のリスト（全員／名刺・CSV の人／あるイベントの申込者、＋名前・メール・会社で探す）
+  const filteredList = allRecipients.filter(r => {
+    if (eventFilter === 'list' && !r.fromList) return false;
+    if (eventFilter !== 'all' && eventFilter !== 'list' && !(r.eventIds || []).includes(eventFilter)) return false;
+    const q = searchText.trim().toLowerCase();
+    return !q || `${r.name || ''} ${r.email} ${r.company || ''}`.toLowerCase().includes(q);
+  });
 
-  // 全選択・解除
+  // 全選択・解除（いま見えている人だけを足す／外す）
   const toggleAll = () => {
-    if (selectedEmails.length === filteredList.length) setSelectedEmails([]);
-    else setSelectedEmails(filteredList.map(r => r.email));
+    const shown = filteredList.map(r => r.email);
+    const allOn = shown.length > 0 && shown.every(e => selectedEmails.includes(e));
+    setSelectedEmails(prev => (allOn ? prev.filter(e => !shown.includes(e)) : Array.from(new Set([...prev, ...shown]))));
   };
 
   const toggleOne = (email: string) => {
@@ -639,181 +733,175 @@ export default function NewsletterStudio() {
     }
   };
 
-// 🏆 必殺技②：一時保存（下書き）する（写真も確実に保存する鉄壁版！）
+// 🏆 必殺技②：一時保存（下書き）する（写真の切り抜き・明るさ・枠・文字の大きさも、画面に戻せる形で残す）
   const handleSaveDraft = async () => {
     if (!tenantData) return;
     setIsSaving(true);
     try {
       const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
-
-      // 🎯 保存前に、まだ送ってない写真を全部アップロードするぞい！
-      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
-
-      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-        let imageUrl = snap.preview || "";
-        if (snap.file) {
-          imageUrl = await uploadPhoto(snap.file, "snaps");
-        }
-        return { 
-          title: snap.title, 
-          comment: snap.comment, 
-          imageUrl: imageUrl, 
-          layout: snap.layout || 'full' 
-        };
-      }));
-
+      const { content, editor } = await prepareMail();
       await addDoc(collection(db, "newsletter_archives"), {
         tenantId: tenantData.id,
-        subject, mainTitle, mainMessage, 
-        mainImageUrl: finalMainImageUrl, // 🎯 修正！
-        snaps: uploadedSnaps, // 🎯 修正！
         status: "draft",
-        createdAt: serverTimestamp()
+        subject: content.subject,
+        content,
+        editor,
+        createdAt: serverTimestamp(),
       });
-      alert("下書きとして保存したぞい！");
+      alert("下書きとして保存しました");
       fetchArchives(tenantData.id);
     } catch (e) {
-      alert("保存失敗だっぺ...");
+      console.error(e);
+      alert("下書きを保存できませんでした");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // 🏆 必殺技③：過去の内容を画面に呼び戻す（復元）
+  // 🏆 必殺技③：過去の内容を画面に呼び戻す（復元）。新しい形（editor）は写真の調整まで、古い形は文と写真だけ
   const loadArchive = (data: any) => {
-    if (!confirm("今の入力内容を消して、過去のデータを読み込むべか？")) return;
-    setSubject(data.subject || "");
-    setMainTitle(data.mainTitle || "");
-    setMainMessage(data.mainMessage || "");
-    setMainImagePreview(data.mainImageUrl || null);
-    setSnaps(data.snaps.map((s: any, i: number) => ({
-      id: i, title: s.title, comment: s.comment, preview: s.imageUrl, file: null,layout: s.layout || 'full' 
-    })));
-    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    if (!confirm("今の入力内容を消して、この内容を読み込みますか？")) return;
+    const e = data.editor;
+    if (e && e.v === 2) {
+      setSubject(e.subject || "");
+      setMainTitle(e.mainTitle || "");
+      setMainMessage(e.mainMessage || "");
+      setMainImagePreview(e.mainImageUrl || null);
+      setMainOriginalUrl(e.mainImageUrl || '');
+      setMainFile(null);
+      setMainBakedUrl(''); setMainBakedKey('');
+      setMainScale(e.mainScale || 1);
+      setMainPosition(e.mainPosition || { x: 50, y: 50 });
+      setMainFilter(e.mainFilter || 'none');
+      setMainBrightness(e.mainBrightness ?? 100);
+      setMainContrast(e.mainContrast ?? 100);
+      setMainSaturate(e.mainSaturate ?? 100);
+      setMainFrameType(e.mainFrameType || 'full');
+      setMainFontFamily(e.mainFontFamily || 'sans');
+      setMainTitleFontSize(e.mainTitleFontSize || 28);
+      setMainBodyFontSize(e.mainBodyFontSize || 16);
+      setSnaps((e.snaps || []).map((s: any, i: number) => ({ ...s, id: Date.now() + i, file: null, preview: s.preview || null, bakedUrl: undefined, bakedKey: undefined })));
+    } else {
+      setSubject(data.subject || "");
+      setMainTitle(data.mainTitle || "");
+      setMainMessage(data.mainMessage || "");
+      setMainImagePreview(data.mainImageUrl || null);
+      setMainOriginalUrl(data.mainImageUrl || '');
+      setMainFile(null);
+      setMainBakedUrl(''); setMainBakedKey('');
+      setSnaps((data.snaps || []).map((s: any, i: number) => ({
+        id: Date.now() + i, title: s.title, comment: s.comment, preview: s.imageUrl || null, originalUrl: s.imageUrl || undefined, file: null,
+        layout: s.layout || 'full', scale: s.scale || 1, position: s.position || { x: 50, y: 50 },
+        buttonUrl: s.buttonUrl, buttonColor: s.buttonColor, blockBgColor: s.blockBgColor, blockTextColor: s.blockTextColor,
+        fontFamily: s.fontFamily, titleFontSize: s.titleFontSize, bodyFontSize: s.bodyFontSize,
+      })));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 🏆 必殺技④：履歴を削除する（間違えて送ったやつも整理だばい！）
+  // 🏆 必殺技④：履歴を削除する
   const handleDeleteArchive = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // 🎯 親のボタンクリック（読み込み）が動かないようにガードするぞい！
-    if (!confirm("この履歴を完全に消しますか？元には戻せません！")) return;
-    
+    const arch = archives.find(a => a.id === id);
+    if (arch?.status === 'scheduled') return alert("予約中のものは、先に「予約を取り消す」を押してください");
+    if (!confirm("この履歴を消しますか？元には戻せません")) return;
     try {
       const { deleteDoc, doc } = await import("firebase/firestore");
       await deleteDoc(doc(db, "newsletter_archives", id));
-      
-      // 🎯 画面からもサッと消す
       setArchives(prev => prev.filter(arch => arch.id !== id));
-      alert("きれいに消したぞい！");
     } catch (error) {
-      alert("消すのに失敗しちまったっぺ...");
+      alert("消せませんでした");
     }
   };
 
-
-// --- 🚀 配信開始ボタン（こだわり調整データを1ミリも漏らさない版！） ---
-  // テスト送信（自分宛）
-  const handleTestSend = async () => {
-    const myEmail = auth.currentUser?.email;
-    if (!myEmail) return alert("ログイン情報が取得できません");
-    if (!confirm(`${myEmail} 宛にテストメールを送信しますか？`)) return;
-
-    setIsSendingTest(true);
+  // 予約を取り消す（予約配信の印を消し、履歴を「取り消し」にする）
+  const cancelScheduled = async (arch: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!tenantData || !arch.scheduledId) return;
+    if (!confirm(`「${arch.subject}」の予約を取り消しますか？`)) return;
     try {
-      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
-      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-        let imageUrl = snap.preview || "";
-        if (snap.file) imageUrl = await uploadPhoto(snap.file, "snaps");
-        if (snap.layout === 'text' || snap.layout === 'text-half' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
-          return { title: snap.title, comment: snap.comment, imageUrl, layout: snap.layout || 'full', scale: snap.scale || 1, position: snap.position || { x: 50, y: 50 }, buttonUrl: snap.buttonUrl, buttonColor: snap.buttonColor, blockBgColor: snap.blockBgColor, blockTextColor: snap.blockTextColor, fontFamily: snap.fontFamily, titleFontSize: snap.titleFontSize, bodyFontSize: snap.bodyFontSize };
-        }
-        return null;
-      }));
-      const finalSnaps = uploadedSnaps.filter(s => s !== null);
-
-      const response = await fetch("/api/send-newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
-        body: JSON.stringify({ subject: `【テスト】${subject}`, mainTitle, mainMessage, mainImageUrl: finalMainImageUrl, snaps: finalSnaps, tenantData, recipients: [myEmail], mainFontFamily, mainTitleFontSize, mainBodyFontSize }),
-      });
-
-      if (response.ok) { alert("テストメールを送信しました！受信トレイを確認してください。"); }
-      else { alert("テスト送信に失敗しました"); }
-    } catch (e) { console.error(e); alert("テスト送信エラー"); }
-    finally { setIsSendingTest(false); }
+      const { deleteDoc, updateDoc, doc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "tenants", tenantData.id, "scheduled_emails", arch.scheduledId));
+      await updateDoc(doc(db, "newsletter_archives", arch.id), { status: 'canceled' });
+      setArchives(prev => prev.map(a => (a.id === arch.id ? { ...a, status: 'canceled' } : a)));
+    } catch (err) {
+      console.error(err);
+      alert("取り消せませんでした（もう送られた可能性があります）");
+    }
   };
 
-  const handleSend = async () => {
-    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください！");
-    if (!confirm(`${selectedEmails.length}名のお客様に一斉配信を開始します。よろしいですか？`)) return;
-    
-    setIsSending(true);
+  // メルマガの入口を呼ぶ（ログインした管理者として）
+  const callSend = async (payload: Record<string, any>) => {
+    const res = await fetch("/api/send-newsletter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
+      body: JSON.stringify({ tenantId: tenantData?.id, ...payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "送れませんでした");
+    return data;
+  };
 
+// --- 🚀 配信開始ボタン ---
+  // テスト送信（自分宛・宛名は見本と同じ人）
+  const handleTestSend = async () => {
+    const myEmail = auth.currentUser?.email;
+    if (!myEmail || !tenantData) return alert("ログイン情報が取得できません");
+    if (!subject.trim()) return alert("件名を入れてください");
+    if (!confirm(`${myEmail} 宛にテストメールを送りますか？（宛名は「${sampleName || 'お客様'}」で入ります）`)) return;
+    setIsSendingTest(true);
     try {
-      // メイン写真の確定
-      let finalMainImageUrl = mainFile ? await uploadPhoto(mainFile, "main") : mainImagePreview;
-
-      // スナップ写真の確定
-      const uploadedSnaps = await Promise.all(snaps.map(async (snap) => {
-        let imageUrl = snap.preview || "";
-        if (snap.file) {
-          imageUrl = await uploadPhoto(snap.file, "snaps");
-        }
-        if (snap.layout === 'text' || snap.layout === 'text-half' || snap.layout === 'divider' || snap.layout === 'button' || snap.layout === 'highlight' || imageUrl) {
-          return {
-            title: snap.title,
-            comment: snap.comment,
-            imageUrl: imageUrl,
-            layout: snap.layout || 'full',
-            scale: snap.scale || 1,
-            position: snap.position || { x: 50, y: 50 },
-            buttonUrl: snap.buttonUrl,
-            buttonColor: snap.buttonColor,
-            blockBgColor: snap.blockBgColor,
-            blockTextColor: snap.blockTextColor,
-            fontFamily: snap.fontFamily,
-            titleFontSize: snap.titleFontSize,
-            bodyFontSize: snap.bodyFontSize,
-          };
-        }
-        return null;
-      }));
-
-      const finalSnaps = uploadedSnaps.filter(s => s !== null);
-
-      // 2. APIを叩いてメール発射！！（調整データが finalSnaps に入ってるぞい）
-      const response = await fetch("/api/send-newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await auth.currentUser?.getIdToken()}` }, // ログインした管理者として呼ぶ
-        body: JSON.stringify({
-          subject, mainTitle, mainMessage,
-          mainImageUrl: finalMainImageUrl,
-          snaps: finalSnaps,
-          tenantData,
-          recipients: selectedEmails,
-          mainFontFamily, mainTitleFontSize, mainBodyFontSize,
-        }),
-      });
-
-      if (response.ok) {
-        const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
-        await addDoc(collection(db, "newsletter_archives"), {
-          tenantId: tenantData.id,
-          subject, mainTitle, mainMessage,
-          mainImageUrl: finalMainImageUrl,
-          snaps: finalSnaps, // 🎯 履歴にも調整データが保存されるっぺ！
-          status: "sent",
-          createdAt: serverTimestamp()
-        });
-
-        alert(`${selectedEmails.length}名のお客様に送信し、履歴に保存したぞい！！`);
-        setSelectedEmails([]);
-        fetchArchives(tenantData.id);
-      } else {
-        throw new Error("配信エラー");
-      }
-    } catch (e) {
+      const { content } = await prepareMail();
+      await callSend({ mode: 'test', content, sampleName });
+      alert("テストメールを送りました。受信トレイを確かめてください");
+    } catch (e: any) {
       console.error(e);
-      alert("送信中に問題が発生...");
+      alert(e?.message || "テスト送信できませんでした");
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
+  // 今すぐ送る
+  const handleSend = async () => {
+    if (!tenantData) return;
+    if (!subject.trim()) return alert("件名を入れてください");
+    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください");
+    if (!confirm(`${selectedEmails.length}名に今すぐ送ります。よろしいですか？`)) return;
+    setIsSending(true);
+    try {
+      const { content, editor } = await prepareMail();
+      const r = await callSend({ mode: 'now', content, editor, recipients: selectedEmails });
+      alert(`${r.successCount}名に送りました${r.errorCount ? `（${r.errorCount}名には送れませんでした）` : ''}`);
+      setSelectedEmails([]);
+      fetchArchives(tenantData.id);
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || "送れませんでした");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // 予約配信（指定の日時に cron が送る）
+  const handleSchedule = async () => {
+    if (!tenantData) return;
+    if (!subject.trim()) return alert("件名を入れてください");
+    if (selectedEmails.length === 0) return alert("送る相手を一人以上選んでください");
+    const at = scheduleAt ? new Date(scheduleAt) : null;
+    if (!at || isNaN(at.getTime()) || at.getTime() < Date.now() + 5 * 60 * 1000) return alert("予約の日時は、今から5分より先にしてください");
+    if (!confirm(`${at.toLocaleString('ja-JP')} に ${selectedEmails.length}名へ送る予約をしますか？`)) return;
+    setIsSending(true);
+    try {
+      const { content, editor } = await prepareMail();
+      await callSend({ mode: 'schedule', content, editor, recipients: selectedEmails, scheduledAt: at.toISOString() });
+      alert(`${at.toLocaleString('ja-JP')} に ${selectedEmails.length}名へ送る予約をしました（10分ごとの処理で送ります）`);
+      setSelectedEmails([]);
+      setScheduleAt('');
+      fetchArchives(tenantData.id);
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || "予約できませんでした");
     } finally {
       setIsSending(false);
     }
@@ -872,6 +960,7 @@ export default function NewsletterStudio() {
                     setMainMessage('いつも大変お世話になっております。今月の様子をお伝えします。');
                     setMainImagePreview(null);
                     setMainFile(null);
+                    setMainOriginalUrl(''); setMainBakedUrl(''); setMainBakedKey('');
                     setSnaps([{ id: Date.now(), title: '', comment: '', preview: null, file: null, layout: 'full',scale: 1,position: { x: 50, y: 50 } }]);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
@@ -910,7 +999,7 @@ export default function NewsletterStudio() {
               </div>
 
               {/* 写真選択エリア */}
-              <div className="relative w-full h-56 bg-white rounded-2xl border-2 border-dashed border-slate-300 overflow-hidden">
+              <div className="relative w-full bg-white rounded-2xl border-2 border-dashed border-slate-300 overflow-hidden" style={{ aspectRatio: String(MAIN_FRAME_ASPECT[frame]) }}>
                 {mainImagePreview ? (
                   <>
                     <div
@@ -1543,26 +1632,36 @@ export default function NewsletterStudio() {
                 <select 
                   value={eventFilter} 
                   onChange={(e)=>setEventFilter(e.target.value)}
-                  className="bg-slate-100 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+                  className="bg-slate-100 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-0"
                 >
-                  <option value="all">すべての参加者（重複なし）</option>
-                  {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                  <option value="all">絆リストの全員（{allRecipients.length}名）</option>
+                  <option value="list">名刺・CSV・手入力の人</option>
+                  {events.map(ev => <option key={ev.id} value={ev.id}>{ev.date ? `${ev.date}　` : ''}{ev.title} の申込者</option>)}
                 </select>
-                <button onClick={toggleAll} className="text-[10px] font-black text-blue-600 uppercase hover:underline whitespace-nowrap">
-                  {selectedEmails.length === filteredList.length ? "解除" : "全選択"}
+                <button onClick={toggleAll} className="text-[10px] font-black text-blue-600 hover:underline whitespace-nowrap">
+                  {filteredList.length > 0 && filteredList.every(r => selectedEmails.includes(r.email)) ? "表示中の人を外す" : "表示中の人を全部選ぶ"}
                 </button>
+              </div>
+              <div className="px-5 py-3 border-b border-slate-200 bg-white">
+                <input
+                  type="search" value={searchText} onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="名前・メール・会社で探す"
+                  className="w-full bg-slate-100 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {excludedCount > 0 && <p className="mt-2 text-[10px] text-slate-400">配信停止の {excludedCount} 件は、最初から外してあります</p>}
               </div>
 
               {/* スクロールする名簿リスト */}
               <div className="max-h-60 overflow-y-auto p-2 bg-white/50">
+                {filteredList.length === 0 && <p className="p-6 text-center text-[10px] text-slate-400 font-bold">当てはまる人がいません</p>}
                 {filteredList.map(r => (
                   <div 
                     key={r.email} onClick={()=>toggleOne(r.email)}
                     className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${selectedEmails.includes(r.email) ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-100'}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-black truncate">{r.name || '名前なし'}</p>
-                      <p className="text-[9px] font-bold opacity-60 truncate">{r.email}</p>
+                      <p className="text-xs font-black truncate">{r.name || '名前なし'}{r.company ? <span className="font-bold opacity-60">（{r.company}）</span> : null}</p>
+                      <p className="text-[9px] font-bold opacity-60 truncate">{r.email}{r.fromList ? '・名刺/CSV' : ''}{r.eventIds?.length ? `・申込 ${r.eventIds.length}件` : ''}</p>
                     </div>
                     {selectedEmails.includes(r.email) && <CheckCircle2 size={16}/>}
                   </div>
@@ -1594,6 +1693,24 @@ export default function NewsletterStudio() {
               )}
             </button>
 
+            {/* 予約配信：日時を入れて予約（10分ごとの処理で送る） */}
+            <div className="bg-slate-50 border border-slate-200 p-4 space-y-3">
+              <label className="block text-[10px] font-black text-slate-500">予約して送る日時</label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)}
+                  className="flex-1 min-w-0 p-3 bg-white border border-slate-200 rounded-none text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleSchedule}
+                  disabled={isSending || isSaving || selectedEmails.length === 0 || !scheduleAt}
+                  className="px-6 py-3 bg-white border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all disabled:opacity-30 whitespace-nowrap"
+                >
+                  {selectedEmails.length > 0 ? `${selectedEmails.length}名に予約する` : '予約する'}
+                </button>
+              </div>
+            </div>
+
             {/* 🎯 本番配信ボタン：isSending だけを見るから、もう勝手にクルクルしないぞい！ */}
             <button 
               onClick={handleSend} 
@@ -1603,7 +1720,7 @@ export default function NewsletterStudio() {
               {isSending ? (
                 <><Loader2 className="animate-spin" /> 送信中...</>
               ) : (
-                <><Send size={24} /> {selectedEmails.length > 0 ? `${selectedEmails.length}名に一斉配信を開始！` : "一斉配信を開始する"}</>
+                <><Send size={24} /> {selectedEmails.length > 0 ? `${selectedEmails.length}名に今すぐ送る` : "送る相手を選んでください"}</>
               )}
             </button>
           </div>
@@ -1629,10 +1746,19 @@ export default function NewsletterStudio() {
                     className="flex-1 flex justify-between items-center p-5 text-left border-none outline-none"
                   >
                     <div className="flex flex-col items-start gap-1 min-w-0">
-                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
-                        arch.status === 'draft' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${
+                        arch.status === 'draft' ? 'bg-amber-100 text-amber-600'
+                        : arch.status === 'scheduled' ? 'bg-blue-100 text-blue-600'
+                        : arch.status === 'failed' ? 'bg-red-100 text-red-600'
+                        : arch.status === 'canceled' ? 'bg-slate-100 text-slate-500'
+                        : 'bg-emerald-100 text-emerald-600'
                       }`}>
-                        {arch.status === 'draft' ? '下書き' : '送信済み'}
+                        {arch.status === 'draft' ? '下書き'
+                          : arch.status === 'scheduled' ? `予約中 ${arch.scheduledAt?.toDate ? arch.scheduledAt.toDate().toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}`
+                          : arch.status === 'failed' ? '送れなかった'
+                          : arch.status === 'canceled' ? '予約を取り消し'
+                          : `送った${arch.successCount != null ? ` ${arch.successCount}名` : ''}`}
+                        {arch.status === 'scheduled' && arch.recipientCount ? `・${arch.recipientCount}名` : ''}
                       </span>
                       <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
                         {arch.subject || "(無題)"}
@@ -1649,6 +1775,16 @@ export default function NewsletterStudio() {
                       }) || "時刻不明"}
                     </span>
                   </button>
+
+                  {arch.status === 'scheduled' && (
+                    <button
+                      onClick={(e) => cancelScheduled(arch, e)}
+                      className="px-3 py-5 text-[10px] font-black text-red-500 hover:bg-red-50 transition-all border-l border-slate-50 whitespace-nowrap"
+                      title="予約を取り消す"
+                    >
+                      予約を取り消す
+                    </button>
+                  )}
 
                   {/* 🎯 右側：削除ボタン（ゴミ箱アイコン） */}
                   <button 
@@ -1752,219 +1888,8 @@ export default function NewsletterStudio() {
             テスト送信
           </button>
         </div>
-        <div className={`bg-white shadow-2xl lg:rounded-[3rem] overflow-hidden border border-slate-300 animate-in slide-in-from-right duration-500 transition-all ${previewMode === 'sp' ? 'w-[375px]' : 'w-full max-w-[600px]'}`}>
-          
-          {/* Header */}
-          <div className="bg-[#1e293b] p-12 text-center border-b-[10px] border-blue-500">
-             <div className="text-white font-black text-2xl tracking-[0.4em] uppercase">{displayTenantName}</div>
-             <div className="text-blue-400 text-[10px] font-black mt-4 tracking-[0.5em] opacity-80 uppercase">公式ニュースレター</div>
-          </div>
-
-          {/* Main Visual - フレーム対応 */}
-          {mainFrameType === 'full' && (
-            <>
-              <div className="w-full aspect-[16/9] bg-slate-100 flex items-center justify-center overflow-hidden">
-                {mainImagePreview ? (
-                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
-                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
-                ) : <span className="text-slate-300 font-bold italic">Main Visual Area</span>}
-              </div>
-              <div className="p-12">
-                <h2 className="font-black text-slate-800 mb-8 leading-tight tracking-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
-                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap border-l-[12px] border-blue-500 pl-8 py-2 bg-slate-50 rounded-r-2xl" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
-              </div>
-            </>
-          )}
-
-          {mainFrameType === 'side-text' && (
-            <div className="flex">
-              <div className="w-1/2 aspect-square bg-slate-100 overflow-hidden">
-                {mainImagePreview ? (
-                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
-                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
-                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
-              </div>
-              <div className="w-1/2 p-8 flex flex-col justify-center bg-slate-50">
-                <h2 className="font-black text-slate-800 mb-4 leading-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
-                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
-              </div>
-            </div>
-          )}
-
-          {mainFrameType === 'overlay' && (
-            <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
-              {mainImagePreview ? (
-                <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
-                  style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
-              ) : <div className="w-full h-full bg-slate-200"></div>}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-12">
-                <h2 className="font-black text-white mb-4 leading-tight drop-shadow-lg" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
-                <div className="text-white/80 leading-relaxed whitespace-pre-wrap drop-shadow" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
-              </div>
-            </div>
-          )}
-
-          {mainFrameType === 'split' && (
-            <>
-              <div className="w-full aspect-[2/1] bg-slate-100 overflow-hidden">
-                {mainImagePreview ? (
-                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
-                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
-                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Photo</div>}
-              </div>
-              <div className="bg-blue-600 p-10 text-center">
-                <h2 className="font-black text-white mb-4 leading-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
-                <div className="text-blue-100 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
-              </div>
-            </>
-          )}
-
-          {mainFrameType === 'banner' && (
-            <div className="p-12 space-y-8">
-              <div className="w-full aspect-[3/1] bg-slate-100 rounded-2xl overflow-hidden">
-                {mainImagePreview ? (
-                  <img src={mainImagePreview} className="w-full h-full object-cover" alt="Main"
-                    style={{ transform: `scale(${mainScale})`, transformOrigin: `${mainPosition.x}% ${mainPosition.y}%`, filter: mainFilterStyle() }} />
-                ) : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">Banner</div>}
-              </div>
-              <div>
-                <h2 className="font-black text-slate-800 mb-6 leading-tight tracking-tight" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainTitleFontSize}px` }}>{mainTitle}</h2>
-                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === mainFontFamily)?.css, fontSize: `${mainBodyFontSize}px` }}>{mainMessage}</div>
-              </div>
-            </div>
-          )}
-
-          {/* 🏆 右側：ここが「比率も調整もメールと同じ」プレビューだばい！！ */}
-          <div className="px-12 pb-12 flex flex-wrap gap-y-12 gap-x-4 items-start">
-            {snaps.map((snap: any, idx) => (
-              <div 
-                key={idx} 
-                className={`space-y-4 ${
-                  snap.layout === 'triple' ? 'w-[calc(33.333%-11px)]' :
-                  snap.layout === 'grid' || snap.layout === 'text-half' ? 'w-[calc(50%-8px)]' :
-                  'w-full'
-                }`}
-              >
-                {/* 区切り線ブロック */}
-                {snap.layout === 'divider' ? (
-                  <div className="w-full py-6 flex items-center gap-4">
-                    <div className="flex-1 h-px bg-slate-200"></div>
-                    <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
-                    <div className="flex-1 h-px bg-slate-200"></div>
-                  </div>
-                ) : snap.layout === 'button' ? (
-                  <div className="w-full text-center py-4">
-                    <a href={snap.buttonUrl || '#'} target="_blank" rel="noreferrer"
-                      className="inline-block px-10 py-4 rounded-lg text-white font-black text-base tracking-wide shadow-lg hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: snap.buttonColor || '#3b82f6' }}
-                    >{snap.title || 'ボタン'}</a>
-                  </div>
-                ) : snap.layout === 'highlight' ? (
-                  <div className="w-full rounded-lg p-8" style={{ backgroundColor: snap.blockBgColor || '#eff6ff' }}>
-                    <h4 className="font-black text-xl mb-2" style={{ color: snap.blockTextColor || '#1e40af' }}>{snap.title || '重要なお知らせ'}</h4>
-                    {snap.comment && <p className="leading-relaxed whitespace-pre-wrap text-base" style={{ color: snap.blockTextColor || '#1e40af', opacity: 0.85 }}>{snap.comment}</p>}
-                  </div>
-                ) : (
-                <>
-                {snap.layout !== 'text' && snap.layout !== 'text-half' && (
-                  <div className="w-full aspect-[4/3] bg-slate-50 rounded-none overflow-hidden border border-slate-100 shadow-inner flex items-center justify-center relative">
-                    {snap.preview ? (
-                      <img
-                        src={snap.preview}
-                        className="w-full h-full object-cover rounded-none transition-all duration-100"
-                        style={{
-                          transform: `scale(${snap.scale || 1})`,
-                          transformOrigin: `${snap.position?.x || 50}% ${snap.position?.y || 50}%`,
-                          filter: buildFilterStyle(snap),
-                        }}
-                      />
-                    ) : (
-                      <span className="text-slate-200 font-black italic uppercase text-center text-xl">SNAP {idx + 1}</span>
-                    )}
-                  </div>
-                )}
-
-                <div className={`${
-                  snap.layout === 'text'
-                    ? 'p-10 bg-blue-50/50 rounded-none border-l-4 border-blue-500 shadow-inner w-full flex flex-col justify-center min-h-[160px]'
-                    : snap.layout === 'text-half'
-                    ? 'p-5 bg-blue-50/50 rounded-none border-l-4 border-blue-500 shadow-inner w-full flex flex-col justify-center min-h-[120px]'
-                    : 'px-2'
-                } text-left`}>
-                  <h4 className="font-black mb-2"
-                    style={{
-                      color: snap.titleColor || '#0f172a',
-                      fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css,
-                      fontSize: `${snap.titleFontSize || 18}px`,
-                    }}>
-                    {snap.title || (snap.layout === 'text' || snap.layout === 'text-half' ? 'おしらせ' : `SCENE ${idx + 1}`)}
-                  </h4>
-                  {snap.comment && (
-                    <p className="text-slate-500 leading-relaxed whitespace-pre-wrap"
-                      style={{
-                        fontFamily: FONT_OPTIONS.find(f => f.id === (snap.fontFamily || 'sans'))?.css,
-                        fontSize: `${snap.bodyFontSize || 14}px`,
-                      }}>
-                      {snap.comment}
-                    </p>
-                  )}
-                </div>
-                </>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Email Footer SNS (設定があるものだけ自動表示！) */}
-          {(tenantData?.instagramUrl || tenantData?.lineUrl || tenantData?.facebookUrl || tenantData?.homepage) && (
-            <div className="bg-slate-50 py-16 px-12 text-center border-t border-slate-100">
-              <p className="text-xs font-black text-slate-400 uppercase tracking-[0.5em] mb-10 text-center">Follow our journey</p>
-              <div className="flex justify-center gap-8">
-                {tenantData?.instagramUrl && (
-                  <a href={tenantData.instagramUrl} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-[1.5rem] bg-white shadow-lg flex items-center justify-center text-pink-500 border border-slate-100 hover:scale-110 transition-all">
-                    <Instagram size={28} />
-                  </a>
-                )}
-                {tenantData?.lineUrl && (
-                  <a href={tenantData.lineUrl} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-[1.5rem] bg-white shadow-lg flex items-center justify-center text-green-500 border border-slate-100 hover:scale-110 transition-all">
-                    <MessageCircle size={28} />
-                  </a>
-                )}
-                {tenantData?.facebookUrl && (
-                  <a href={tenantData.facebookUrl} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-[1.5rem] bg-white shadow-lg flex items-center justify-center text-blue-600 border border-slate-100 hover:scale-110 transition-all">
-                    <Facebook size={28} />
-                  </a>
-                )}
-                {tenantData?.homepage && (
-                  <a href={tenantData.homepage} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-[1.5rem] bg-white shadow-lg flex items-center justify-center text-slate-500 border border-slate-100 hover:scale-110 transition-all">
-                    <LinkIcon size={28} />
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Email Final Footer (メルカリ・マネフォ級の信頼性だばい！) */}
-          <div className="bg-slate-900 p-16 text-center text-white/50 border-t border-slate-800">
-            <p className="text-[10px] leading-relaxed mb-6 opacity-60">
-              ※本メールは送信専用のため、ご返信いただいてもお答えできません。<br />
-              お問い合わせは、公式サイトまたは各SNSよりお願いいたします。
-            </p>
-            <div className="w-12 h-px bg-slate-700 mx-auto mb-8"></div>
-            <p className="text-xs font-bold text-white mb-2 tracking-widest">{displayTenantName.toUpperCase()}</p>
-            {tenantData?.address && <p className="text-[10px] mb-1">〒 {tenantData.address}</p>}
-            <div className="flex justify-center gap-4 mt-6 text-[10px] font-bold text-blue-400">
-              {tenantData?.homepage && <a href={tenantData.homepage} target="_blank" rel="noreferrer" className="hover:underline">公式ホームページ</a>}
-              <span className="text-slate-700">|</span>
-              <a href="https://www.event-manager.app/unsubscribe" className="hover:underline text-slate-500">配信停止（Unsubscribe）</a>
-            </div>
-            <div className="w-16 h-1 bg-blue-500 mx-auto my-10 rounded-full"></div>
-            <p className="text-[9px] font-black tracking-[0.4em] uppercase opacity-20">
-              © {new Date().getFullYear()} {displayTenantName.toUpperCase()}
-            </p>
-          </div>
-
-        </div>
+        {/* 見本：送るメールと同じ組み立て（lib/newsletter-email.ts）をそのまま出す。写真も送るものと同じ焼き込み */}
+        <NewsletterPreview draft={previewDraft} tenant={nlTenant} sampleName={sampleName} mode={previewMode} getToken={getToken} />
       </div>
     </div>
   );

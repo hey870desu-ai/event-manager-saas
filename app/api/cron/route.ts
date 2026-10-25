@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, sendEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
+import { sendNewsletter } from '@/lib/newsletter-send';
+import type { DocumentReference, Transaction } from 'firebase-admin/firestore';
 import { fetchReadyDxPages, fetchPagePlainText, fetchPageHtml, fetchPagesByStatus, updatePageStatus, StatusValues } from '@/lib/notion-bridge';
 import { upsertScheduledDxNewsletter, getDxIntegration } from '@/lib/dx-newsletter';
 import { decrypt } from '@/lib/encryption';
@@ -95,6 +97,29 @@ async function processCron() {
         if (schedDate > now) continue;
 
         console.log(`📧 予約配信を実行: ${data.subject} (${tenantDoc.id})`);
+
+        // メルマガ（写真入り）は、先に「送っている」の印を付けてから送る（処理が重なっても二重に送らない）
+        if (data.kind === 'newsletter') {
+          const claimed = await adminDb.runTransaction(async (tx: Transaction) => {
+            const cur = await tx.get(schedDoc.ref as DocumentReference);
+            if (cur.data()?.status !== 'scheduled') return false;
+            tx.update(schedDoc.ref, { status: 'sending', sendingAt: new Date() });
+            return true;
+          });
+          if (!claimed) continue;
+          const archiveRef = data.archiveId ? adminDb.collection('newsletter_archives').doc(String(data.archiveId)) : null;
+          try {
+            const r = await sendNewsletter({ tenantId: tenantDoc.id, content: data.content, recipients: data.recipients || [] });
+            await schedDoc.ref.update({ status: 'sent', sentAt: new Date(), result: { success: r.successCount, failed: r.errorCount } });
+            if (archiveRef) await archiveRef.update({ status: r.successCount ? 'sent' : 'failed', successCount: r.successCount, errorCount: r.errorCount, sentAt: new Date() }).catch(() => {});
+          } catch (e: any) {
+            console.error(`❌ メルマガの予約配信に失敗 (${tenantDoc.id}):`, e?.message || e);
+            await schedDoc.ref.update({ status: 'failed', error: String(e?.message || e).slice(0, 500) });
+            if (archiveRef) await archiveRef.update({ status: 'failed' }).catch(() => {});
+          }
+          totalProcessed++;
+          continue;
+        }
 
         const result = await sendBatch(data);
 

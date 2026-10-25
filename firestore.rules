@@ -199,9 +199,13 @@ service cloud.firestore {
       allow write: if isSuper();              // 登録はAPI(adminSDK)経由
     }
 
-    // ---------- newsletter_archives（DXメルマガ保管） ----------
+    // ---------- newsletter_archives（メルマガの下書き・送った履歴・予約） ----------
+    // 自分のテナントの分だけ（以前はどのテナントの管理者でも全部読み書きできた）。送った・予約の記録はサーバー（adminSDK）が書く
     match /newsletter_archives/{id} {
-      allow read, write: if isAdmin() || isSuper();
+      allow read, delete: if isMember(resource.data.tenantId);
+      allow create: if isMember(request.resource.data.tenantId);
+      allow update: if isMember(resource.data.tenantId)
+                    && request.resource.data.tenantId == resource.data.tenantId;
     }
 
     // ---------- 既定：すべて拒否（旧キャッチオールの撤去） ----------
