@@ -53,7 +53,8 @@ export default function ReservationForm({
   const params = useParams();
   const safeTenant = (tenantData || tenant) as any;
   const safeEventId = eventId || event?.id || (params?.event as string);
-  const safeTenantId = tenantId || event?.tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
+  // テナントはイベントの記録の持ち主を先に使う（URL のテナントが違っても、Firestore のルールで申込が止まらないように）
+  const safeTenantId = event?.tenantId || tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
   const themeColor = safeTenant?.themeColor || "#f97316";
   // カスタムフィールドのIDを安全な値に正規化（全角記号等が入っていた場合の対策）
   const customFields: CustomField[] = (event.customFields || []).map((f: any, i: number) => ({
