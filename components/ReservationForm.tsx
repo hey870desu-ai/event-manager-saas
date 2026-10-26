@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import Link from "next/link";
 import PayLinkBox from "@/components/PayLinkBox";
 import { appliedTickets, isPayLinkEvent } from "@/lib/pay-link";
+import { policyLines } from "@/lib/cancel-policy";
 
 type TenantData = {
   id?: string;           // ★これを追加
@@ -601,6 +602,32 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                        <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5"><MessageSquare size={14} style={{color: themeColor}}/> ご要望・備考 (任意)</label>
                        <textarea name="notes" placeholder="その他、ご質問などがございましたらご記入ください。" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none min-h-[100px]" style={{ borderColor: 'transparent' }} onFocus={(e) => e.target.style.borderColor = themeColor} onBlur={(e) => e.target.style.borderColor = '#334155'} />
                     </div>
+
+                    {/* お支払いとキャンセルの決まり（有料のとき）。申し込む前の画面で、払い方・時期と取り消しの決まりを示す（特定商取引法の最終確認画面） */}
+                    {isPaid && (
+                      <div className="mt-8 p-4 bg-slate-900/50 border border-slate-700 rounded-xl text-sm text-slate-300 space-y-3">
+                        <div>
+                          <p className="font-bold text-white mb-1">お支払い</p>
+                          <p className="leading-relaxed">
+                            {priceAmount.toLocaleString()}円（{selectedTicket?.name || "参加費"}）。
+                            {isPayLinkEvent(event)
+                              ? "お申し込みのあとに表示されるご案内に沿って、事前にお支払いください（受付のメールにもお送りします）。"
+                              : safeTenant?.stripeConnectId
+                              ? "このあとの決済の画面で、クレジットカードでお支払いください（お申し込みの時に決済されます）。"
+                              : "開催当日、会場でお支払いください。"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-white mb-1">キャンセル</p>
+                          <p className="leading-relaxed mb-1">受付のメールのキャンセルのリンクから手続きいただけます。</p>
+                          {(isPayLinkEvent(event) || safeTenant?.stripeConnectId) && (
+                            <ul className="text-xs text-slate-400 space-y-0.5 list-disc pl-5">
+                              {policyLines(event?.cancelPolicy, String(event?.date || "")).map(line => <li key={line}>{line}</li>)}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* ▼▼▼ 追加：プライバシーポリシー同意チェック ▼▼▼ */}
 <div className="mt-8 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">

@@ -54,12 +54,12 @@ export default function LegalPage() {
     },
     {
       label: "代金の支払方法",
-      value: "クレジットカード決済（VISA / Mastercard / American Express / JCB）\n決済処理はStripe, Inc. の安全なシステムを通じて行われます。",
+      value: "各イベントの申込フォームに記載の方法（当日会場でのお支払い、主催者が案内する方法での事前のお支払い、クレジットカード決済のいずれか）。\nクレジットカード決済は Stripe, Inc. のシステムを通じて行われます。",
       icon: <CreditCard size={18}/>,
     },
     {
       label: "代金の支払時期",
-      value: "お申し込み時に即時決済",
+      value: "当日会場でのお支払い：開催当日／事前のお支払い：受付のメールに記載の期限まで／クレジットカード決済：お申し込みの時",
       icon: <Clock size={18}/>,
     },
     {
@@ -69,7 +69,7 @@ export default function LegalPage() {
     },
     {
       label: "返品・キャンセルについて",
-      value: "お申し込み後のキャンセルは、各イベントの確認メールに記載のキャンセルリンクより手続きいただけます。有料イベントの場合、キャンセル時に参加費は全額返金いたします（クレジットカードへの返金処理には最大10日ほどかかる場合がございます）。なお、イベント当日以降のキャンセル・返金はお受けできない場合がございます。",
+      value: "お申し込み後のキャンセルは、受付のメールに記載のキャンセルのリンクから手続きいただけます。返金の有無と割合は、各イベントの申込フォームに記載のキャンセル・返金の決まりによります。クレジットカードでお支払いの参加費は、その決まりに基づいてカードに返金します（反映まで最大10日ほどかかる場合があります）。事前のお支払いの返金は、主催者からご連絡します。",
       icon: <RefreshCcw size={18}/>,
     },
     {
@@ -156,8 +156,8 @@ export default function LegalPage() {
             <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl">
               <BadgeCheck size={18} className="text-emerald-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-slate-700">返金保証</p>
-                <p className="text-xs text-slate-500 mt-0.5">有料イベントのキャンセル時は、お支払い済みの参加費を全額返金いたします。</p>
+                <p className="text-xs font-bold text-slate-700">キャンセル・返金</p>
+                <p className="text-xs text-slate-500 mt-0.5">キャンセル・返金の決まりは、各イベントの申込フォームに記載しています。</p>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { refundRateFor } from '@/lib/cancel-policy';
 import { adminDb } from '@/lib/firebase-admin';
 import { Resend } from 'resend';
 import Stripe from 'stripe';
@@ -57,45 +58,10 @@ export async function POST(request: Request) {
     const isPaid = resData?.paymentStatus === 'paid' && resData?.stripeSessionId;
 
     if (isPaid) {
-      // キャンセルポリシーから返金率を計算
+      // キャンセルポリシーから返金率を計算（申込フォームに出す決まりと同じ計算・日本時間の日付で数える。lib/cancel-policy）
       const eventDate = eventData?.date; // "YYYY-MM-DD"
-      const rawPolicy = eventData?.cancelPolicy;
-
-      // 新形式（配列）と旧形式（オブジェクト）の両方に対応
-      let policyTiers: { days: number, rate: number }[] = [];
-      if (Array.isArray(rawPolicy)) {
-        policyTiers = rawPolicy;
-      } else if (rawPolicy) {
-        // 旧形式: { fullRefundDays, halfRefundDays } → 配列に変換
-        policyTiers = [
-          { days: rawPolicy.fullRefundDays ?? 2, rate: 100 },
-          { days: rawPolicy.halfRefundDays ?? 1, rate: 50 },
-        ];
-      } else {
-        // デフォルト
-        policyTiers = [{ days: 2, rate: 100 }, { days: 1, rate: 50 }];
-      }
-      // 日数の大きい順にソート
-      policyTiers.sort((a, b) => b.days - a.days);
-
-      if (eventDate) {
-        const eventDay = new Date(eventDate + "T00:00:00+09:00"); // JST
-        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-        const diffMs = eventDay.getTime() - now.getTime();
-        const daysUntilEvent = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-        // 日数の大きい段階から順にマッチング
-        for (const tier of policyTiers) {
-          if (daysUntilEvent >= tier.days) {
-            refundRate = tier.rate;
-            break;
-          }
-        }
-        console.log(`📅 イベントまで${daysUntilEvent}日 → 返金率: ${refundRate}%`);
-      } else {
-        // 日付不明の場合は全額返金
-        refundRate = 100;
-      }
+      refundRate = refundRateFor(eventData?.cancelPolicy, eventDate);
+      console.log(`📅 開催日 ${eventDate}・今日の取り消し → 返金率: ${refundRate}%`);
 
       if (refundRate > 0) {
         try {
