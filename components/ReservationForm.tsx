@@ -10,6 +10,8 @@ import { Send, CheckCircle, AlertCircle, X, ChevronRight, User, Mail, Phone, Lis
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
+import PayLinkBox from "@/components/PayLinkBox";
+import { appliedTickets, isPayLinkEvent } from "@/lib/pay-link";
 
 type TenantData = {
   id?: string;           // ★これを追加
@@ -176,6 +178,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       }
 
       const isStripeReady = !!safeTenant?.stripeConnectId;
+      // 「申込のあと、事前に払っていただく」（主催者の決済のリンク・振込）のイベントは、カードの決済の連携があっても使わない
+      const payByCard = isPaid && isStripeReady && !isPayLinkEvent(event);
 
       // Firestoreに安全に保存できるようにデータを構築
       const safeStr = (v: any) => (v == null ? "" : String(v));
@@ -195,7 +199,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         notes: safeStr(inputNotes),
         selectedTicket: safeStr(selectedTicket?.name),
         status: isPaid
-          ? (isStripeReady ? "payment_pending" : "on_site")
+          ? (payByCard ? "payment_pending" : "on_site")
           : "confirmed",
         createdAt: serverTimestamp(),
         emailed: false,
@@ -215,7 +219,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       setNewReservationId(docRef.id);
 
       // ★ 改造ポイント3: 分かれ道の切り替えだっぺ！
-      if (isPaid && isStripeReady) {
+      if (payByCard) {
         // 【Aパターン】有料 且つ Stripe連携済み：Stripe決済画面へ！
         const res = await fetch('/api/stripe/checkout-event', {
           method: 'POST',
@@ -277,6 +281,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         // Stripeに飛ばない場合は、ここで「成功画面」を表示させるっぺ
         setStatus("success");
+        // 完了画面の「参加費のお支払い」に、申し込んだチケットを渡す
+        appliedTickets.set(docRef.id, String(selectedTicket?.name || ""));
         if (onSuccess) { setIsOpen(false); onSuccess(docRef.id); }
       }
       
@@ -335,6 +341,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               </p>
            </div>
         </div>
+
+        <PayLinkBox event={event} ticketName={selectedTicket?.name} />
 
         {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
           <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-4 mb-4">

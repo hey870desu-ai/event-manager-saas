@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { JetBrains_Mono, DotGothic16 } from "next/font/google";
 import {
@@ -73,6 +74,7 @@ export default function ClaudeCodeLayout({ event, tenant, eventId, tenantId }: P
             </div>
             <p className="text-sm font-bold text-[#888]">当日このQRをご提示ください</p>
           </div>
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-[#1E1E1E] border-4 border-[#F08856] rounded-2xl p-4 text-center">
               <p className="text-sm font-black text-[#F08856] mb-1">📝 事前アンケートのご協力をお願いします</p>

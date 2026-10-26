@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { 
   Clock, MapPin, User, Sparkles, 
@@ -54,6 +55,7 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
              </div>
              <p className="text-sm font-bold">当日これ見せてね！</p>
           </div>
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-purple-50 border-4 border-purple-300 rounded-2xl p-4 text-center">
               <p className="text-sm font-black text-purple-700 mb-1">📝 事前アンケートよろしくね！</p>

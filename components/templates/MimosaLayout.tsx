@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
@@ -77,6 +78,7 @@ export default function MimosaLayout({ event, tenant, eventId, tenantId }: Props
           <div className="bg-white p-6 rounded-3xl inline-block shadow-lg border border-yellow-50">
              <img src={qrImageUrl} alt="QR" className="w-[140px] h-[140px] object-contain"/>
           </div>
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
               <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>

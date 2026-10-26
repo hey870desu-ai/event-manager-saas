@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { 
   Calendar, Clock, MapPin, User, AlignLeft, Check, 
@@ -99,6 +100,7 @@ export default function ChameleonLayout({ event, tenant, eventId, tenantId }: Pr
         </div>
         {/* --- ★ ここまで --- */}
 
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
               <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>

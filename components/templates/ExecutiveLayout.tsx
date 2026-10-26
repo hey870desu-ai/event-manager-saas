@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { Cormorant_Garamond, Noto_Serif_JP } from "next/font/google";
 import {
@@ -100,6 +101,7 @@ export default function ExecutiveLayout({ event, tenant, eventId, tenantId }: Pr
 
           <p className="text-sm text-[#9A9A9A]">当日はこちらのコードをご提示ください</p>
 
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="border border-[#C9A961]/30 p-6">
               <p className={`text-sm font-medium text-[#C9A961] mb-2 ${serifJp.className}`}>事前アンケートのお願い</p>

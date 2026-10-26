@@ -9,6 +9,7 @@ import { auth, db } from "@/lib/firebase";
 import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, isCountedAdmin } from "@/lib/plans";
 // アンケート回答(answers)の新旧フォーマット3種すべてに対応するヘルパー（イベントのまとめと同じものを使う）
 import { answerEntries, answerValue, customAnswerValue } from "@/lib/survey-answers";
+import { isPayLinkEvent } from "@/lib/pay-link";
 import { useRouter } from "next/navigation";
 import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
@@ -24,7 +25,7 @@ import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, U
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
-type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];preSurveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string;isSpotPaid?: boolean; };
+type EventData = { id: string; title: string; date: string; location: string; venueName?: string; tenantId?: string; branchTag?: string; slug?: string; content: string; status?: string; createdAt?: any;surveyFields?:any[];preSurveyFields?:any[];theme?: string;lecturers?:  any[];contactName?: string;contactEmail?: string;contactPhone?: string;isSpotPaid?: boolean; payMode?: string; };
 type AdminUser = { email: string; tenantId: string; branchId?: string; role?: string; addedAt: any; addedBy: string; };
 type ReservationData = { id: string; name: string; email: string; phone: string; company: string; department: string; type: string; jobTitles: string[] | string; source: string; referrer: string; membership: string; createdAt: any; checkedIn?: boolean;amount?: number;paymentStatus?: string;paymentMethod?: string;status?: string;price?: number;refundAmount?: number;selfCancelledAt?: any; };
 
@@ -250,13 +251,31 @@ export default function AdminDashboard() {
   const isStandard = ['STANDARD', 'PRO'].includes(currentTenantData?.plan?.toUpperCase() || '');
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは3人まで込み・4人目から1人ずつ料金が加わる
   const myMemberCount = adminUsers.filter(u => u.tenantId === currentUserTenant && isCountedAdmin(u.email)).length;
+  // 💳 リンク・振込で払っていただくイベントの「支払い済み」の印（主催者が確かめて付ける・外す）
+  const handleTogglePaid = async (p: ReservationData, paid: boolean) => {
+    if (!currentEventForList) return;
+    if (!paid && !confirm(`${p.name} 様の「支払い済み」を外して「未確認」に戻しますか？`)) return;
+    try {
+      await updateDoc(doc(db, "events", currentEventForList.id, "reservations", p.id), paid
+        ? { paymentStatus: 'paid', paymentMethod: 'link', paidAt: serverTimestamp() }
+        : { paymentStatus: 'unpaid', paymentMethod: 'link', paidAt: null });
+    } catch (e) {
+      console.error("支払いの印の保存に失敗:", e);
+      alert("保存できませんでした。通信状況を確認して、もう一度押してください。");
+    }
+  };
+
   // ❌ 参加者のキャンセル処理（返金対応・通知メール統合版）
   const handleCancelParticipant = async (p: ReservationData) => {
     if (!currentEventForList) return;
 
-    const isPaid = (p as any).paymentStatus === 'paid';
+    // 返金するのはカードで受け取った申込だけ（サーバーも stripeSessionId がある申込だけ返金する）
+    const isPaid = (p as any).paymentStatus === 'paid' && !!(p as any).stripeSessionId;
+    const paidByLink = (p as any).paymentStatus === 'paid' && (p as any).paymentMethod === 'link';
     const confirmMsg = isPaid
       ? `${p.name} 様の申し込みをキャンセルし、参加費を返金しますか？\n（※キャンセルと返金処理が行われ、本人に通知メールが届きます）`
+      : paidByLink
+      ? `${p.name} 様の申し込みをキャンセルし、本人へ通知メールを送信しますか？\n（※リンク・振込で受け取った参加費の返金は、お使いの決済サービスや振込で行ってください）`
       : `${p.name} 様の申し込みをキャンセルし、本人へ通知メールを送信しますか？\n（※この操作は取り消せません）`;
 
     if (!confirm(confirmMsg)) return;
@@ -280,6 +299,8 @@ export default function AdminDashboard() {
         alert("キャンセル完了！キャンセルポリシーにより返金なし（0%）です。本人に通知メール送信済みです。");
       } else if (isPaid && !data.refunded) {
         alert("キャンセルは完了しましたが、返金処理に失敗しました。Stripeダッシュボードから手動で返金してください。");
+      } else if (paidByLink) {
+        alert("キャンセル完了！本人に通知メールを送信しました。リンク・振込で受け取った参加費の返金は、お使いの決済サービスや振込で行ってください。");
       } else {
         alert("キャンセル完了！本人に通知メールを送信しました。");
       }
@@ -1677,6 +1698,19 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
               <Check size={10} strokeWidth={3} /> 決済済み
             </span>
+          ) : isPayLinkEvent(currentEventForList) && (Number((p as any).price) || 0) > 0 ? (
+            // 主催者の決済のリンク・振込で払っていただくイベント：届いたかは主催者が確かめて印を付ける
+            (p as any).paymentStatus === 'paid' ? (
+              <button onClick={() => handleTogglePaid(p, false)} title="押すと「未確認」に戻します"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
+                <Check size={10} strokeWidth={3} /> 支払い済み
+              </button>
+            ) : (
+              <button onClick={() => handleTogglePaid(p, true)} title="お支払いを確かめたら押してください"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 w-fit hover:bg-amber-500/30">
+                未確認（押して支払い済みに）
+              </button>
+            )
           ) : (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30 w-fit">
               当日現金
@@ -1760,10 +1794,10 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
 
       {/* 2. 受付済の徴収額 */}
       <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
-        <span className="text-[10px] text-emerald-400 uppercase font-bold">受付済（徴収額）</span>
+        <span className="text-[10px] text-emerald-400 uppercase font-bold">{isPayLinkEvent(currentEventForList) ? "支払い済み" : "受付済（徴収額）"}</span>
         <span className="text-emerald-400 font-black text-lg">
           ¥{participants
-            .filter(p => p.checkedIn)
+            .filter(p => isPayLinkEvent(currentEventForList) ? (p as any).paymentStatus === 'paid' : p.checkedIn)
             .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
             .toLocaleString()}
         </span>
@@ -1771,10 +1805,10 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
 
       {/* 3. 当日現金で回収するべき残額 */}
       <div className="flex flex-col items-end border-l border-slate-700 pl-4 md:pl-6">
-        <span className="text-[10px] text-orange-400 uppercase font-bold">当日現金（未回収分）</span>
+        <span className="text-[10px] text-orange-400 uppercase font-bold">{isPayLinkEvent(currentEventForList) ? "支払い未確認" : "当日現金（未回収分）"}</span>
         <span className="text-orange-500 font-black text-lg">
           ¥{participants
-            .filter(p => (p as any).paymentStatus !== 'paid' && !p.checkedIn)
+            .filter(p => (p as any).paymentStatus !== 'paid' && (isPayLinkEvent(currentEventForList) || !p.checkedIn))
             .reduce((sum, p) => sum + (Number((p as any).price) || 0), 0)
             .toLocaleString()}
         </span>

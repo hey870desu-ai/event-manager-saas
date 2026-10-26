@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { Playfair_Display, Noto_Serif_JP, Inter, Noto_Sans_JP } from "next/font/google";
 import {
@@ -108,6 +109,7 @@ export default function EditorialLayout({ event, tenant, eventId, tenantId }: Pr
             </p>
           </div>
 
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="border-t border-b border-[#D8D6D0] py-6">
               <p className={`text-xs font-medium mb-2 ${serifJp.className}`} style={{ color: ACCENT }}>

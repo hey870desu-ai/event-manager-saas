@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import {
   Calendar, Clock, MapPin, User, Check,
@@ -56,6 +57,7 @@ export default function NatureLayout({ event, tenant, eventId, tenantId }: Props
               【当日受付用】<br/>この画面をスクリーンショットで保存し、<br/>受付で提示してください。
             </p>
           </div>
+          <PayLinkBox event={event} reservationId={reservationId} />
           {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
             <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
               <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>

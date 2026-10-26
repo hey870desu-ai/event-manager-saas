@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
+import PayLinkBox from "@/components/PayLinkBox";
 import Link from "next/link";
 import { Calendar, Clock, MapPin, User, ShieldCheck, AlignLeft, Check, Link as LinkIcon, Facebook, CheckCircle2, AlertTriangle, Copy, Twitter, Mail, Phone } from "lucide-react";
 
@@ -123,6 +124,7 @@ if (submitted) {
            <div className="text-[9px] text-slate-500 mt-2 font-mono">ID: {reservationId}</div>
         </div>
 
+        <PayLinkBox event={event} reservationId={reservationId} />
         {(event.preSurveyFields?.length > 0 || event.preSurveyUrl) && (
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
             <p className="text-sm font-bold text-purple-700 mb-1">📝 事前アンケートのお願い</p>

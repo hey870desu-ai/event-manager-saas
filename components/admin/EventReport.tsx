@@ -9,6 +9,7 @@ import React, { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { answerEntries, answerValue, customAnswerValue, fieldOptions, answerText } from "@/lib/survey-answers";
 import { ArrowLeft, Printer, FileDown, Lock } from "lucide-react";
+import { isPayLinkEvent } from "@/lib/pay-link";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -141,6 +142,9 @@ export default function EventReportView({ data, isSuper }: { data: ReportData; i
     const hasMoney = active.some(r => (Number(r.price) || 0) > 0) || (Array.isArray(event.tickets) && event.tickets.some((t: any) => Number(t?.price) > 0));
     const amountTotal = active.reduce((s, r) => s + (Number(r.price) || 0), 0);
     const amountOnline = active.filter(isPaidOnline).reduce((s, r) => s + (Number(r.price) || 0), 0);
+    // 主催者の決済のリンク・振込で払っていただくイベント：参加者リストで付けた「支払い済み」の印で数える
+    const payLink = isPayLinkEvent(event);
+    const amountLinkPaid = payLink ? active.filter(r => r.paymentStatus === "paid").reduce((s, r) => s + (Number(r.price) || 0), 0) : 0;
     const refunds = all.reduce((s, r) => s + (Number(r.refundAmount) || 0), 0);
 
     // 参加の形（会場とオンラインの両方があるときだけ出す）
@@ -207,7 +211,7 @@ export default function EventReportView({ data, isSuper }: { data: ReportData; i
     const ratingDist = [5, 4, 3, 2, 1].map(star => ({ star, count: ratings.filter(v => v === star).length }));
 
     return {
-      today, held, all, active, cancelled, attended, tickets, hasMoney, amountTotal, amountOnline, refunds,
+      today, held, all, active, cancelled, attended, tickets, hasMoney, amountTotal, amountOnline, refunds, payLink, amountLinkPaid,
       online, repeaters, flow, first, last, weekBefore, formChoices, mailRows, pre, post, preIds,
       ratings, ratingAvg, ratingDist,
     };
@@ -232,7 +236,7 @@ export default function EventReportView({ data, isSuper }: { data: ReportData; i
     const formFields = (Array.isArray(event.customFields) ? event.customFields : []).filter((f: any) => f?.type !== "link" && f?.label);
     const preFields = (Array.isArray(event.preSurveyFields) ? event.preSurveyFields : []).filter((f: any) => f?.type !== "link" && f?.label);
     const preById = new Map(preFeedbacks.filter(p => p.reservationId).map(p => [p.reservationId, p]));
-    const header = ["状態", "名前", "メール", "電話", "参加の形", "チケット", "金額", "初めて／2回目以上",
+    const header = ["状態", "名前", "メール", "電話", "参加の形", "チケット", "金額", ...(report.payLink ? ["支払い"] : []), "初めて／2回目以上",
       ...formFields.map((f: any) => String(f.label)), ...preFields.map((f: any) => `事前：${f.label}`), "申込日時"];
     const rows = [...report.active, ...report.cancelled].map(r => {
       const p = preById.get(r.id);
@@ -241,6 +245,7 @@ export default function EventReportView({ data, isSuper }: { data: ReportData; i
         String(r.name || ""), String(r.email || ""), String(r.phone || ""),
         r.type === "online" ? "オンライン" : "会場",
         String(r.selectedTicket || ""), String(Number(r.price) || 0),
+        ...(report.payLink ? [(Number(r.price) || 0) > 0 ? (r.paymentStatus === "paid" ? "支払い済み" : "未確認") : ""] : []),
         pastEmails.has(emailKey(r.email)) ? "2回目以上" : "初めて",
         ...formFields.map((f: any) => answerText(customAnswerValue(r.customAnswers, f.label))),
         ...preFields.map((f: any) => (p ? answerText(answerValue(p.answers, f.label)) : "")),
@@ -292,7 +297,9 @@ export default function EventReportView({ data, isSuper }: { data: ReportData; i
     </>],
     ...(r.hasMoney ? [
       ["申込の金額", yen(r.amountTotal)] as [string, React.ReactNode],
-      ["うちカード決済", `${r.amountOnline > 0 || r.refunds > 0 ? yen(r.amountOnline) : "なし（当日払いなど）"}${r.refunds > 0 ? `（返金 ${yen(r.refunds)}）` : ""}`] as [string, React.ReactNode],
+      r.payLink
+        ? ["支払いの確認", `${yen(r.amountLinkPaid)} 済み（未確認 ${yen(r.amountTotal - r.amountLinkPaid)}）`] as [string, React.ReactNode]
+        : ["うちカード決済", `${r.amountOnline > 0 || r.refunds > 0 ? yen(r.amountOnline) : "なし（当日払いなど）"}${r.refunds > 0 ? `（返金 ${yen(r.refunds)}）` : ""}`] as [string, React.ReactNode],
     ] : []),
   ];
 

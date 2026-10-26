@@ -7,7 +7,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Save, Calendar, MapPin, User, Video, Mail, Globe, AlignLeft, Layout, Image as ImageIcon, Upload, X, Lock, Plus, Trash2, ListChecks, GripVertical, Briefcase, MessageSquare, ArrowUp, ArrowDown,Palette, 
-  CheckCircle, Building2, Smile, Sparkles, RefreshCcw, ClipboardList } from "lucide-react";
+  CheckCircle, Building2, Smile, Sparkles, RefreshCcw, ClipboardList, CreditCard } from "lucide-react";
+import { safePayUrl } from "../lib/pay-link";
 import { fetchTenantData, type Tenant } from "../lib/tenants";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
@@ -47,6 +48,7 @@ type Ticket = {
   id: string;
   name: string;
   price: number;
+  payUrl?: string; // 申込のあと、事前に払っていただくときのリンク（Square・PayPay など。金額ごとに作るのでチケットごと）
 };
 
 export default function EventForm({ event, onSuccess, isFreePlan= false }: Props) {
@@ -130,6 +132,8 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
     contactPhone: "",
     replyMessage: "",       // 自動返信メールの追加メッセージ
     preSurveyUrl: "",       // 事前アンケートURL
+    payMode: "",            // 参加費の払い方：""＝当日会場（カードの決済をつないでいればカード）・"link"＝申込のあと、事前に払っていただく（リンク・振込）
+    payNote: "",            // 事前に払っていただくときの案内（期限・振込先など）
   });
 
   // キャンセルポリシー設定
@@ -284,6 +288,8 @@ useEffect(() => {
         contactPhone: event.contactPhone || "",
         replyMessage: event.replyMessage || "",
         preSurveyUrl: event.preSurveyUrl || "",
+        payMode: event.payMode || "",
+        payNote: event.payNote || "",
       });
       // ★追加：講師リストの読み込み
       if (event.lecturers && Array.isArray(event.lecturers)) {
@@ -533,6 +539,15 @@ useEffect(() => {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
     return;
   }
+    // 「申込のあと、事前に払っていただく」：リンクは https だけ。リンクの無いチケットは、払い方の案内（振込先など）が要る
+    if (formData.payMode === "link") {
+      const paid = tickets.filter(t => t.price > 0);
+      const badUrl = paid.find(t => (t.payUrl || "").trim() && !safePayUrl(t.payUrl));
+      if (badUrl) { alert(`「${badUrl.name || "チケット"}」の支払いのリンクは https:// から始まるものを入れてください。`); return; }
+      if (paid.some(t => !safePayUrl(t.payUrl)) && !String(formData.payNote || "").trim()) {
+        alert("リンクの無いチケットがあります。振込先などのお支払いの案内を入れてください。"); return;
+      }
+    }
     setLoading(true);
 
     try {
@@ -836,6 +851,56 @@ useEffect(() => {
     </button>
   </div>
 </div>
+
+{/* 参加費の払い方（有料のチケットがあるときだけ） */}
+{tickets.some(t => t.price > 0) && (
+<div className="mt-6 md:col-span-2">
+  <label className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-3">
+    <CreditCard size={14} className="text-indigo-400"/> 参加費の払い方
+  </label>
+  <div className="space-y-2">
+    <label className="flex items-start gap-2 text-sm text-slate-300 cursor-pointer">
+      <input type="radio" name="payModeChoice" checked={formData.payMode !== "link"} onChange={() => setFormData(prev => ({ ...prev, payMode: "" }))} className="mt-1" />
+      <span>当日、会場で払っていただく
+        <span className="block text-xs text-slate-500">カードの決済をつないでいるときは、申込のときにカードで払っていただきます</span>
+      </span>
+    </label>
+    <label className="flex items-start gap-2 text-sm text-slate-300 cursor-pointer">
+      <input type="radio" name="payModeChoice" checked={formData.payMode === "link"} onChange={() => setFormData(prev => ({ ...prev, payMode: "link" }))} className="mt-1" />
+      <span>申込のあと、事前に払っていただく（お使いの決済のリンク・振込）
+        <span className="block text-xs text-slate-500">Square・PayPay・STORES などの支払いのリンクや振込先の案内を、申込のあとの画面と受付のメールに出します。払われたかどうかは、参加者リストで「支払い済み」に印を付けてください</span>
+      </span>
+    </label>
+  </div>
+  {formData.payMode === "link" && (
+    <div className="mt-4 space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-700/50">
+      {tickets.map((t, index) => t.price > 0 && (
+        <div key={t.id}>
+          <label className="text-[10px] text-slate-500 block mb-1">「{t.name || "チケット"}」{t.price.toLocaleString()}円の支払いのリンク（https:// から。振込だけのときは空のまま）</label>
+          <input
+            type="url"
+            value={t.payUrl || ""}
+            onChange={(e) => updateTicket(index, "payUrl", e.target.value)}
+            placeholder="https://square.link/u/xxxx など"
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+          />
+        </div>
+      ))}
+      <div>
+        <label className="text-[10px] text-slate-500 block mb-1">お支払いの案内（期限・振込先など）</label>
+        <textarea
+          name="payNote"
+          value={formData.payNote}
+          onChange={handleChange}
+          rows={4}
+          placeholder={"例：開催の3日前までにお支払いください。\nお支払いを確かめたら、こちらからご連絡します。"}
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+  )}
+</div>
+)}
 
 {/* キャンセルポリシー設定 */}
 {tickets.some(t => t.price > 0) && (

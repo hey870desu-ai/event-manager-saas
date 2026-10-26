@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { DocumentReference, Transaction } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/mailer';
+import { isPayLinkEvent, payLinkFor } from '@/lib/pay-link';
 
 // 名前など、申し込んだ人が入れた文字を HTML に入れるときの置き換え
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -35,10 +36,12 @@ async function registrationFromRecords(raw: any): Promise<{ body: Record<string,
   const tenant: any = tenantId ? (await adminDb.collection('tenants').doc(tenantId).get()).data() || {} : {};
   const onSite = r.status === 'on_site'; // 有料で、カードの決済の連携がない＝当日会場で払う
   const price = Number(r.price) || 0;
+  // 「申込のあと、事前に払っていただく」（主催者の決済のリンク・振込）のイベント：申し込んだチケットのリンクと案内を入れる
+  const pay = onSite && price > 0 && isPayLinkEvent(ev) ? payLinkFor(ev, r.selectedTicket) : null;
   return {
     ref,
     body: {
-      subject: onSite ? `【当日払い受付】${ev.title}` : `【受付完了】${ev.title}`,
+      subject: pay ? `【受付完了・お支払いのお願い】${ev.title}` : onSite ? `【当日払い受付】${ev.title}` : `【受付完了】${ev.title}`,
       name: r.name,
       email: r.email,
       type: r.type,
@@ -61,7 +64,10 @@ async function registrationFromRecords(raw: any): Promise<{ body: Record<string,
       replyMessage: ev.replyMessage || '',
       preSurveyUrl: ev.preSurveyUrl || '',
       hasPreSurveyFields: !!(ev.preSurveyFields?.length > 0),
-      eventPrice: onSite ? (price > 0 ? `${price}円（当日会場にてお支払い）` : '当日会場にてお支払い') : '無料',
+      eventPrice: pay ? `${price.toLocaleString('ja-JP')}円（下の「参加費のお支払いのお願い」をご覧ください）`
+        : onSite ? (price > 0 ? `${price.toLocaleString('ja-JP')}円（当日会場にてお支払い）` : '当日会場にてお支払い') : '無料',
+      payUrl: pay?.url || '',
+      payNote: pay ? (pay.note || (pay.url ? '' : 'お支払いの方法は、主催者からのご案内をお待ちください。')) : '',
     },
   };
 }
@@ -118,7 +124,7 @@ export async function POST(request: Request) {
       reservationId,eventId, planName,
       tenantName, tenantLogo, tenantUrl, themeColor, replyTo,
       contactName, contactEmail, contactPhone, eventPrice,
-      inviteUrl, replyMessage, preSurveyUrl, hasPreSurveyFields,
+      inviteUrl, replyMessage, preSurveyUrl, hasPreSurveyFields, payUrl, payNote,
       subject: customSubject
     } = body;
     const nameHtml = esc(name);
@@ -276,6 +282,16 @@ export async function POST(request: Request) {
           ${accessInfoHtml}
         </div>`;
 
+        // 参加費のお支払いのお願い（主催者の決済のリンク・振込の案内）。リンクは https だけ（lib/pay-link）
+        if (payUrl || payNote) {
+          mainHtml += `
+            <div style="background-color: #fff7ed; border: 2px solid #fdba74; border-radius: 8px; padding: 20px; margin-top: 20px;">
+              <p style="font-size: 14px; font-weight: bold; color: #c2410c; margin: 0 0 10px 0;">💳 参加費のお支払いのお願い</p>
+              ${payNote ? `<p style="font-size: 14px; color: #334155; margin: 0 0 14px 0; line-height: 1.8;">${esc(payNote).replace(/\n/g, '<br>')}</p>` : ''}
+              ${payUrl ? `<div style="text-align: center;"><a href="${esc(payUrl)}" target="_blank" style="display: inline-block; background: #f97316; color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">お支払いのページを開く</a></div>` : ''}
+            </div>`;
+        }
+
         // 追加メッセージ（テナントがカスタマイズした内容）
         if (replyMessage) {
           mainHtml += `
@@ -301,7 +317,9 @@ export async function POST(request: Request) {
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.com";
 
 // body.eventId ではなく、分割代入した eventId を使うんだっぺ！
-const isPaidEvent = eventPrice && !eventPrice.includes('無料');
+// 申込フォームからの確認メール（当日払い・リンク払い・無料）は、まだ参加費をカードで受け取っていないので paid=1 を付けない
+// （付けると取り消しの画面で「自動返金されます」→「返金処理に問題が発生しました」と出ていた）
+const isPaidEvent = kind !== 'registration' && eventPrice && !eventPrice.includes('無料');
 const cancelUrl = `${baseUrl}/cancel?rid=${reservationId || ''}&eid=${eventId || ''}${isPaidEvent ? '&paid=1' : ''}`;
 
 // 🏆 mainHtml への合体（デザインも少し絆太郎風に！）
