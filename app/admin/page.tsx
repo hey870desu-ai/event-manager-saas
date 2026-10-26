@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, isCountedAdmin } from "@/lib/plans";
+// アンケート回答(answers)の新旧フォーマット3種すべてに対応するヘルパー（イベントのまとめと同じものを使う）
+import { answerEntries, answerValue, customAnswerValue } from "@/lib/survey-answers";
 import { useRouter } from "next/navigation";
 import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
@@ -124,34 +126,6 @@ ${orgName}
   }
 };
 
-// アンケート回答(answers)の新旧フォーマット3種すべてに対応するヘルパー
-//  新 : 連番キーのマップ {"0":{label,value}, "1":{...}}（マップ型でルール通過＋長文ラベルは値側）
-//  中 : 配列 [{label, value}]（2026-06-12〜の形式）
-//  旧 : ラベルキーのマップ {label: value}
-const isLabelValueObj = (v: any): boolean =>
-  !!v && typeof v === "object" && !Array.isArray(v) && "label" in v;
-const answerEntries = (answers: any): Array<[string, any]> => {
-  if (Array.isArray(answers)) return answers.map((a: any) => [a?.label ?? "", a?.value]);
-  if (answers && typeof answers === "object") {
-    const vals = Object.values(answers);
-    if (vals.length > 0 && vals.every(isLabelValueObj)) {
-      return vals.map((v: any) => [v.label ?? "", v.value]);
-    }
-    return Object.entries(answers);
-  }
-  return [];
-};
-const answerValue = (answers: any, label: string): any => {
-  if (Array.isArray(answers)) return answers.find((a: any) => a?.label === label)?.value;
-  if (answers && typeof answers === "object") {
-    const vals = Object.values(answers);
-    if (vals.length > 0 && vals.every(isLabelValueObj)) {
-      return (vals.find((v: any) => v.label === label) as any)?.value;
-    }
-    return answers?.[label];
-  }
-  return undefined;
-};
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -851,19 +825,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
         `"${x.price || 0}"`
       ];
 
-      // カスタム回答（配列形式とオブジェクト形式の両方に対応）
+      // カスタム回答（配列形式とオブジェクト形式の両方に対応。200文字で切って保存された長い質問の文でも探す）
       customLabels.forEach((label: string) => {
-        let answer = "";
-        if (Array.isArray(x.customAnswers)) {
-          // 新形式（配列）
-          const found = x.customAnswers.find((a: any) => a.label === label);
-          answer = found ? (Array.isArray(found.value) ? found.value.join("/") : String(found.value)) : "";
-        } else if (x.customAnswers) {
-          // 旧形式（オブジェクト）
-          const val = x.customAnswers[label];
-          answer = Array.isArray(val) ? val.join("/") : (val || "");
-        }
-        row.push(`"${answer.toString().replace(/"/g, '""')}"`);
+        const val = customAnswerValue(x.customAnswers, label);
+        const answer = val == null || val === false ? "" : Array.isArray(val) ? val.join("/") : String(val);
+        row.push(`"${answer.replace(/"/g, '""')}"`);
       });
 
       row.push(`"${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString() : ""}"`);
@@ -1391,6 +1357,17 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                        <span className="hidden lg:inline">結果</span>
                    </button>
 
+                   {/* イベントのまとめ（申込・出席・メール・事前／事後アンケートを1枚に。印刷・CSV） */}
+                   <Link
+                     href={`/admin/events/${ev.id}/report`}
+                     onClick={(e) => e.stopPropagation()}
+                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 px-4 py-2.5 rounded-lg text-slate-600 transition-all border border-slate-300 shadow-sm font-bold text-xs"
+                     title="イベントのまとめ"
+                   >
+                       <FileText size={18}/>
+                       <span className="hidden lg:inline">まとめ</span>
+                   </Link>
+
                    <button 
                      onClick={(e)=>handleDownloadCSV(e,ev.id,ev.title)} 
                      disabled={downloadingId===ev.id} 
@@ -1909,6 +1886,12 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                      <FileText size={16}/> <span className="hidden sm:inline">CSV出力</span>
                    </button>
                   )}
+                  <Link
+                    href={`/admin/events/${currentEventForList.id}/report`}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    <Printer size={16}/> <span className="hidden sm:inline">まとめ・印刷</span>
+                  </Link>
                   <button onClick={() => setIsFeedbackOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                     <X size={24}/>
                   </button>
