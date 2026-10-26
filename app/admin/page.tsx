@@ -1693,8 +1693,8 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
             ¥{(Number((p as any).price) || 0).toLocaleString()}
           </span>
           
-          {/* 支払いステータスの出し分け */}
-          {(p as any).status === 'paid' ? (
+          {/* 支払いステータスの出し分け（カードで払われた申込は、Stripe の知らせで status が confirmed・paymentStatus が paid になる） */}
+          {((p as any).status === 'paid' || ((p as any).paymentStatus === 'paid' && (p as any).stripeSessionId)) ? (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 w-fit">
               <Check size={10} strokeWidth={3} /> 決済済み
             </span>
