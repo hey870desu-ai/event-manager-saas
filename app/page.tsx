@@ -6,6 +6,7 @@ import {
   FileSpreadsheet, QrCode, Mail, Smartphone, Users,
   Link as LinkIcon, Share2, Copy, Terminal, ChevronRight,
   Clock, MessageCircle, ScanLine,
+  CreditCard, ClipboardList, FileText, Printer, RotateCcw, UserPlus,
 } from "lucide-react";
 import { JetBrains_Mono } from "next/font/google";
 
@@ -175,7 +176,7 @@ export default function Home() {
                   募集から当日、終了後の心のこもったフォローまで
                 </p>
                 <p className="text-center text-[13px] md:text-[15px] text-[#888] mb-10 leading-relaxed">
-                  LP作成・フォーム・名簿・メール配信を
+                  告知ページ・申込フォーム・アンケート・名簿・メール配信を
                   <span className="text-[#E8E8E8] font-semibold mx-1">
                     一本で完結
                   </span>
@@ -254,7 +255,7 @@ export default function Home() {
                 </>
               }
               title="メール配信も、手軽にお任せ"
-              body="申し込み完了メール、前日のリマインド、当日のサンクスメール。すべて一元化されるので、送信漏れの心配はもうありません。"
+              body="受付のメールは、申込のたびに自動で届きます。1週間前・前日のリマインドは予約しておけます。お礼と事後アンケートのメールも、ひな形から送れます。"
             />
           </div>
         </Section>
@@ -278,7 +279,7 @@ export default function Home() {
             }}
           >
             <div className="aspect-[16/9] rounded-lg overflow-hidden relative bg-[#0F0F0F] border border-[#2A2A2A]">
-              <Image src="/dashboard.png" alt="Dashboard" fill className="object-cover" />
+              <Image src="/lp/dashboard.webp" alt="管理画面のトップ。イベントごとのカードから、参加者リスト・結果・まとめ・チラシなどを開ける" fill className="object-cover object-top" />
             </div>
           </div>
         </Section>
@@ -327,14 +328,13 @@ export default function Home() {
                   <div className="h-[46px] w-[3px] bg-[#1A1A1A] absolute -start-[17px] top-[178px] rounded-s-lg" />
                   <div className="h-[64px] w-[3px] bg-[#1A1A1A] absolute -end-[17px] top-[142px] rounded-e-lg" />
                   <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
-                    <video
-                      src="/mobile-demo.mp4"
-                      className="absolute inset-0 w-full h-full object-cover"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
+                    {/* 告知ページ（スマホ）を上から下までゆっくり動かして見せる（動画の代わり・動きを減らす設定の人には止める） */}
+                    <img
+                      src="/lp/event-scroll.webp"
+                      alt="スマホで見た告知ページ。日時・会場・参加費・講師紹介・申込のボタン"
+                      className="lp-phone-scroll absolute left-0 top-0 w-full h-auto"
                     />
+                    <style>{`@keyframes lpPhoneScroll { 0%, 8% { transform: translateY(0); } 46%, 56% { transform: translateY(calc(-100% + 532px)); } 94%, 100% { transform: translateY(0); } } .lp-phone-scroll { animation: lpPhoneScroll 28s ease-in-out infinite; } @media (prefers-reduced-motion: reduce) { .lp-phone-scroll { animation: none; } }`}</style>
                   </div>
                 </div>
                 <div
@@ -352,52 +352,68 @@ export default function Home() {
         {/* ▼ Features (zigzag) */}
         <section id="features" className="py-20 md:py-28 px-4">
           <div className="container mx-auto max-w-6xl space-y-20 md:space-y-28">
+            {/* 写真は架空の主催者「ひだまりケア勉強会（見本）」のデータで撮った今の画面（public/lp・使い方のページ /guide と同じ撮り方） */}
             <ZigzagFeature
-              icon={<BarChart3 size={22} />}
-              label="01 / DASHBOARD"
-              title={
-                <>
-                  イベントの状況を<br />
-                  <span style={{ color: ORANGE_BRIGHT }}>一目で把握</span>
-                </>
-              }
-              body="申し込み数、PV数、残席数をリアルタイムで可視化。直感的なダッシュボードで、イベントの今の状況が手に取るようにわかります。"
-              bullets={["リアルタイム更新", "レスポンシブ対応"]}
-              image="/analytics.png"
-              imageAlt="リアルタイム集計画面"
-            />
-            <ZigzagFeature
-              reverse
               icon={<LayoutTemplate size={22} />}
-              label="02 / TEMPLATES"
+              label="01 / TEMPLATES"
               title={
                 <>
                   デザイン作成は不要<br />
                   <span style={{ color: ORANGE_BRIGHT }}>テーマを選ぶだけ</span>
                 </>
               }
-              body="Tech系、ビジネス系、ポップ系、医療・福祉系に、黒と金のエグゼクティブ、雑誌風のエディトリアルも。イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます。"
+              body="医療・福祉向け、ポップ、雑誌風のエディトリアル、黒と金のエグゼクティブなど。イベントの雰囲気に合わせて、管理画面からワンクリックでデザインを着せ替えられます。スマホでもパソコンでも読みやすく表示されます。"
               bullets={["全11種テンプレート", "1クリック切替"]}
-              video="/scroll-demo.mp4"
-            />
-            <ZigzagFeature
-              icon={<FileSpreadsheet size={22} />}
-              label="03 / FORMS"
-              title={
-                <>
-                  フォームも、アンケートも<br />
-                  <span style={{ color: ORANGE_BRIGHT }}>自在にカスタマイズ</span>
-                </>
-              }
-              body="申し込み時の入力項目はもちろん、セミナー後の「満足度アンケート」も事前に管理画面で作成可能。当日はQRコードを読み込むだけで回答できるので、回収率も抜群です。"
-              bullets={["事前/事後アンケート対応", "CSV出力"]}
-              image="/form-survey.png"
-              imageAlt="フォーム設定とアンケート機能"
+              image="/lp/templates.webp"
+              imageAlt="4つのデザインで表示した告知ページ（スマホ）"
             />
             <ZigzagFeature
               reverse
+              icon={<CreditCard size={22} />}
+              label="02 / FORM & PAYMENT"
+              title={
+                <>
+                  申込フォームと、<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>参加費のお支払い</span>
+                </>
+              }
+              body="職種や所属、懇親会の出欠など、聞きたいことを自由に足せます。参加費は、当日払い・事前払い・カード決済から選べます。事前払いでは、Square・PayPayなどお使いの決済のリンクや振込先を、申込の完了画面と受付のメールでご案内します。"
+              bullets={["払い方は3通り", "キャンセル・返金の決まりも表示"]}
+              image="/lp/form-payment.webp"
+              imageAlt="申込フォームのお支払い・キャンセルの案内と、申込完了画面の参加証QRコードとお支払いのお願い"
+            />
+            <ZigzagFeature
+              icon={<ClipboardList size={22} />}
+              label="03 / SURVEY"
+              title={
+                <>
+                  事前アンケートも、<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>事後アンケートも</span>
+                </>
+              }
+              body="申込のあとに、聞いておきたいことを集められます。終わりには会場のスクリーンにQRコードを映して、その場でスマホから答えてもらえます。満足度と質問ごとの答えは、自動で集計されます。"
+              bullets={["事前/事後アンケート対応", "スクリーンのQRで回答", "CSV出力"]}
+              image="/lp/survey.webp"
+              imageAlt="会場に映すアンケートのQRコードと、スマホで答える事後アンケート"
+            />
+            <ZigzagFeature
+              reverse
+              icon={<FileText size={22} />}
+              label="04 / REPORT"
+              title={
+                <>
+                  1回のイベントを、<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>1枚のまとめに</span>
+                </>
+              }
+              body="申込・出席・お支払い・送ったメール・事前と事後のアンケートを、1枚にまとめます。印刷やPDFでの保存ができるので、振り返りや報告書にそのまま使えます。"
+              bullets={["印刷・PDF保存", "参加者とアンケートのCSV"]}
+              image="/lp/report.webp"
+              imageAlt="イベントのまとめ。申込・出席・アンケートの数とチケットごとの内訳"
+            />
+            <ZigzagFeature
               icon={<Users size={22} />}
-              label="04 / CRM"
+              label="05 / CRM"
               title={
                 <>
                   そのデータ、<br />
@@ -406,8 +422,23 @@ export default function Home() {
               }
               body="Googleフォームでイベントごとにバラバラに管理するのは、もう終わり。全てのイベントの参加者データが自動で一箇所に蓄積され、「あのイベントに来た人」をすぐに検索できます。"
               bullets={["全イベント横断検索", "絆リストとして蓄積"]}
-              image="/crm-list.png"
-              imageAlt="顧客一元管理画面"
+              image="/lp/kizuna.webp"
+              imageAlt="絆リスト。これまでの参加者の名簿と、案内のメールを作る画面"
+            />
+            <ZigzagFeature
+              reverse
+              icon={<BarChart3 size={22} />}
+              label="06 / ANALYTICS"
+              title={
+                <>
+                  イベントの状況を<br />
+                  <span style={{ color: ORANGE_BRIGHT }}>一目で把握</span>
+                </>
+              }
+              body="告知ページを見た数、申込率、出席率、リピーター率などを、イベントごと・月ごとにグラフで確かめられます。次の企画づくりの手がかりになります。"
+              bullets={["イベント別・月別のグラフ", "リピーター率"]}
+              image="/lp/analytics.webp"
+              imageAlt="分析の画面。ページを見た数・申込率・出席率・リピーター率とグラフ"
             />
           </div>
         </section>
@@ -587,6 +618,9 @@ export default function Home() {
             <BentoCard icon={<Share2 size={22} />} title="SNSシェア対応" body="LINEやXにURLを貼るだけで、美しいOGPカードが自動表示" />
             <BentoCard icon={<Copy size={22} />} title="イベント複製" body="定例会や定期セミナーは「コピーして作成」すれば5秒で準備完了" />
             <BentoCard icon={<ScanLine size={22} />} title="名刺スキャン" body="交流会でいただいた名刺を撮影するだけで、文字を読み取って顧客リストに登録" />
+            <BentoCard icon={<Printer size={22} />} title="チラシ作成" body="イベントの内容からA4のチラシを作成。申込ページのQRコード入りで、印刷もPDF保存もできます" />
+            <BentoCard icon={<RotateCcw size={22} />} title="キャンセル・返金の決まり" body="「7日前まで全額」などの決まりを申込フォームに表示。参加者は受付のメールから取り消せます" />
+            <BentoCard icon={<UserPlus size={22} />} title="スタッフの招待" body="スタッフをメールで招待して、管理画面を一緒に使えます" />
           </div>
           <div className="mt-10 text-center">
             <Link
