@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import ReservationForm from "@/components/ReservationForm";
 import PayLinkBox from "@/components/PayLinkBox";
+import { eventDate } from "@/lib/event-date"; // 日付は見る人の時刻帯で前の日にずらさない
 import { 
   Calendar, MapPin, User, CheckCircle2, ArrowRight, 
   Share2, Check, ExternalLink, Train, Users, Sparkles,
@@ -38,7 +39,7 @@ export default function CorporateLayout({ event, tenant, eventId, tenantId }: Pr
 
   const formatDate = (dateStr: string) => {
   if (!dateStr) return { full: "----年--月--日" };
-  const d = new Date(dateStr);
+  const d = eventDate(dateStr);
   return { full: `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日` };
 };
 
@@ -116,7 +117,7 @@ if (submitted) {
   );
 }
 
-  const d = new Date(event.date);
+  const d = eventDate(event.date);
   const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
   const weekDay = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
   

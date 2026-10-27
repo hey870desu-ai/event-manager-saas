@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
 import PayLinkBox from "@/components/PayLinkBox";
+import { eventDate } from "@/lib/event-date"; // 日付は見る人の時刻帯で前の日にずらさない
 import Link from "next/link";
 import { Playfair_Display, Noto_Serif_JP, Inter, Noto_Sans_JP } from "next/font/google";
 import {
@@ -69,7 +70,7 @@ export default function EditorialLayout({ event, tenant, eventId, tenantId }: Pr
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const d = new Date(event.date);
+  const d = eventDate(event.date);
   const yearStr = d.getFullYear();
   const monthName = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
                      "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"][d.getMonth()];

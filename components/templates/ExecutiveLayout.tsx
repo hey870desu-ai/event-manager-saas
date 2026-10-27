@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
 import PayLinkBox from "@/components/PayLinkBox";
+import { eventDate } from "@/lib/event-date"; // 日付は見る人の時刻帯で前の日にずらさない
 import Link from "next/link";
 import { Cormorant_Garamond, Noto_Serif_JP } from "next/font/google";
 import {
@@ -124,7 +125,7 @@ export default function ExecutiveLayout({ event, tenant, eventId, tenantId }: Pr
   }
 
   // ===== 通常画面 =====
-  const d = new Date(event.date);
+  const d = eventDate(event.date);
   const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
   const monthStr = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][d.getMonth()];
   const weekDay = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][d.getDay()];

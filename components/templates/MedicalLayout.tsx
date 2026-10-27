@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
 import PayLinkBox from "@/components/PayLinkBox";
+import { eventDate } from "@/lib/event-date"; // 日付は見る人の時刻帯で前の日にずらさない
 import Link from "next/link";
 import {
   Calendar, Clock, MapPin, User, Check,
@@ -28,7 +29,7 @@ export default function MedicalLayout({ event, tenant, eventId, tenantId }: Prop
   const SECONDARY = "#0ea5e9";
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr || new Date());
+    const d = dateStr ? eventDate(dateStr) : new Date();
     const days = ["日", "月", "火", "水", "木", "金", "土"];
     return { full: `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`, week: days[d.getDay()] };
   };

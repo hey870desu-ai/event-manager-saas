@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ReservationForm from "@/components/ReservationForm";
 import PayLinkBox from "@/components/PayLinkBox";
+import { eventDate } from "@/lib/event-date"; // 日付は見る人の時刻帯で前の日にずらさない
 import Link from "next/link";
 import { 
   Clock, MapPin, User, Sparkles, 
@@ -71,7 +72,7 @@ export default function PopLayout({ event, tenant, eventId, tenantId }: Props) {
     );
   }
 
-  const d = new Date(event.date);
+  const d = eventDate(event.date);
   const dateStr = `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
   const weekDay = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()];
   
