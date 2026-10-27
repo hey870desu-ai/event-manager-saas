@@ -158,6 +158,7 @@ export default function GuidePage() {
             media={<div className="space-y-8"><div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"><Phone fluid name="theme-medical" alt="Medical のデザインの告知ページ" /><Phone fluid name="theme-pop" alt="Pop のデザインの告知ページ" /><Phone fluid name="theme-editorial" alt="Editorial のデザインの告知ページ" /><Phone fluid name="theme-nature" alt="Nature のデザインの告知ページ" /></div><Part name="editor-theme" alt="イベントの編集のデザインテーマ。11種類から選ぶ" /></div>}>
             <p>11種類のデザインから選べます。医療・福祉向け、やわらかいポップ、雑誌風など、イベントの雰囲気に合わせて切り替えられます。</p>
             <p>スマホでもパソコンでも読みやすい形で表示されます。講師の紹介やタイムスケジュール、会場の地図も入ります。</p>
+            <p>公開したイベントのページは、Google などの検索にも出ます。会員だけの研修などで出したくないときは、イベントの編集の「公開ステータス」の下にある「検索に出さない」に印を付けます。</p>
           </Feature>
 
           <Feature id="form" title="申込フォームの質問を、自由に足せます" path="イベントの編集の「申し込みフォームの質問設定」" side

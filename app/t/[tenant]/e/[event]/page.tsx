@@ -5,6 +5,8 @@ import { Metadata } from "next";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import EventClient from "./EventClient";
+// 検索に出す決まり（公開中で「検索に出さない」でないもの）と Google のイベント用のデータ
+import { eventJsonLd, eventPageUrl, isEventIndexable } from "@/lib/event-seo";
 import { Lock, CheckCircle } from "lucide-react";
 
 type Props = {
@@ -18,10 +20,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tenantId = resolvedParams?.tenant || "default";
   const eventId = resolvedParams?.event;
 
-  // デフォルト（読み込み失敗時用）
-  const defaultMetadata = {
+  // デフォルト（読み込み失敗時用）。読めないとき（下書きは外から読めない決まり・無いイベント）は画面が「準備中」になるので、検索に載せない
+  const defaultMetadata: Metadata = {
     title: "イベント詳細 | イベントシステム絆太郎",
     description: "イベントの詳細・お申し込みはこちらからご確認ください。",
+    robots: { index: false, follow: false },
   };
 
   if (!eventId) return defaultMetadata;
@@ -45,6 +48,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: "準備中 | 絆太郎",
     description: "このイベントは現在、公開準備中だっぺ！",
     openGraph: { title: "Coming Soon", images: [] },
+    // 下書き・受付終了の画面は検索に載せない
+    robots: { index: false, follow: false },
   };
 }
     const tenant = tenantSnap.exists() ? tenantSnap.data() : { name: "Event Manager" };
@@ -64,6 +69,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: pageTitle,
       description: description,
+      // 正式なアドレス（Lステップなどで後ろに文字が付いても同じページとして数えさせる）
+      alternates: { canonical: eventPageUrl(tenantId, eventId) },
+      // 編集画面で「検索に出さない」にしたイベントは、検索に載せない（URL を知っている人は見られる）
+      ...(isEventIndexable(event) ? {} : { robots: { index: false, follow: false } }),
       openGraph: {
         title: pageTitle,
         description: description,
@@ -155,13 +164,19 @@ export default async function EventPage({ params }: Props) {
     );
   }
 
-  // 4. データを EventClient に渡す
+  // 4. データを EventClient に渡す。検索に出すイベントには Google のイベント用のデータ（日時・会場・料金・主催者・講師）を付ける
+  const jsonLd = isEventIndexable(eventData) ? eventJsonLd(eventData, tenantData, tenantId, eventId) : null;
   return (
-    <EventClient
-      event={eventData}
-      tenant={tenantData || { name: "Event Manager" }}
-      eventId={eventId}
-      tenantId={tenantId}
-    />
+    <>
+      {jsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      )}
+      <EventClient
+        event={eventData}
+        tenant={tenantData || { name: "Event Manager" }}
+        eventId={eventId}
+        tenantId={tenantId}
+      />
+    </>
   );
 }

@@ -102,6 +102,8 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
     price: "無料",
     capacity: "50",
     status: "draft",
+    // 「検索に出さない」（2026-10-28）。印が無ければ、公開中のイベントは検索に出る
+    searchHidden: false,
     
     venueName: "",
     venueAddress: "",
@@ -263,6 +265,7 @@ useEffect(() => {
         price: event.price || "無料",
         capacity: event.capacity || "50",
         status: event.status || "draft",
+        searchHidden: event.searchHidden === true,
         venueName: event.venueName || event.location || "",
         venueAddress: event.venueAddress || "",
         venueAccess: event.venueAccess || "",
@@ -730,6 +733,14 @@ useEffect(() => {
              <option value="published">🚀 公開する</option>
              <option value="closed">🔒 受付終了</option>
            </select>
+           {/* 公開中のイベントのページは、ふつうは Google などの検索にも出る（2026-10-28）。会員だけの研修などは、ここで外す */}
+           <label className="mt-3 flex items-start gap-2 cursor-pointer">
+             <input type="checkbox" name="searchHidden" checked={formData.searchHidden} onChange={handleCheckbox} className="mt-0.5 w-4 h-4 rounded accent-indigo-500 shrink-0" />
+             <span className="text-xs leading-relaxed">
+               <span className="font-bold text-slate-200">検索に出さない</span>
+               <span className="block text-slate-400"><span className="inline-block">Google などの検索結果に載せません。</span><span className="inline-block">URL を知っている人は見られます。</span></span>
+             </span>
+           </label>
         </div>
       </div>
 
