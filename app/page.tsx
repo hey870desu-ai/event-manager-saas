@@ -72,6 +72,12 @@ export default function Home() {
               features
             </Link>
             <Link
+              href="/guide"
+              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              guide
+            </Link>
+            <Link
               href="#pricing"
               className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
             >
@@ -581,6 +587,14 @@ export default function Home() {
             <BentoCard icon={<Share2 size={22} />} title="SNSシェア対応" body="LINEやXにURLを貼るだけで、美しいOGPカードが自動表示" />
             <BentoCard icon={<Copy size={22} />} title="イベント複製" body="定例会や定期セミナーは「コピーして作成」すれば5秒で準備完了" />
             <BentoCard icon={<ScanLine size={22} />} title="名刺スキャン" body="交流会でいただいた名刺を撮影するだけで、文字を読み取って顧客リストに登録" />
+          </div>
+          <div className="mt-10 text-center">
+            <Link
+              href="/guide"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-md border border-[#D97757]/60 text-[#F08856] text-sm font-bold hover:bg-[#D97757]/10 transition-colors"
+            >
+              できること・使い方を画面の写真で見る <ArrowRight size={16} />
+            </Link>
           </div>
         </Section>
 

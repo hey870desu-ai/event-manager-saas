@@ -21,7 +21,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList, Printer } from "lucide-react"; 
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList, Printer, BookOpen } from "lucide-react";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -1009,6 +1009,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
         <Megaphone size={14} /> 
         <span className="hidden md:inline text-xs font-bold">Information</span>
       </button>
+      {/* 使い方（画面の写真つき・別のタブで開く） */}
+      <a href="/guide" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full hover:bg-orange-50 transition-all border border-slate-200">
+        <BookOpen size={14} />
+        <span className="text-xs font-bold">使い方</span>
+      </a>
     </div>
 
     {/* 【PC版】横並びメニュー（md以上の画面で見える） */}
@@ -2716,7 +2721,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                   {[
                     { title: "プロ品質のイベントページ", desc: "テーマを選んで情報を入力するだけ。デザイナー不要で美しい告知ページが完成します。", bg: "bg-blue-50", color: "text-blue-600" },
                     { title: "申し込み・参加者管理", desc: "フォーム作成からリアルタイムの参加者リスト、キャンセル管理まで一元化。Excelでの手作業から解放されます。", bg: "bg-violet-50", color: "text-violet-600" },
-                    { title: "QRコードでスマート受付", desc: "当日はQRコードを表示するだけ。参加者がスマホで読み取って、スムーズにチェックイン。", bg: "bg-indigo-50", color: "text-indigo-600" },
+                    { title: "QRコードでスマート受付", desc: "参加者の受付メールのQRコードを、主催者のスマホで読み取るだけ。受付の進み具合もその場で分かります。", bg: "bg-indigo-50", color: "text-indigo-600" },
                     { title: "メール配信・ファン作り", desc: "リマインド・お礼・ニュースレターを簡単送信。参加者との絆を深めてリピーターを増やします。", bg: "bg-emerald-50", color: "text-emerald-600" },
                   ].map((item, idx) => (
                     <div key={idx} className={`flex items-start gap-3 p-4 ${item.bg} rounded-xl`}>
@@ -2739,9 +2744,9 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                 </div>
                 <div className="grid gap-3">
                   {[
-                    { step: "1", title: "イベントを作成する", desc: "左上の「新規イベント」から、タイトル・日時・場所を入力。5つのテーマから好みのデザインを選べます。", color: "text-blue-600", icon: <Plus size={15} strokeWidth={3}/> },
-                    { step: "2", title: "当日はQRコードで受付", desc: "イベント一覧の「QR」ボタンを押すと受付用コードが表示されます。プロジェクターやタブレットに映すだけ。", color: "text-indigo-600", icon: <QrCode size={15} strokeWidth={3}/> },
-                    { step: "3", title: "参加者にお礼メールを送る", desc: "イベントをクリック →「参加者リスト」→ テンプレートを選んで一斉送信。次回の案内も一緒に送れます。", color: "text-emerald-600", icon: <Mail size={15} strokeWidth={3}/> },
+                    { step: "1", title: "イベントを作成する", desc: "「＋新規イベント」から、タイトル・日時・場所を入力。11のデザインから好みのものを選べます。", color: "text-blue-600", icon: <Plus size={15} strokeWidth={3}/> },
+                    { step: "2", title: "当日はQRコードで受付", desc: "メニューの「当日受付」で、参加者のQRコード（受付のメールに入っています）を読み取ります。", color: "text-indigo-600", icon: <QrCode size={15} strokeWidth={3}/> },
+                    { step: "3", title: "参加者にお礼メールを送る", desc: "イベントの「参加者リスト」→「メール送信」で、ひな形を選んで一斉送信。事後アンケートのボタンも入れられます。", color: "text-emerald-600", icon: <Mail size={15} strokeWidth={3}/> },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
                       <div className={`mt-0.5 w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center flex-shrink-0`}>
@@ -2765,8 +2770,9 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
 
-              <p className="mt-4 text-slate-400 text-[11px] font-medium text-center">
-                ※ この案内は右上の「Information」からいつでも確認できます
+              <p className="mt-4 text-slate-500 text-xs font-medium text-center">
+                画面の写真つきの使い方は、上の「使い方」からいつでも見られます。
+                <a href="/guide" target="_blank" rel="noopener noreferrer" className="ml-1 text-indigo-600 font-bold underline underline-offset-2">いま見る</a>
               </p>
             </div>
           </div>
