@@ -10,6 +10,7 @@ import { INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, isCountedAdmi
 // アンケート回答(answers)の新旧フォーマット3種すべてに対応するヘルパー（イベントのまとめと同じものを使う）
 import { answerEntries, answerValue, customAnswerValue } from "@/lib/survey-answers";
 import { isPayLinkEvent } from "@/lib/pay-link";
+import { surveyUrl, downloadSurveyQr, downloadSurveySlide } from "@/lib/survey-qr";
 import { useRouter } from "next/navigation";
 import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc, orderBy, updateDoc,addDoc,serverTimestamp } from "firebase/firestore";
 import EventForm from "@/components/EventForm";
@@ -21,7 +22,7 @@ import { where } from "firebase/firestore";
 import { fetchAllTenants, type Tenant } from "../../lib/tenants";
 
 // Icons
-import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList, Printer, BookOpen } from "lucide-react";
+import { Menu,Plus, LogOut, Calendar, MapPin, ExternalLink, Trash2, BarChart3, Users, Check, Eye, Share2, FileDown, ShieldAlert, Settings, UserPlus, X, UserCheck, ListChecks, Copy, Mail, Send, Building2, Tag, Megaphone, BarChart2, ScanBarcode, QrCode, Star,Sparkles, MessageSquare, Clock, FileText, Shield, CreditCard, ArrowRight, Lock,ScanLine,Instagram,MessageCircle,Facebook,UserX, RefreshCw, ClipboardList, Printer, BookOpen, Download, Presentation } from "lucide-react";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com"; 
 
@@ -142,6 +143,7 @@ export default function AdminDashboard() {
   const [counts, setCounts] = useState<{[key:string]: number}>({});
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrEvent, setQrEvent] = useState<EventData | null>(null);
+  const [qrSaving, setQrSaving] = useState<"" | "qr" | "slide">("");
 
   // Modals
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
@@ -1868,27 +1870,43 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       )}
 
       {/* ★追加: アンケートQRモーダル */}
-      {isQrModalOpen && qrEvent && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" onClick={() => setIsQrModalOpen(false)}>
+      {isQrModalOpen && qrEvent && (() => {
+        const answerUrl = surveyUrl(window.location.origin, qrEvent.tenantId, qrEvent.id);
+        // 保存する（QRだけ／スライドの形）。失敗したら知らせる
+        const saveQr = async (kind: "qr" | "slide") => {
+          if (qrSaving) return;
+          setQrSaving(kind);
+          try {
+            if (kind === "qr") await downloadSurveyQr(answerUrl, qrEvent.title);
+            else await downloadSurveySlide(answerUrl, qrEvent.title);
+          } catch (err) {
+            console.error(err);
+            alert("画像を保存できませんでした。通信状況を確認して、もう一度押してください。");
+          } finally {
+            setQrSaving("");
+          }
+        };
+        return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-[100] overflow-y-auto" onClick={() => setIsQrModalOpen(false)}>
           <div className="bg-white text-slate-900 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 relative" onClick={e => e.stopPropagation()}>
              <button onClick={() => setIsQrModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2"><X size={24}/></button>
-             
+
              <h3 className="text-xl font-bold mb-1">アンケートのお願い</h3>
              <p className="text-slate-500 text-xs mb-6">{qrEvent.title}</p>
-             
+
              <div className="bg-white p-2 rounded-xl border-2 border-slate-100 inline-block mb-6 shadow-inner">
                {/* QRコード生成APIを使って画像を表示 */}
-               <img 
-                 src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${window.location.origin}/t/${qrEvent.tenantId || "default"}/e/${qrEvent.id}/survey`)}`} 
-                 alt="Survey QR" 
+               <img
+                 src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(answerUrl)}`}
+                 alt="Survey QR"
                  className="w-64 h-64 object-contain"
                />
              </div>
-             
+
              <div className="bg-slate-50 p-4 rounded-xl text-left">
                 <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Answer URL</p>
                 <p className="text-xs text-slate-600 break-all font-mono select-all">
-                  {`${window.location.origin}/t/${qrEvent.tenantId || "default"}/e/${qrEvent.id}/survey`}
+                  {answerUrl}
                 </p>
              </div>
 
@@ -1896,8 +1914,32 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                 <p className="text-sm font-bold text-slate-700">こちらのQRコードを読み取って<br/>回答にご協力ください</p>
              </div>
           </div>
+
+          {/* 画像で保存（スクリーンに映すカードの外に置く） */}
+          <div className="mt-4 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => saveQr("qr")}
+                disabled={!!qrSaving}
+                className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-60 border border-white/30 text-white px-3 py-2.5 rounded-xl text-xs font-bold transition-colors"
+              >
+                {qrSaving === "qr" ? <RefreshCw size={16} className="animate-spin"/> : <Download size={16}/>}
+                QRコードを保存
+              </button>
+              <button
+                onClick={() => saveQr("slide")}
+                disabled={!!qrSaving}
+                className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-60 border border-white/30 text-white px-3 py-2.5 rounded-xl text-xs font-bold transition-colors"
+              >
+                {qrSaving === "slide" ? <RefreshCw size={16} className="animate-spin"/> : <Presentation size={16}/>}
+                スライド用を保存
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-2 leading-relaxed text-center">PNGの画像で保存します。スライドや配布資料に貼れます。<br/>スライド用は、案内の文とQRコードを横長に並べた1枚です。</p>
+          </div>
         </div>
-      )}
+        );
+      })()}
       
 {/* ★修正: アンケート結果分析モーダル（日本語・回答率付き） */}
       {isFeedbackOpen && currentEventForList && (

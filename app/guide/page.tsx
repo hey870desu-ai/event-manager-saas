@@ -232,6 +232,7 @@ export default function GuidePage() {
           <Feature id="survey" title="事後アンケートを、その場で答えてもらう" path="イベントのカードの「QR表示」（質問はイベントの編集の「イベント終了後アンケート」）"
             media={<div className="flex flex-wrap justify-center items-start gap-6 md:gap-10"><div className="w-[260px] md:w-[300px]"><Part name="survey-qr" alt="アンケートのお願いのQRコード（写真は見本）" /></div><Phone name="survey" alt="参加者が答える事後アンケートの画面。満足度の星と質問" /></div>}>
             <p>終わりに会場のスクリーンへQRコードを映すと、参加者がスマホでその場で答えられます。満足度（星5つ）と、自由に作った質問で聞けます。</p>
+            <p>QRコードは画像で保存できます。QRだけの画像と、案内の文を添えたスライドの形の画像があり、スライドの最後や配布資料に入れておけます。</p>
             <p>お礼のメールに、アンケートのボタンを入れて送ることもできます。</p>
           </Feature>
 
