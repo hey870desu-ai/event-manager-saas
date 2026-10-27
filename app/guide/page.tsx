@@ -9,6 +9,7 @@ import { ArrowRight, CalendarPlus, ClipboardList, Mail, MousePointerClick, QrCod
 export const metadata: Metadata = {
   title: "できること・使い方",
   description: "絆太郎でできることを、画面の写真でご案内します。告知ページと申込フォームの作成、受付のメール、事前・事後アンケート、当日のQR受付、イベントのまとめ、参加者の名簿まで。",
+  alternates: { canonical: "https://www.event-manager.app/guide" },
 };
 
 const ORANGE = "#D97757";
@@ -116,6 +117,7 @@ export default function GuidePage() {
             <span>絆太郎</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3 text-sm">
+            <Link href="/blog" className="hidden sm:inline px-2 text-slate-600 hover:text-slate-900">ブログ</Link>
             <Link href="/#pricing" className="hidden sm:inline px-2 text-slate-600 hover:text-slate-900">料金</Link>
             <Link href="/login" className="px-2 text-slate-600 hover:text-slate-900">ログイン</Link>
             <Link href="/register" className="px-3 py-2 rounded-lg text-white font-bold" style={{ background: ORANGE }}>無料で始める</Link>
@@ -296,6 +298,7 @@ export default function GuidePage() {
           <p>イベントシステム絆太郎（ばんたろう）</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/" className="hover:text-slate-800">トップ</Link>
+            <Link href="/blog" className="hover:text-slate-800">ブログ</Link>
             <Link href="/terms" className="hover:text-slate-800">利用規約</Link>
             <Link href="/privacy" className="hover:text-slate-800">プライバシーポリシー</Link>
             <Link href="/legal" className="hover:text-slate-800">特定商取引法</Link>

@@ -9,6 +9,13 @@ import {
   CreditCard, ClipboardList, FileText, Printer, RotateCcw, UserPlus,
 } from "lucide-react";
 import { JetBrains_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import { SITE_URL, softwareJsonLd } from "@/lib/site";
+
+// 正式なアドレス（www つき）。タイトルと説明は layout.tsx のもの
+export const metadata: Metadata = {
+  alternates: { canonical: `${SITE_URL}/` },
+};
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
@@ -66,31 +73,38 @@ export default function Home() {
           </Link>
 
           <nav className="flex items-center gap-1 md:gap-3 text-xs md:text-sm">
+            {/* 768px 未満はログインと始めるだけ。features と contact は 1024px から（640〜850px で左の名前と重なっていた） */}
             <Link
               href="#features"
-              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+              className="hidden lg:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
             >
               features
             </Link>
             <Link
               href="/guide"
-              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+              className="hidden md:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
             >
               guide
             </Link>
             <Link
+              href="/blog"
+              className="hidden md:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+            >
+              blog
+            </Link>
+            <Link
               href="#pricing"
-              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+              className="hidden md:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
             >
               pricing
             </Link>
             <Link
               href="/contact"
-              className="hidden sm:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
+              className="hidden lg:inline text-[#888] hover:text-[#F08856] transition-colors px-2"
             >
               contact
             </Link>
-            <span className="hidden sm:inline h-4 w-px bg-[#2A2A2A]" />
+            <span className="hidden md:inline h-4 w-px bg-[#2A2A2A]" />
             <Link
               href="/login"
               className="text-[#888] hover:text-[#F08856] transition-colors px-2"
@@ -113,6 +127,8 @@ export default function Home() {
       </header>
 
       <main className="relative z-10">
+        {/* 検索とAI向け：ソフトウェアの名前・説明・料金（lib/site.ts・料金は lib/plans.ts から） */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd()).replace(/</g, "\\u003c") }} />
         {/* ▼ Hero（ターミナルウィンドウ） */}
         <section className="pt-10 md:pt-16 pb-20 px-4">
           <div className="container mx-auto max-w-4xl">
@@ -719,13 +735,14 @@ export default function Home() {
               items={[
                 { label: "機能一覧", href: "#features" },
                 { label: "料金プラン", href: "#pricing" },
+                { label: "ブログ", href: "/blog" },
                 { label: "導入事例 (Coming Soon)", href: "#", disabled: true },
               ]}
             />
             <FooterCol
               title="Support"
               items={[
-                { label: "ヘルプセンター", href: "#", disabled: true },
+                { label: "使い方のページ", href: "/guide" },
                 { label: "お問い合わせ", href: "/contact" },
                 { label: "APIドキュメント", href: "#", disabled: true },
               ]}

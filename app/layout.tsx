@@ -13,7 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://event-manager.app"),
+  // 正式なアドレスは www つき（event-manager.app は www へ転送している）。⚠ canonical はページごとに付ける（ここに置くと全ページがトップを指してしまう）
+  metadataBase: new URL("https://www.event-manager.app"),
 
   title: {
     template: '%s | イベントシステム絆太郎（ばんたろう）',
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     title: "イベントシステム絆太郎（ばんたろう）",
     description: "セミナー・イベントのLP作成からフォーム作成・名簿管理・メール配信までスマホで完結。イベントシステム絆太郎（ばんたろう）。",
     siteName: "イベントシステム絆太郎",
-    url: "https://event-manager.app",
+    url: "https://www.event-manager.app",
     images: [
       {
         url: "/icon.webp",
