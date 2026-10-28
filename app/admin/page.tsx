@@ -2571,18 +2571,24 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       有料のイベントは、Stripe とつながなくても開けます（当日払い・申込のあとの事前払い）。払い方は、イベントの編集の「参加費の払い方」で選びます。<br />
       <Link href="/admin/guide/payments" className="text-indigo-600 font-bold underline underline-offset-2">参加費の受け取り方（くわしい使い方）</Link>
     </p>
-    <StripeConnectButton
-      tenantId={currentUserTenant}
-      isConnected={!!(currentTenantData as any)?.stripeConnectId}
-      legalPageUrl={typeof window !== 'undefined' ? `${window.location.origin}/${currentUserTenant}/legal` : ''}
-      legalInfo={{
-        companyName: legalCompanyName,
-        representative: representative,
-        address: legalAddress,
-        phone: legalPhone,
-        email: legalEmail,
-      }}
-    />
+    {/* カードの決済（Stripe）は見直し中。自分の Stripe をつないだ会社では決済が通らない作り（直接の決済と運営を通す決済の書き方が混ざっている）なので、
+        つないでいない会社には連携のボタンを出さない（2026-10-28）。つないでいる会社は今までどおり「Stripe連携済み」 */}
+    {(currentTenantData as any)?.stripeConnectId ? (
+      <StripeConnectButton
+        tenantId={currentUserTenant}
+        isConnected={!!(currentTenantData as any)?.stripeConnectId}
+        legalPageUrl={typeof window !== 'undefined' ? `${window.location.origin}/${currentUserTenant}/legal` : ''}
+        legalInfo={{
+          companyName: legalCompanyName,
+          representative: representative,
+          address: legalAddress,
+          phone: legalPhone,
+          email: legalEmail,
+        }}
+      />
+    ) : (
+      <p className="text-[10px] text-slate-500 bg-white border border-indigo-100 rounded-xl p-3">カードで払っていただく形（Stripe との連携）は、いま見直しています。</p>
+    )}
   </div>
 </div>
 
