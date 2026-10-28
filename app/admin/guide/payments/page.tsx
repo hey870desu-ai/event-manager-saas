@@ -229,6 +229,7 @@ export default function PaymentsGuidePage() {
           ]} />
           <p>リストの下には合計が出ます。当日払いのイベントは「売上予定（合計）」「受付済（徴収額）」「当日現金（未回収分）」、事前に払っていただくイベントは「売上予定（合計）」「支払い済み」「支払い未確認」です。</p>
           <p>まだ払っていない方には、リストで選んで「メール送信」から、お支払いのお願いを送れます。</p>
+          <p>イベントごと・月ごとの合計や、会場費・講師への謝礼などの経費を入れた差し引きは、<Link href="/admin/finance" className="text-indigo-600 font-bold underline underline-offset-2">収支</Link>の画面で見られます。</p>
         </Block>
 
         <Block id="cancel" n={5} title="キャンセルと返金">

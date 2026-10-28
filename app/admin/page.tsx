@@ -1119,6 +1119,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
             <CreditCard size={22} className="text-slate-500" /> <span className="text-base">契約・請求</span>
           </button>
 
+          {/* 収支（売上・経費・差し引き） */}
+          <button onClick={() => { router.push("/admin/finance"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <BarChart3 size={22} className="text-emerald-600" /> <span className="text-base">収支（売上・経費）</span>
+          </button>
+
           {/* 参加費の受け取り方（使い方） */}
           <button onClick={() => { router.push("/admin/guide/payments"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
             <BookOpen size={22} className="text-orange-500" /> <span className="text-base">参加費の受け取り方</span>
@@ -1794,6 +1799,8 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       )}
       {/* 参加費の受け取り方の「払われたかの確かめ方」（リストを開いたまま見られるよう、別のタブで開く） */}
       <a href="/admin/guide/payments#check" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">支払いの確かめ方</a>
+      {/* このイベントの収支（経費を入れて差し引きを見る。リストを開いたまま見られるよう、別のタブで開く） */}
+      {currentEventForList && <a href={`/admin/finance?event=${currentEventForList.id}`} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">このイベントの収支</a>}
     </div>
 
     {/* 右側：金額合計 */}
