@@ -41,6 +41,7 @@ type EmailParams = {
   replyTo?: string;
   text?: string; // 未指定ならHTMLから自動生成（multipart/alternative化で迷惑メール判定を軽減）
   headers?: Record<string, string>; // List-Unsubscribe等のカスタムヘッダー
+  attachments?: { filename: string; content: Buffer }[]; // 添付（領収証の PDF など）。SES v1 経路は添付できないので通さない
 };
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
@@ -81,9 +82,10 @@ export async function sendEmail(params: EmailParams) {
   const text = params.text || htmlToText(params.html);
   // List-Unsubscribe等のカスタムヘッダーが必要なメールはSES v1経路に流さない（ヘッダーが黙って消えるため）
   const hasCustomHeaders = !!(params.headers && Object.keys(params.headers).length > 0);
+  const hasAttachments = !!(params.attachments && params.attachments.length > 0);
 
   // SES優先
-  if (USE_SES && sesClient && !hasCustomHeaders) {
+  if (USE_SES && sesClient && !hasCustomHeaders && !hasAttachments) {
     const toAddresses = Array.isArray(params.to) ? params.to : [params.to];
     const senderName = extractName(params.from);
     // 注: SES v1 SendEmailCommandはカスタムヘッダー非対応（List-Unsubscribeを使うならSESv2移行が必要）
@@ -112,6 +114,7 @@ export async function sendEmail(params: EmailParams) {
       text,
       replyTo: params.replyTo,
       headers: params.headers,
+      ...(hasAttachments ? { attachments: params.attachments!.map(a => ({ filename: a.filename, content: a.content })) } : {}),
     });
     if (error) throw new Error(error.message);
     return { provider: 'resend' };
@@ -129,6 +132,7 @@ export async function sendEmail(params: EmailParams) {
       text,
       replyTo: params.replyTo,
       headers: params.headers,
+      ...(hasAttachments ? { attachments: params.attachments!.map(a => ({ filename: a.filename, content: a.content })) } : {}),
     });
     return { provider: 'gmail' };
   }
