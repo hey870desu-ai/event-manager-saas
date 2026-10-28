@@ -78,7 +78,13 @@ export async function POST(request: Request) {
         const prev = prevId ? await tx.get(receipts.doc(prevId)) : null;
         const prevNo = prev?.exists ? String(prev.data().data?.no || "") : "";
         const next = Number(c.exists ? c.data()?.[year] || 0 : 0) + 1;
-        const d: ReceiptData = { no: `${year}-${String(next).padStart(4, "0")}`, ...input, issuer, ...(prevNo ? { previousNo: prevNo } : {}) };
+        // イベントの名前・開催日・チケットも残す（領収証の下の表に出す）
+        const about = {
+          ...(ev.title ? { eventTitle: String(ev.title).slice(0, 120) } : {}),
+          ...(/^\d{4}-\d{2}-\d{2}$/.test(String(ev.date || "")) ? { eventDate: String(ev.date) } : {}),
+          ...(cur.selectedTicket ? { ticket: String(cur.selectedTicket).slice(0, 60) } : {}),
+        };
+        const d: ReceiptData = { no: `${year}-${String(next).padStart(4, "0")}`, ...input, issuer, ...about, ...(prevNo ? { previousNo: prevNo } : {}) };
         const ref = receipts.doc();
         tx.set(counterRef, { [year]: next }, { merge: true });
         tx.set(ref, { data: d, eventId, reservationId, eventTitle: String(ev.title || ""), email: String(r.email || ""), voided: false, createdAt: now, createdBy: caller.email });

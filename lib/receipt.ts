@@ -17,6 +17,9 @@ export type ReceiptData = {
   issueDate: string;   // YYYY-MM-DD
   issuer: ReceiptIssuer;
   previousNo?: string; // 作り直したときの、無効にした前の番号
+  eventTitle?: string; // イベントの名前・開催日・チケット（2026-10-29 から記録に残す。前の記録には無い）
+  eventDate?: string;  // YYYY-MM-DD
+  ticket?: string;
 };
 
 export const isRegNo = (s: unknown) => /^T\d{13}$/.test(String(s || ""));
