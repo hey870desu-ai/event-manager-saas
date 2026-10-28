@@ -8,6 +8,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { Users, Calendar, TrendingUp, DollarSign, Filter, ArrowLeft, UserCheck, UserX, Repeat, Eye, Target, CheckCircle2 } from "lucide-react";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
+// 売上（受け取り済み）の数え方は収支の画面と同じ（当日払いは受付を済ませた申込も入る）
+import { reservationMoney } from "@/lib/finance";
 import Link from "next/link";
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -100,15 +102,11 @@ export default function AnalyticsPage() {
   const checkedInReservations = activeReservations.filter(r => r.checkedIn === true);
   const paidReservations = activeReservations.filter(r => r.paymentStatus === 'paid' || r.paymentStatus === 'refunded');
 
-  // 実売上（paidAmountベース、なければイベント価格から推定）
-  const totalRevenue = activeReservations.reduce((acc, r) => {
-    if (r.paidAmount && r.paymentStatus === 'paid') return acc + Number(r.paidAmount);
-    if (r.paymentStatus === 'paid') {
-      const p = parseInt(String(r.price || r.eventPrice || '0').replace(/[^0-9]/g, ''), 10);
-      return acc + (isNaN(p) ? 0 : p);
-    }
-    return acc;
-  }, 0);
+  // 売上＝受け取り済み（lib/finance：支払い済みの印・当日払いで受付を済ませた申込・カードの取り消しで返金しなかった分）
+  //   以前は支払い済みの印だけを数えていたので、当日払いの会社は0円と出ていた（2026-10-28）
+  const eventById: Record<string, any> = Object.fromEntries(events.map(e => [e.id, e]));
+  const collectedOf = (r: any) => reservationMoney(eventById[r.eventId], r).collected;
+  const totalRevenue = filteredReservations.reduce((acc, r) => acc + collectedOf(r), 0);
 
   // PV合計 & 全体CVR
   const totalPV = filteredEvents.reduce((acc, e) => acc + (e.pageViews || 0), 0);
@@ -175,14 +173,7 @@ export default function AnalyticsPage() {
     const eventActive = activeReservations.filter(r => r.eventId === event.id);
     const eventCancelled = cancelledReservations.filter(r => r.eventId === event.id);
     const eventCheckedIn = eventActive.filter(r => r.checkedIn === true);
-    const revenue = eventActive.reduce((acc, r) => {
-      if (r.paidAmount && r.paymentStatus === 'paid') return acc + Number(r.paidAmount);
-      if (r.paymentStatus === 'paid') {
-        const p = parseInt(String(r.price || r.eventPrice || '0').replace(/[^0-9]/g, ''), 10);
-        return acc + (isNaN(p) ? 0 : p);
-      }
-      return acc;
-    }, 0);
+    const revenue = filteredReservations.filter(r => r.eventId === event.id).reduce((acc, r) => acc + collectedOf(r), 0);
     const pv = event.pageViews || 0;
     const cvr = pv > 0 ? ((eventActive.length / pv) * 100).toFixed(1) : "-";
     const attend = eventActive.length > 0 ? ((eventCheckedIn.length / eventActive.length) * 100).toFixed(0) : "-";
@@ -203,7 +194,13 @@ export default function AnalyticsPage() {
     const month = date.slice(0, 7); // "YYYY-MM"
     if (!monthlyData[month]) monthlyData[month] = { month, 参加者: 0, 売上: 0 };
     monthlyData[month].参加者 += 1;
-    if (r.paidAmount && r.paymentStatus === 'paid') monthlyData[month].売上 += Number(r.paidAmount);
+  });
+  filteredReservations.forEach(r => {
+    const date = r.eventDate || r.createdAt?.toDate?.()?.toISOString?.()?.slice(0, 7);
+    if (!date) return;
+    const month = date.slice(0, 7);
+    if (!monthlyData[month]) monthlyData[month] = { month, 参加者: 0, 売上: 0 };
+    monthlyData[month].売上 += collectedOf(r);
   });
   const monthlyTrend = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
 
@@ -222,6 +219,8 @@ export default function AnalyticsPage() {
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">マーケティング分析</h1>
             <p className="text-slate-400 text-sm">集客・収益・顧客データから次の戦略を見つける</p>
           </div>
+          {/* 経費を入れた差し引きは収支の画面で */}
+          <Link href="/admin/finance" className="ml-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold whitespace-nowrap">収支（売上・経費）</Link>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {/* イベント選択 */}
