@@ -1118,6 +1118,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
           <button onClick={() => { router.push("/dashboard"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
             <CreditCard size={22} className="text-slate-500" /> <span className="text-base">契約・請求</span>
           </button>
+
+          {/* 参加費の受け取り方（使い方） */}
+          <button onClick={() => { router.push("/admin/guide/payments"); setIsMobileMenuOpen(false); }} className="flex items-center gap-4 p-4 bg-slate-50 text-slate-700 rounded-2xl font-bold border border-slate-100">
+            <BookOpen size={22} className="text-orange-500" /> <span className="text-base">参加費の受け取り方</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1787,6 +1792,8 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       {cancelledParticipants.length > 0 && (
         <span>キャンセル: <span className="text-red-400 font-bold">{cancelledParticipants.length}</span> 名</span>
       )}
+      {/* 参加費の受け取り方の「払われたかの確かめ方」（リストを開いたまま見られるよう、別のタブで開く） */}
+      <a href="/admin/guide/payments#check" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">支払いの確かめ方</a>
     </div>
 
     {/* 右側：金額合計 */}
@@ -2561,8 +2568,8 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       <CreditCard size={16} className="text-indigo-500"/> 有料イベントの決済設定
     </h3>
     <p className="text-[10px] text-slate-500 mb-4">
-      有料セミナーを開催するには、Stripeアカウントとの連携が必要です。<br />
-      参加者が支払った参加費は、手数料（2%）を除きあなたの銀行口座に直接振り込まれます。
+      有料のイベントは、Stripe とつながなくても開けます（当日払い・申込のあとの事前払い）。払い方は、イベントの編集の「参加費の払い方」で選びます。<br />
+      <Link href="/admin/guide/payments" className="text-indigo-600 font-bold underline underline-offset-2">参加費の受け取り方（くわしい使い方）</Link>
     </p>
     <StripeConnectButton
       tenantId={currentUserTenant}

@@ -866,9 +866,13 @@ useEffect(() => {
 {/* 参加費の払い方（有料のチケットがあるときだけ） */}
 {tickets.some(t => t.price > 0) && (
 <div className="mt-6 md:col-span-2">
-  <label className="text-sm font-bold text-slate-300 flex items-center gap-2 mb-3">
-    <CreditCard size={14} className="text-indigo-400"/> 参加費の払い方
-  </label>
+  <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+    <label className="text-sm font-bold text-slate-300 flex items-center gap-2">
+      <CreditCard size={14} className="text-indigo-400"/> 参加費の払い方
+    </label>
+    {/* 編集中の内容を消さないよう、別のタブで開く */}
+    <a href="/admin/guide/payments" target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 underline underline-offset-2">くわしい使い方</a>
+  </div>
   <div className="space-y-2">
     <label className="flex items-start gap-2 text-sm text-slate-300 cursor-pointer">
       <input type="radio" name="payModeChoice" checked={formData.payMode !== "link"} onChange={() => setFormData(prev => ({ ...prev, payMode: "" }))} className="mt-1" />
