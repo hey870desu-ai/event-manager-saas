@@ -156,6 +156,10 @@ service cloud.firestore {
         allow read, delete: if isMember(tenantId);
         allow create, update: if isMember(tenantId) && validFinanceEntry();
       }
+      match /receipts/{rid} {                     // 参加者への領収証の記録（作るのはサーバー＝app/api/receipts だけ）
+        allow read: if isMember(tenantId);
+        allow write: if false;
+      }
     }
 
     // ---------- admin_users（最重要：権限昇格を防ぐ） ----------

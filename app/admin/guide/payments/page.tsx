@@ -263,8 +263,8 @@ export default function PaymentsGuidePage() {
               <dd className="mt-1">それまでに申し込んだ方には、申し込んだときの案内が届いています。払い方を変えたときは、その方々に「メール送信」で新しい案内をお送りください。</dd>
             </div>
             <div>
-              <dt className="font-bold text-slate-900">領収書は出せますか？</dt>
-              <dd className="mt-1">絆太郎からは出していません。お使いの決済サービスの領収書の機能か、主催者の領収書をお使いください。</dd>
+              <dt className="font-bold text-slate-900">領収証は出せますか？</dt>
+              <dd className="mt-1">出せます。参加者リストの「お支払い」の欄の「領収証を出す」から、宛名・金額・但し書き・お支払い方法を確かめて、PDF で保存するか、参加者のメールに PDF を付けて送れます。番号は会社ごとの通し番号です。インボイスの登録番号を設定（右上の歯車 →「法人・特商法情報」）に入れておくと、登録番号と消費税の額も載ります。</dd>
             </div>
           </dl>
         </Block>

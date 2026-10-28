@@ -16,6 +16,7 @@ import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc,
 import EventForm from "@/components/EventForm";
 import Link from "next/link"; // ★ Linkコンポーネントを追加
 import StripeConnectButton from "../../components/admin/StripeConnectButton";
+import ReceiptDialog from "@/components/admin/ReceiptDialog"; // 参加者への領収証（PDF・メール）
 import { where } from "firebase/firestore";
 
 // ★相対パスのまま維持
@@ -188,6 +189,8 @@ export default function AdminDashboard() {
   const [legalEmail, setLegalEmail] = useState("");           // 連絡先メールアドレス
   const [legalHomepage, setLegalHomepage] = useState("");      // 公式HP
   const [privacyPolicyUrl, setPrivacyPolicyUrl] = useState(""); // 独自プライバシーポリシーURL
+  const [invoiceRegNo, setInvoiceRegNo] = useState("");         // インボイスの登録番号（T＋13けた・任意。領収証に載る）
+  const [receiptTarget, setReceiptTarget] = useState<any>(null); // 領収証を出す申込（参加者リストから）
 
   const [currentEventForList, setCurrentEventForList] = useState<EventData | null>(null);
   const [participants, setParticipants] = useState<ReservationData[]>([]);
@@ -484,6 +487,7 @@ useEffect(() => {
         setLegalEmail(data.legalEmail || "");
         setLegalHomepage(data.homepage || "");
         setPrivacyPolicyUrl(data.privacyPolicyUrl || "");
+        setInvoiceRegNo(data.invoiceRegistrationNumber || "");
       }
     });
 
@@ -667,6 +671,9 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
   };
   
   const handleSaveTenantSettings = async () => {
+  // インボイスの登録番号は T と13けたの数字（空はなし）
+  const regNo = invoiceRegNo.trim().toUpperCase();
+  if (regNo && !/^T\d{13}$/.test(regNo)) { alert("インボイスの登録番号は、T と13けたの数字で入れてください（例：T1234567890123）。"); return; }
   try {
     await updateDoc(doc(db, "tenants", currentUserTenant), { 
       orgName: editingOrgName, // 表の顔（CARE DESIGN WORKS）
@@ -677,6 +684,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       legalEmail: legalEmail,
       homepage: legalHomepage,
       privacyPolicyUrl,
+      invoiceRegistrationNumber: regNo,
       instagramUrl,
       lineUrl,
       facebookUrl,
@@ -1733,6 +1741,12 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
               当日現金
             </span>
           )}
+          {/* 領収証（PDF の保存・メールで送る） */}
+          {(Number((p as any).price) || 0) > 0 && (
+            <button onClick={() => setReceiptTarget(p)} className="text-[10px] font-bold text-indigo-300 hover:text-white underline underline-offset-2 w-fit text-left">
+              {(p as any).receiptNo ? `領収証 ${(p as any).receiptNo}${(p as any).receiptSentAt ? "・送信済み" : ""}` : "領収証を出す"}
+            </button>
+          )}
         </div>
       </td>
 
@@ -1787,7 +1801,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                  </table>
                )}
             </div>
-            {/* ▼▼▼ フッター：合計金額の計算と表示 ▼▼▼ */}
+                        {/* ▼▼▼ フッター：合計金額の計算と表示 ▼▼▼ */}
 <div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col gap-3 shrink-0">
   <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
     {/* 左側：人数統計 */}
@@ -2473,6 +2487,14 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       )}
 
       {/* 設定モーダル */}
+      {/* 領収証のダイアログ（参加者リストの「領収証」から。表の申込が変わったら、最新の申込で出す） */}
+      {receiptTarget && currentEventForList && (
+        <ReceiptDialog
+          event={currentEventForList}
+          participant={participants.find(x => x.id === receiptTarget.id) || receiptTarget}
+          onClose={() => setReceiptTarget(null)}
+        />
+      )}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
            <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh] shadow-2xl">
@@ -2554,6 +2576,10 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">ホームページURL</label>
         <input type="text" value={legalHomepage} onChange={(e)=>setLegalHomepage(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none" placeholder="https://hana-hiro.com" />
+      </div>
+      <div>
+        <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">インボイスの登録番号（お持ちの場合・任意）</label>
+        <input type="text" value={invoiceRegNo} onChange={(e)=>setInvoiceRegNo(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:border-indigo-500 outline-none font-mono" placeholder="T1234567890123（参加者への領収証に載ります）" />
       </div>
       <div>
         <label className="text-[10px] text-slate-500 ml-1 font-bold uppercase">プライバシーポリシーURL（任意）</label>
