@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit, CreditCard, Copy, ExternalLink } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/InvoicePDF";
-import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst, prevMonthOf, isCountedAdmin } from "@/lib/plans";
+import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst, prevMonthOf, isCountedAdmin, signupChargeableMonths, monthsLabel } from "@/lib/plans";
 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -46,8 +46,8 @@ export default function TenantDetailPage() {
   // カードの月額（毎月1日に決済）のリンク
   const [linkMonth, setLinkMonth] = useState(() => nextMonthJst());
   const [creatingLink, setCreatingLink] = useState(false);
-  const [chargePrev, setChargePrev] = useState(false); // 前の月の分も申し込みのときに決済する
-  const [cardLink, setCardLink] = useState<{ url: string; startMonth: string; adminCount: number; extraAdmins: number; monthlyTotal: number; chargeNowMonth?: string | null } | null>(null);
+  const [chargeFrom, setChargeFrom] = useState(""); // 申し込みのときに決済する最初の月（空＝申し込みのときは決済しない）
+  const [cardLink, setCardLink] = useState<{ url: string; startMonth: string; adminCount: number; extraAdmins: number; monthlyTotal: number; chargeNowMonths?: string[]; chargeNowAmount?: number } | null>(null);
   const [linkError, setLinkError] = useState("");
 
   useEffect(() => {
@@ -182,6 +182,15 @@ const handleSave = async () => {
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
   const adminCount = admins.filter(a => isCountedAdmin(a.email)).length;
   const extraCount = extraAdmins(tenantData.plan, adminCount);
+  // 申し込みのときに決済できる分の選び方（1回目の月の前の月から、先月までさかのぼる）：[["2026-11"], ["2026-10", "2026-11"], …]
+  const prepayChoices: string[][] = [];
+  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(linkMonth)) {
+    const chargeable = signupChargeableMonths();
+    for (let m = prevMonthOf(linkMonth), months: string[] = []; chargeable.includes(m); m = prevMonthOf(m)) {
+      months = [m, ...months];
+      prepayChoices.push(months);
+    }
+  }
 
   // ★ カードの月額（毎月1日に決済）：Stripe の申し込みリンクを作る（金額と人数はサーバーで数え直す）
   const handleCreateCardLink = async () => {
@@ -192,7 +201,7 @@ const handleSave = async () => {
       const res = await fetch("/api/admin/stripe-monthly-link", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tenantId, startMonth: linkMonth, chargePrevMonth: chargePrev }),
+        body: JSON.stringify({ tenantId, startMonth: linkMonth, chargeFromMonth: chargeFrom || null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "リンクを作れませんでした");
@@ -446,17 +455,23 @@ const handleSave = async () => {
               <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-500 block mb-1">1回目の決済の月（その月の1日）</label>
-                  <input type="month" value={linkMonth} onChange={(e) => setLinkMonth(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none" />
+                  <input type="month" value={linkMonth} onChange={(e) => { setLinkMonth(e.target.value); setChargeFrom(""); }} className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none" />
                 </div>
                 <button onClick={handleCreateCardLink} disabled={creatingLink || !linkMonth} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold rounded-lg flex items-center gap-2">
                   {creatingLink ? <Loader2 className="animate-spin" size={16}/> : <CreditCard size={16}/>} カード登録のリンクを作る
                 </button>
               </div>
-              {linkMonth && (
-                <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
-                  <input type="checkbox" checked={chargePrev} onChange={(e) => setChargePrev(e.target.checked)} className="mt-1" />
-                  <span>{Number(prevMonthOf(linkMonth).slice(5))}月分（{cardMonthlyTotal(adminCount).toLocaleString()}円）も、申し込みのときに決済する<span className="block text-xs text-slate-500">1日の決済に間に合わず、次の月からになったときに使います（今月か来月の分だけ）</span></span>
-                </label>
+              {prepayChoices.length > 0 && (
+                <div>
+                  <label className="text-xs font-bold text-slate-500 block mb-1">申し込みのときに決済する分</label>
+                  <select value={chargeFrom} onChange={(e) => setChargeFrom(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none">
+                    <option value="">なし</option>
+                    {prepayChoices.map((months) => (
+                      <option key={months[0]} value={months[0]}>{monthsLabel(months)}（{(cardMonthlyTotal(adminCount) * months.length).toLocaleString()}円）</option>
+                    ))}
+                  </select>
+                  <span className="block text-xs text-slate-500 mt-1">1日の決済に間に合わず次の月からになったときや、前の月の分もいただくときに使います（先月・今月・来月の分だけ）</span>
+                </div>
               )}
               <div className="text-xs text-slate-500 leading-relaxed">
                 決済は毎月1日の朝（日本時間）です。登録のあとに管理の人が増えたり減ったりしたら、次の1日の決済から金額が変わります（日割りはしません）。Stripe の画面では、払う方がメールアドレスを入れます。
@@ -465,8 +480,8 @@ const handleSave = async () => {
               {cardLink && (
                 <div className="bg-slate-950 border border-indigo-500/30 rounded-lg p-4 space-y-3">
                   <div className="text-xs text-slate-300">
-                    月額 {cardLink.monthlyTotal.toLocaleString()}円（管理の人 {cardLink.adminCount}人・追加 {cardLink.extraAdmins}人）・{cardLink.chargeNowMonth
-                      ? `${Number(cardLink.chargeNowMonth.slice(5))}月分は申し込みのときに決済・${Number(cardLink.startMonth.slice(5))}月1日から毎月1日に決済`
+                    月額 {cardLink.monthlyTotal.toLocaleString()}円（管理の人 {cardLink.adminCount}人・追加 {cardLink.extraAdmins}人）・{cardLink.chargeNowMonths?.length
+                      ? `${monthsLabel(cardLink.chargeNowMonths)}（${(cardLink.chargeNowAmount || 0).toLocaleString()}円）は申し込みのときに決済・${Number(cardLink.startMonth.slice(5))}月1日から毎月1日に決済`
                       : `1回目の決済は${Number(cardLink.startMonth.slice(5))}月1日`}
                   </div>
                   <input readOnly value={cardLink.url} onFocus={(e) => e.target.select()} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 font-mono outline-none" />

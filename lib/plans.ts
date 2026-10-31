@@ -62,6 +62,34 @@ export const prevMonthOf = (ym: string) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
+// "YYYY-MM" の次の月を "YYYY-MM" で返す
+export const nextMonthOf = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+// カードの月額で、申し込みのときに先にいただける月（日本時間の先月・今月・来月）
+export const signupChargeableMonths = (now: Date = new Date()) => {
+  const t = thisMonthJst(now);
+  return [prevMonthOf(t), t, nextMonthJst(now)];
+};
+
+// 申し込みのときにいただく月の並び（from の月から、1回目の決済の月の前の月まで）。from が1回目の月より後なら空
+export const signupChargeMonths = (from: string, startMonth: string) => {
+  const months: string[] = [];
+  for (let m = from; m < startMonth && months.length < 12; m = nextMonthOf(m)) months.push(m);
+  return months;
+};
+
+// 月の並びを「11月分」「10月分と11月分」「9月分〜11月分」と書く
+export const monthsLabel = (months: string[]) => {
+  const n = (ym: string) => `${Number(ym.slice(5))}月分`;
+  if (months.length <= 1) return months.length ? n(months[0]) : "";
+  if (months.length === 2) return `${n(months[0])}と${n(months[1])}`;
+  return `${n(months[0])}〜${n(months[months.length - 1])}`;
+};
+
 // "YYYY-MM" の1日 9時（日本時間）＝1日 0時（UTC）を UNIX 秒で返す。カードの月額の1回目の決済の時刻
 //   Stripe は毎月の決済日を UTC の日で数える（起点が30日なら毎月30日・31日なら月末）。
 //   1日 0時（日本時間）は UTC では前の月の末日なので、11月30日 15時（UTC）が起点だと12月31日（日本時間）に決済されてしまう。

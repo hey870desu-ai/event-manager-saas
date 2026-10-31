@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { notifyOperator } from '@/lib/stripe-monthly';
+import { monthsLabel } from '@/lib/plans';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -81,14 +82,14 @@ export async function POST(req: Request) {
   // ============================================================
   // 💳 カードの月額（毎月1日に決済）のカード登録が済んだ
   //    運営者の画面で作ったリンク（/api/admin/stripe-monthly-link）から。1回目の決済は1日なので、いまは支払いなし（trial）
-  //    ただし「前の月の分も」のリンクは、その月の分だけ申し込みのときに決済されている（metadata.chargeNowMonth）
+  //    ただし「申し込みのときに決済する分」を選んだリンクは、その月の分が申し込みのときに決済されている（metadata.chargeNowMonths）
   //    テナントに Stripe の月額を結びつけるだけで、プランは変えない
   // ============================================================
   if (event.type === 'checkout.session.completed' && session.metadata?.type === 'kizuna_taro_monthly') {
-    const { tenantId, startMonth, chargeNowMonth, chargeNowAmount } = session.metadata;
-    // 「前の月の分も」のリンクなら、その月の分は申し込みのときに決済されている
-    const nowMonthNum = Number((chargeNowMonth || '').slice(5)) || 0;
-    const paidNow = nowMonthNum ? `${nowMonthNum}月分（${Number(chargeNowAmount || 0).toLocaleString('ja-JP')}円）` : '';
+    const { tenantId, startMonth, chargeNowMonths, chargeNowMonth, chargeNowAmount } = session.metadata;
+    // 申し込みのときに決済した月（chargeNowMonth は前の版のリンク・1か月だけ）
+    const nowMonths = String(chargeNowMonths || chargeNowMonth || '').split(',').filter((m) => /^\d{4}-(0[1-9]|1[0-2])$/.test(m));
+    const paidNow = nowMonths.length ? `${monthsLabel(nowMonths)}（${Number(chargeNowAmount || 0).toLocaleString('ja-JP')}円）` : '';
     if (tenantId) {
       try {
         // 2本のリンクの両方で登録された（二重の月額）ときは、あとの方を止めて運営者に知らせる。前の月額はそのまま
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
         await adminDb.collection('tenants').doc(tenantId).update({
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription as string,
-          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date(), ...(chargeNowMonth ? { paidAtSignup: chargeNowMonth } : {}) },
+          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date(), ...(nowMonths.length ? { paidAtSignup: nowMonths } : {}) },
           updatedAt: new Date(),
         });
         const month = Number((startMonth || '').slice(5)) || '';

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { monthsLabel } from "@/lib/plans";
 
 // カードの月額（毎月1日に決済）の、Stripe でカードを登録したあとの画面
-//   now＝申し込みのときに先に決済した月（「前の月の分も」のリンク）
+//   now＝申し込みのときに先に決済した月（「2026-10,2026-11」のように並べる）
 export default async function BillingRegisteredPage({ searchParams }: { searchParams: Promise<{ start?: string; now?: string; canceled?: string }> }) {
   const { start, now, canceled } = await searchParams;
   const month = start && /^\d{4}-(0[1-9]|1[0-2])$/.test(start) ? Number(start.slice(5)) : null;
-  const nowMonth = now && /^\d{4}-(0[1-9]|1[0-2])$/.test(now) ? Number(now.slice(5)) : null;
+  const nowMonths = (typeof now === "string" ? now : "").split(",").filter((m) => /^\d{4}-(0[1-9]|1[0-2])$/.test(m));
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 py-12 md:py-20 px-4">
@@ -30,8 +31,8 @@ export default async function BillingRegisteredPage({ searchParams }: { searchPa
               <CheckCircle2 className="text-emerald-500 mb-4" size={40} />
               <h1 className="text-xl md:text-2xl font-bold mb-4">カードの登録が済みました</h1>
               <p className="text-slate-600 leading-relaxed [word-break:auto-phrase] text-pretty">
-                {nowMonth && month
-                  ? `${nowMonth}月分の決済が済みました。${month}月1日からは、毎月1日に決済します。`
+                {nowMonths.length > 0 && month
+                  ? `${monthsLabel(nowMonths)}の決済が済みました。${month}月1日からは、毎月1日に決済します。`
                   : `${month ? `1回目の決済は${month}月1日です。` : ""}以降は毎月1日に決済します。`}
               </p>
             </>
