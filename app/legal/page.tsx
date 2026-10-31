@@ -65,11 +65,19 @@ export default function LegalPage() {
                     （いずれも税込）
                   </td>
                 </tr>
+                {/* 追加手数料と送料（Stripe のコンビニ決済の審査で「送料は無くても書く」と求められた・2026-10-29） */}
                 <tr className="border-b border-slate-100">
-                  <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">商品代金以外に<br/>必要な料金</th>
+                  <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">追加手数料等の<br/>追加料金</th>
+                  <td className="py-5 px-6 text-slate-600 leading-relaxed">
+                    ご利用料金・イベントの参加費のほかに、手数料はいただきません。<br />
+                    クレジットカード決済・コンビニ決済の手数料もかかりません。<br />
+                    インターネット接続料金、通信料金等はお客様のご負担となります。
+                  </td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">送料</th>
                   <td className="py-5 px-6 text-slate-600">
-                    インターネット接続料金、通信料金等はお客様のご負担となります。<br />
-                    コンビニ決済の手数料はかかりません。
+                    サービスの性質上、送料は発生いたしません（商品の発送はありません）。
                   </td>
                 </tr>
                 <tr className="border-b border-slate-100">
