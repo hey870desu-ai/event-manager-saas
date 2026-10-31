@@ -81,10 +81,14 @@ export async function POST(req: Request) {
   // ============================================================
   // 💳 カードの月額（毎月1日に決済）のカード登録が済んだ
   //    運営者の画面で作ったリンク（/api/admin/stripe-monthly-link）から。1回目の決済は1日なので、いまは支払いなし（trial）
+  //    ただし「前の月の分も」のリンクは、その月の分だけ申し込みのときに決済されている（metadata.chargeNowMonth）
   //    テナントに Stripe の月額を結びつけるだけで、プランは変えない
   // ============================================================
   if (event.type === 'checkout.session.completed' && session.metadata?.type === 'kizuna_taro_monthly') {
-    const { tenantId, startMonth } = session.metadata;
+    const { tenantId, startMonth, chargeNowMonth, chargeNowAmount } = session.metadata;
+    // 「前の月の分も」のリンクなら、その月の分は申し込みのときに決済されている
+    const nowMonthNum = Number((chargeNowMonth || '').slice(5)) || 0;
+    const paidNow = nowMonthNum ? `${nowMonthNum}月分（${Number(chargeNowAmount || 0).toLocaleString('ja-JP')}円）` : '';
     if (tenantId) {
       try {
         // 2本のリンクの両方で登録された（二重の月額）ときは、あとの方を止めて運営者に知らせる。前の月額はそのまま
@@ -100,7 +104,8 @@ export async function POST(req: Request) {
             await stripe.subscriptions.cancel(session.subscription as string);
             await notifyOperator(
               `【絆太郎】カードの月額が二重に登録されたので、あとの方を止めました: ${tenantId}`,
-              `テナント ${tenantId} には続いている Stripe の月額（${before.stripeSubscriptionId}・${beforeStatus}）があるので、いま登録された月額（${session.subscription}）を止めました（決済の前なので、お金は動いていません）。`
+              `テナント ${tenantId} には続いている Stripe の月額（${before.stripeSubscriptionId}・${beforeStatus}）があるので、いま登録された月額（${session.subscription}）を止めました` +
+                (paidNow ? `。申し込みのときに ${paidNow} が決済されています。Stripe の画面で返金してください。` : '（決済の前なので、お金は動いていません）。')
             );
             return NextResponse.json({ received: true });
           }
@@ -108,11 +113,11 @@ export async function POST(req: Request) {
         await adminDb.collection('tenants').doc(tenantId).update({
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription as string,
-          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date() },
+          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date(), ...(chargeNowMonth ? { paidAtSignup: chargeNowMonth } : {}) },
           updatedAt: new Date(),
         });
         const month = Number((startMonth || '').slice(5)) || '';
-        await notifyOwnerUpgrade(tenantId, `スタンダードプラン（カード登録・${month}月1日から毎月1日に決済）`, session.customer_details?.email || null);
+        await notifyOwnerUpgrade(tenantId, `スタンダードプラン（カード登録・${paidNow ? `${paidNow}は申し込みのときに決済・` : ''}${month}月1日から毎月1日に決済）`, session.customer_details?.email || null);
       } catch (e) {
         console.error('❌ Monthly card registration update failed:', e);
         return NextResponse.json({ error: 'update failed' }, { status: 500 }); // Stripe にやり直してもらう

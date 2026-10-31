@@ -49,6 +49,19 @@ export const nextMonthJst = (now: Date = new Date()) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
+// 日本時間で見た「今月」を "YYYY-MM" で返す
+export const thisMonthJst = (now: Date = new Date()) => {
+  const jst = new Date(now.getTime() + 9 * 3600 * 1000);
+  return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+// "YYYY-MM" の前の月を "YYYY-MM" で返す（カードの月額で、申し込みのときに先にいただく月）
+export const prevMonthOf = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
 // "YYYY-MM" の1日 9時（日本時間）＝1日 0時（UTC）を UNIX 秒で返す。カードの月額の1回目の決済の時刻
 //   Stripe は毎月の決済日を UTC の日で数える（起点が30日なら毎月30日・31日なら月末）。
 //   1日 0時（日本時間）は UTC では前の月の末日なので、11月30日 15時（UTC）が起点だと12月31日（日本時間）に決済されてしまう。
