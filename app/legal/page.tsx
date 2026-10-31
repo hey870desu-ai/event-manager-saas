@@ -45,7 +45,7 @@ export default function LegalPage() {
                 </tr>
                 <tr className="border-b border-slate-100">
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">電話番号</th>
-                  <td className="py-5 px-6 font-medium">024-973-8701</td>
+                  <td className="py-5 px-6 font-medium">024-954-5586</td>
                 </tr>
                 <tr className="border-b border-slate-100">
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">メールアドレス</th>
