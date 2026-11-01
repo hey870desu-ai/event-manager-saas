@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 import { verifyCaller, assertTenant, authErrorResponse, tenantAudienceEmails } from '@/lib/admin-auth';
+import { buildDeliveries, saveDeliveries, itemsFromBatch, itemFromError, type DeliveryItem } from '@/lib/mail-delivery';
 
 const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 1500;
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
 
     let successCount = 0;
     let errorCount = 0;
+    const items: DeliveryItem[] = []; // 宛先の順の1通ずつの結果（配信の記録に使う）
 
     // バッチに分割して送信
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
@@ -133,10 +135,12 @@ export async function POST(request: Request) {
         const result = await sendBatchEmail(emails);
         successCount += result.successCount;
         errorCount += result.errorCount;
+        items.push(...itemsFromBatch(batch, result.results, result.provider));
         console.log(`📧 バッチ ${Math.floor(i / BATCH_SIZE) + 1} 送信完了: ${result.successCount}件 (${result.provider})`);
       } catch (err: any) {
         console.error(`バッチ ${Math.floor(i / BATCH_SIZE) + 1} エラー:`, err.message);
         errorCount += batch.length;
+        items.push(...batch.map((r: any) => itemFromError(r, err)));
       }
 
       if (i + BATCH_SIZE < recipients.length) {
@@ -146,6 +150,27 @@ export async function POST(request: Request) {
 
     console.log(`📊 送信結果: 成功=${successCount}, 失敗=${errorCount}, 合計=${recipients.length}`);
 
+    // 配信履歴（絆リストの「送信済み」）をサーバーで残す（record: true のときだけ＝テスト送信は残さない・だれにも送れなかったときも残さない）
+    //   1通ずつの記録（相手のサーバーに届いたか）は履歴を書いてから残す
+    let historyId: string | null = null;
+    if (body.record === true && successCount > 0) {
+      try {
+        const histRef = adminDb.collection('tenants').doc(tenantId).collection('scheduled_emails').doc();
+        const built = buildDeliveries({ tenantId, source: 'scheduled_emails', sourceId: histRef.id, items, replyTo });
+        const nowIso = new Date().toISOString();
+        await histRef.set({
+          subject, body: emailBody, recipients, recipientCount: recipients.length,
+          successCount, errorCount, senderName, replyTo, themeColor: brandColor,
+          scheduledAt: nowIso, status: 'sent', sentAt: nowIso, createdAt: nowIso,
+          delivery: built.summary,
+        });
+        await saveDeliveries(built);
+        historyId = histRef.id;
+      } catch (e) {
+        console.warn('配信履歴を残せませんでした（送信自体は済んでいます）:', e);
+      }
+    }
+
     // 全件失敗を「成功」として返さない
     if (recipients.length > 0 && successCount === 0) {
       return NextResponse.json(
@@ -154,7 +179,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, successCount, errorCount, total: recipients.length });
+    return NextResponse.json({ success: true, successCount, errorCount, total: recipients.length, historyId });
 
   } catch (error: any) {
     const denied = authErrorResponse(error);

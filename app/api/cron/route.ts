@@ -9,6 +9,8 @@ import { decrypt } from '@/lib/encryption';
 import { createWpPost, findCategoryIdBySlug, findCategoryNameBySlug } from '@/lib/wordpress-bridge';
 import { createWpPostXmlRpc } from '@/lib/wordpress-xmlrpc';
 import { verifyAdminRequest } from '@/lib/admin-auth';
+import { buildDeliveries, saveDeliveries, itemFromSend, itemFromError, itemsFromBatch, type DeliveryItem } from '@/lib/mail-delivery';
+import { givenReplyTo, fallbackReplyTo, NO_REPLY_ADDRESS } from '@/lib/reply-to';
 
 const BATCH_SIZE = 100;
 
@@ -57,12 +59,19 @@ async function processCron() {
 
     for (const queueDoc of mailQueueSnap.docs) {
       const data = queueDoc.data();
-      const result = await sendEventMail(data);
+      // 返信先：予約のときに決めたもの → イベントの問い合わせ先 → 会社の連絡先・代表の管理者（info@ は受け取れないので使わない）
+      const replyTo = givenReplyTo(data.replyTo) || await fallbackReplyTo(data.tenantId, data.eventId) || NO_REPLY_ADDRESS;
+      const { result, items } = await sendEventMail({ ...data, replyTo });
+      // 1通ずつの記録（相手のサーバーに届いたかは /api/cron/mail-status が確かめる）
+      const built = buildDeliveries({ tenantId: data.tenantId || null, source: 'mail_queue', sourceId: queueDoc.id, items, replyTo });
       await queueDoc.ref.update({
         status: 'sent',
         sentAt: new Date(),
         result,
+        replyTo,
+        delivery: built.summary,
       });
+      await saveDeliveries(built).catch((e: any) => console.warn('配信の記録を書けませんでした:', e?.message || e));
       totalProcessed++;
     }
 
@@ -109,9 +118,14 @@ async function processCron() {
           if (!claimed) continue;
           const archiveRef = data.archiveId ? adminDb.collection('newsletter_archives').doc(String(data.archiveId)) : null;
           try {
-            const r = await sendNewsletter({ tenantId: tenantDoc.id, content: data.content, recipients: data.recipients || [] });
-            await schedDoc.ref.update({ status: 'sent', sentAt: new Date(), result: { success: r.successCount, failed: r.errorCount } });
-            if (archiveRef) await archiveRef.update({ status: r.successCount ? 'sent' : 'failed', successCount: r.successCount, errorCount: r.errorCount, sentAt: new Date() }).catch(() => {});
+            const r = await sendNewsletter({ tenantId: tenantDoc.id, content: data.content, recipients: data.recipients || [], replyTo: data.replyTo || data.createdBy });
+            // 1通ずつの記録はメルマガの履歴（無ければこの予約の記録）に付ける
+            const built = archiveRef
+              ? buildDeliveries({ tenantId: tenantDoc.id, source: 'newsletter_archives', sourceId: archiveRef.id, items: r.items, replyTo: r.replyTo })
+              : buildDeliveries({ tenantId: tenantDoc.id, source: 'scheduled_emails', sourceId: schedDoc.id, items: r.items, replyTo: r.replyTo });
+            await schedDoc.ref.update({ status: 'sent', sentAt: new Date(), result: { success: r.successCount, failed: r.errorCount }, ...(archiveRef ? {} : { delivery: built.summary }) });
+            if (archiveRef) await archiveRef.update({ status: r.successCount ? 'sent' : 'failed', successCount: r.successCount, errorCount: r.errorCount, sentAt: new Date(), delivery: built.summary }).catch(() => {});
+            await saveDeliveries(built).catch((e: any) => console.warn('配信の記録を書けませんでした:', e?.message || e));
           } catch (e: any) {
             console.error(`❌ メルマガの予約配信に失敗 (${tenantDoc.id}):`, e?.message || e);
             await schedDoc.ref.update({ status: 'failed', error: String(e?.message || e).slice(0, 500) });
@@ -121,13 +135,18 @@ async function processCron() {
           continue;
         }
 
-        const result = await sendBatch(data);
+        // 返信先：送った人（予約のときのログイン）→ 会社の連絡先・代表の管理者（info@ は受け取れないので使わない）
+        const replyTo = givenReplyTo(data.replyTo) || await fallbackReplyTo(tenantDoc.id) || NO_REPLY_ADDRESS;
+        const { result, items } = await sendBatch({ ...data, replyTo });
+        const built = buildDeliveries({ tenantId: tenantDoc.id, source: 'scheduled_emails', sourceId: schedDoc.id, items, replyTo });
 
         await schedDoc.ref.update({
           status: 'sent',
           sentAt: new Date(),
           result,
+          delivery: built.summary,
         });
+        await saveDeliveries(built).catch((e: any) => console.warn('配信の記録を書けませんでした:', e?.message || e));
         totalProcessed++;
 
         // Notion 元ページがあれば 配信済み に更新（DXメルマガ用）
@@ -537,8 +556,8 @@ async function processCron() {
   }
 }
 
-// Resend Batch API で一括送信
-async function sendBatch(data: any) {
+// Resend Batch API で一括送信。items は宛先の順の1通ずつの結果（配信の記録に使う）
+async function sendBatch(data: any): Promise<{ result: { success: number; failed: number }; items: DeliveryItem[] }> {
   const {
     recipients,
     subject,
@@ -554,6 +573,7 @@ async function sendBatch(data: any) {
 
   let successCount = 0;
   let errorCount = 0;
+  const items: DeliveryItem[] = [];
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const batch = recipients.slice(i, i + BATCH_SIZE);
@@ -615,9 +635,11 @@ async function sendBatch(data: any) {
       const result = await sendBatchEmail(emails);
       successCount += result.successCount;
       errorCount += result.errorCount;
+      items.push(...itemsFromBatch(batch, result.results, result.provider));
     } catch (err: any) {
       console.error(`Batch送信エラー:`, err.message);
       errorCount += batch.length;
+      items.push(...batch.map((r: any) => itemFromError(r, err)));
     }
 
     if (i + BATCH_SIZE < recipients.length) {
@@ -626,20 +648,21 @@ async function sendBatch(data: any) {
   }
 
   console.log(`📊 送信結果: 成功=${successCount}, 失敗=${errorCount}`);
-  return { success: successCount, failed: errorCount };
+  return { result: { success: successCount, failed: errorCount }, items };
 }
 
 // セミナー参加者向けメール（mail_queue用）- send-thankyouと同等のHTML
 // 申込者が入れた名前を HTML に入れるときの置き換え
 const escName = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-async function sendEventMail(data: any) {
+async function sendEventMail(data: any): Promise<{ result: { success: number; failed: number }; items: DeliveryItem[] }> {
   const { recipients, subject, body: baseBody, senderName, tenantName, eventTitle, eventDate, venueName, replyTo } = data;
   const displaySender = tenantName || senderName || "イベント事務局";
   const headerName = senderName || `${displaySender} 事務局`;
 
   let successCount = 0;
   let errorCount = 0;
+  const items: DeliveryItem[] = [];
 
   for (const recipient of recipients) {
     let personalBody = baseBody || '';
@@ -713,20 +736,22 @@ async function sendEventMail(data: any) {
 </body></html>`;
 
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         from: `"${displaySender}" <info@event-manager.app>`,
         to: recipient.email,
         subject,
         replyTo: replyTo || "info@event-manager.app",
         html,
       });
+      items.push(itemFromSend(recipient, sent));
       successCount++;
       await new Promise(resolve => setTimeout(resolve, 700));
-    } catch {
+    } catch (e) {
+      items.push(itemFromError(recipient, e));
       errorCount++;
     }
   }
 
   console.log(`📊 イベントメール送信結果: 成功=${successCount}, 失敗=${errorCount}`);
-  return { success: successCount, failed: errorCount };
+  return { result: { success: successCount, failed: errorCount }, items };
 }

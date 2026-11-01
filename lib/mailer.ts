@@ -78,7 +78,10 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-export async function sendEmail(params: EmailParams) {
+// id は Resend の受付番号（相手のサーバーに届いたかを、あとで Resend に問い合わせるときに使う）。SES・Gmail で送ったときは無い
+export type SendEmailResult = { provider: 'ses' | 'resend' | 'gmail'; id?: string };
+
+export async function sendEmail(params: EmailParams): Promise<SendEmailResult> {
   const text = params.text || htmlToText(params.html);
   // List-Unsubscribe等のカスタムヘッダーが必要なメールはSES v1経路に流さない（ヘッダーが黙って消えるため）
   const hasCustomHeaders = !!(params.headers && Object.keys(params.headers).length > 0);
@@ -106,7 +109,7 @@ export async function sendEmail(params: EmailParams) {
 
   // Resend
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: params.from,
       to: Array.isArray(params.to) ? params.to : [params.to],
       subject: params.subject,
@@ -117,7 +120,7 @@ export async function sendEmail(params: EmailParams) {
       ...(hasAttachments ? { attachments: params.attachments!.map(a => ({ filename: a.filename, content: a.content })) } : {}),
     });
     if (error) throw new Error(error.message);
-    return { provider: 'resend' };
+    return { provider: 'resend', id: data?.id };
   } catch (err: any) {
     console.error('Resend送信エラー:', err?.message);
   }
@@ -140,29 +143,35 @@ export async function sendEmail(params: EmailParams) {
   throw new Error('メール送信に失敗しました（全プロバイダー）');
 }
 
+// 1通ずつの結果（emails と同じ順）。id は Resend の受付番号・skipped は配信停止の人で送らなかった
+export type BatchItemResult = { to: string; id?: string; error?: string; skipped?: 'optout' };
+
 export async function sendBatchEmail(emails: EmailParams[]) {
   let successCount = 0;
   let errorCount = 0;
+  const results: BatchItemResult[] = emails.map(e => ({ to: Array.isArray(e.to) ? e.to[0] : e.to }));
 
-  // オプトアウト済みアドレスを除外
-  const allEmails = emails.map(e => Array.isArray(e.to) ? e.to[0] : e.to);
-  const optedOut = await filterOptedOut(allEmails);
-  const filtered = emails.filter(e => {
-    const addr = Array.isArray(e.to) ? e.to[0] : e.to;
-    if (optedOut.has(addr)) {
-      console.log(`⏭️ オプトアウト済みスキップ: ${addr}`);
-      return false;
+  // オプトアウト済みアドレスを除外（sendIdx＝送る分の、元の並びの番号）
+  const optedOut = await filterOptedOut(results.map(r => r.to));
+  const sendIdx: number[] = [];
+  results.forEach((r, i) => {
+    if (optedOut.has(r.to)) {
+      console.log(`⏭️ オプトアウト済みスキップ: ${r.to}`);
+      r.skipped = 'optout';
+    } else {
+      sendIdx.push(i);
     }
-    return true;
   });
-  if (filtered.length === 0) return { successCount: 0, errorCount: 0, provider: 'skipped' };
+  const filtered = sendIdx.map(i => emails[i]);
+  if (filtered.length === 0) return { successCount: 0, errorCount: 0, provider: 'skipped', results };
 
   // List-Unsubscribe等のカスタムヘッダーが必要なバッチはSES v1経路に流さない（ヘッダーが黙って消えるため）
   const needsCustomHeaders = filtered.some(e => e.headers && Object.keys(e.headers).length > 0);
 
   // SES優先
   if (USE_SES && sesClient && !needsCustomHeaders) {
-    for (const email of filtered) {
+    for (let j = 0; j < filtered.length; j++) {
+      const email = filtered[j];
       try {
         const toAddresses = Array.isArray(email.to) ? email.to : [email.to];
         const senderName = extractName(email.from);
@@ -180,11 +189,12 @@ export async function sendBatchEmail(emails: EmailParams[]) {
         }));
         successCount++;
         await new Promise(r => setTimeout(r, 100));
-      } catch {
+      } catch (err: any) {
         errorCount++;
+        results[sendIdx[j]].error = String(err?.message || 'error');
       }
     }
-    return { successCount, errorCount, provider: 'ses' };
+    return { successCount, errorCount, provider: 'ses', results };
   }
 
   // Resend
@@ -210,12 +220,23 @@ export async function sendBatchEmail(emails: EmailParams[]) {
     if (failures.length > 0) {
       console.error('Resend Batch 部分失敗:', failures.map(f => `[${f.index}] ${f.message}`).join(' / '));
     }
+    // data は受け付けた分だけ、送った順に並ぶ（失敗した番号は飛ばす）。数が合わないときは受付番号を付けない
+    const failed = new Map(failures.map(f => [f.index, String(f.message || 'error')]));
+    const ids: (string | undefined)[] = ((data as any)?.data || []).map((d: any) => d?.id);
+    const aligned = ids.length === filtered.length - failed.size;
+    let k = 0;
+    filtered.forEach((_, j) => {
+      const r = results[sendIdx[j]];
+      if (failed.has(j)) r.error = failed.get(j);
+      else if (aligned) r.id = ids[k++];
+    });
     errorCount += failures.length;
     successCount = filtered.length - failures.length;
-    return { successCount, errorCount, provider: 'resend' };
+    return { successCount, errorCount, provider: 'resend', results };
   } catch (err: any) {
     console.error('Resend Batch送信エラー:', err?.message);
-    return { successCount, errorCount: errorCount + filtered.length, provider: 'resend-failed' };
+    for (const i of sendIdx) results[i].error = String(err?.message || 'error');
+    return { successCount, errorCount: errorCount + filtered.length, provider: 'resend-failed', results };
   }
 }
 

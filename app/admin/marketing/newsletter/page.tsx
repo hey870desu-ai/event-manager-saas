@@ -9,6 +9,7 @@ import { doc, onSnapshot,getCountFromServer } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, auth, storage } from "@/lib/firebase";
 import NewsletterPreview, { type PreviewDraft } from "@/components/admin/NewsletterPreview";
+import { DeliveryLine, DeliveryDetail } from "@/components/admin/DeliveryStatus"; // 配信履歴の「相手に届いたか」
 import { MAIN_FRAME_ASPECT, BLOCK_PHOTO_ASPECT, fillName, type NlContent, type NlBlock, type NlFrame, type NlTenant } from "@/lib/newsletter-email";
 import { bakeCached, type BakeOptions } from "@/lib/newsletter-image";
 
@@ -233,6 +234,7 @@ export default function NewsletterStudio() {
   // 🏆 過去の履歴を保存しておくための箱だばい！
   const [totalCount, setTotalCount] = useState(0); // 🎯 全データ数を覚える箱
   const [archives, setArchives] = useState<any[]>([]);
+  const [openDelivery, setOpenDelivery] = useState<string | null>(null); // 「届いたか」を開いている履歴
 
   const [lastVisible, setLastVisible] = useState<any>(null); // 🎯 どこまで読み込んだか覚える
   const [firstVisible, setFirstVisible] = useState<any>(null); // 🎯 戻る用
@@ -1723,6 +1725,8 @@ export default function NewsletterStudio() {
                 <><Send size={24} /> {selectedEmails.length > 0 ? `${selectedEmails.length}名に今すぐ送る` : "送る相手を選んでください"}</>
               )}
             </button>
+            {/* 返信先：会社の連絡先 → 送る人（ログインした本人）＝サーバーの決め方と同じ */}
+            <p className="text-[11px] text-slate-500">返信先: <span className="font-bold text-slate-700">{tenantData?.contactEmail || tenantData?.ownerEmail || auth.currentUser?.email || ''}</span></p>
           </div>
 
           {/* --- 📜 配信履歴・バックナンバー（時間＆削除ボタン付きだばい！） --- */}
@@ -1736,10 +1740,8 @@ export default function NewsletterStudio() {
             
             <div className="grid grid-cols-1 gap-3">
               {archives.map(arch => (
-                <div 
-                  key={arch.id} 
-                  className="flex items-center bg-white hover:bg-blue-50 rounded-[1.5rem] transition-all group border border-slate-100 hover:border-blue-300 shadow-sm overflow-hidden"
-                >
+                <div key={arch.id} className="bg-white rounded-[1.5rem] border border-slate-100 hover:border-blue-300 shadow-sm overflow-hidden transition-all">
+                <div className="flex items-center bg-white hover:bg-blue-50 transition-all group">
                   {/* 🎯 左側：クリックで内容を読み込むエリア */}
                   <button 
                     onClick={() => loadArchive(arch)}
@@ -1763,6 +1765,7 @@ export default function NewsletterStudio() {
                       <span className="text-xs font-bold text-slate-700 group-hover:text-blue-600 truncate w-full">
                         {arch.subject || "(無題)"}
                       </span>
+                      <DeliveryLine delivery={arch.delivery} />
                     </div>
                     
                     {/* 🎯 修正：日付だけでなく「時間（時:分）」も表示するぞい！ */}
@@ -1786,6 +1789,17 @@ export default function NewsletterStudio() {
                     </button>
                   )}
 
+                  {/* 送った履歴：相手に届いたか（1人ずつ）を開く */}
+                  {arch.delivery && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setOpenDelivery(openDelivery === arch.id ? null : arch.id); }}
+                      className="px-3 py-5 text-[10px] font-black text-slate-500 hover:bg-slate-50 transition-all border-l border-slate-50 whitespace-nowrap"
+                      title="相手に届いたか"
+                    >
+                      {openDelivery === arch.id ? '閉じる' : '届いたか'}
+                    </button>
+                  )}
+
                   {/* 🎯 右側：削除ボタン（ゴミ箱アイコン） */}
                   <button 
                     onClick={(e) => handleDeleteArchive(arch.id, e)}
@@ -1794,6 +1808,12 @@ export default function NewsletterStudio() {
                   >
                     <Trash2 size={18} />
                   </button>
+                </div>
+                {openDelivery === arch.id && (
+                  <div className="border-t border-slate-100 p-4">
+                    <DeliveryDetail source="newsletter_archives" sourceId={arch.id} delivery={arch.delivery} tone="light" />
+                  </div>
+                )}
                 </div>
               ))}
               

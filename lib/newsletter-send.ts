@@ -2,6 +2,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { sendBatchEmail, buildUnsubscribeHeaders } from '@/lib/mailer';
 import { renderNewsletterHtml, type NlContent, type NlTenant } from '@/lib/newsletter-email';
+import { itemsFromBatch, itemFromError, type DeliveryItem } from '@/lib/mail-delivery';
+import { givenReplyTo, fallbackReplyTo } from '@/lib/reply-to';
 
 const BATCH_SIZE = 100;
 
@@ -65,12 +67,16 @@ export function unsubscribeUrlFor(email: string) {
 }
 
 // 1人ずつ宛名を入れて送る（100通ずつまとめて Resend へ）
-export async function sendNewsletter(opts: { tenantId: string; content: NlContent; recipients: NlRecipient[]; subjectPrefix?: string }) {
-  const { tenant, replyTo } = await newsletterTenant(opts.tenantId);
+//   返信先：会社の連絡先 → 送った人（opts.replyTo）→ 会社の代表の管理者。info@event-manager.app は受け取れないので使わない
+//   items は宛先の順の1通ずつの結果（配信の記録に使う）
+export async function sendNewsletter(opts: { tenantId: string; content: NlContent; recipients: NlRecipient[]; subjectPrefix?: string; replyTo?: string }) {
+  const { tenant, replyTo: tenantReplyTo } = await newsletterTenant(opts.tenantId);
+  const replyTo = givenReplyTo(tenantReplyTo, opts.replyTo) || await fallbackReplyTo(opts.tenantId);
   const fromName = tenant.name.replace(/["\r\n]/g, '');
   const subject = `${opts.subjectPrefix || ''}${opts.content.subject}`;
   let successCount = 0;
   let errorCount = 0;
+  const items: DeliveryItem[] = [];
   for (let i = 0; i < opts.recipients.length; i += BATCH_SIZE) {
     const chunk = opts.recipients.slice(i, i + BATCH_SIZE);
     const emails = chunk.map(r => ({
@@ -85,11 +91,13 @@ export async function sendNewsletter(opts: { tenantId: string; content: NlConten
       const result = await sendBatchEmail(emails);
       successCount += result.successCount;
       errorCount += result.errorCount;
+      items.push(...itemsFromBatch(chunk, result.results, result.provider));
     } catch (e: any) {
       console.error(`メルマガ ${Math.floor(i / BATCH_SIZE) + 1} 組目の送信エラー:`, e?.message || e);
       errorCount += chunk.length;
+      items.push(...chunk.map(r => itemFromError(r, e)));
     }
     if (i + BATCH_SIZE < opts.recipients.length) await new Promise(r => setTimeout(r, 1500));
   }
-  return { successCount, errorCount };
+  return { successCount, errorCount, items, replyTo: replyTo || null };
 }

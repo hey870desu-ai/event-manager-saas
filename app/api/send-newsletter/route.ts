@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyCaller, assertTenant, authErrorResponse } from '@/lib/admin-auth';
 import { buildAudience } from '@/lib/kizuna-list';
 import { sanitizeContent, sendNewsletter, type NlRecipient } from '@/lib/newsletter-send';
+import { buildDeliveries, saveDeliveries } from '@/lib/mail-delivery';
 
 export const maxDuration = 60;
 
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
         scheduledAt: at.toISOString(),
         status: 'scheduled',
         archiveId: archiveRef.id,
+        replyTo: caller.email, // 会社の連絡先が無いときの返信先（送った人）
         createdBy: caller.email,
         createdAt: new Date().toISOString(),
       });
@@ -69,16 +71,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, scheduledId: sched.id, archiveId: archiveRef.id, recipientCount: recipients.length });
     }
 
-    const result = await sendNewsletter({ tenantId, content, recipients });
-    const archiveRef = await archives.add({
+    const result = await sendNewsletter({ tenantId, content, recipients, replyTo: caller.email });
+    // 履歴を書いてから、1通ずつの記録（相手のサーバーに届いたか）を残す
+    const archiveRef = archives.doc();
+    const built = buildDeliveries({ tenantId, source: 'newsletter_archives', sourceId: archiveRef.id, items: result.items, replyTo: result.replyTo });
+    await archiveRef.set({
       tenantId, status: result.successCount ? 'sent' : 'failed', subject: content.subject, content, editor,
       recipientCount: recipients.length, successCount: result.successCount, errorCount: result.errorCount,
+      delivery: built.summary,
       createdBy: caller.email, createdAt: new Date(), sentAt: new Date(),
     });
+    await saveDeliveries(built).catch((e: any) => console.warn('配信の記録を書けませんでした:', e?.message || e));
+    const counts = { successCount: result.successCount, errorCount: result.errorCount };
     if (!result.successCount) {
-      return NextResponse.json({ success: false, ...result, error: 'メールを送れませんでした（だれにも届いていません）' }, { status: 502 });
+      return NextResponse.json({ success: false, ...counts, error: 'メールを送れませんでした（だれにも届いていません）' }, { status: 502 });
     }
-    return NextResponse.json({ success: true, ...result, archiveId: archiveRef.id });
+    return NextResponse.json({ success: true, ...counts, archiveId: archiveRef.id });
   } catch (error: any) {
     const denied = authErrorResponse(error);
     if (denied) return denied;

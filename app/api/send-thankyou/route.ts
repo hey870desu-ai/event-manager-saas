@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendEmail } from '@/lib/mailer';
 import { verifyCaller, assertTenant, authErrorResponse } from '@/lib/admin-auth';
+import { buildDeliveries, saveDeliveries, itemFromSend, itemFromError, type DeliveryItem } from '@/lib/mail-delivery';
+import { givenReplyTo, fallbackReplyTo, NO_REPLY_ADDRESS } from '@/lib/reply-to';
 
 // 申込者が入れた名前を HTML に入れるときの置き換え
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -85,19 +87,24 @@ export async function POST(request: Request) {
     const senderForInbox = cleanName;                // 差出人：テナントの実名
     const headerForEmail = `${cleanName} 事務局`;      // ヘッダー：〇〇 事務局
 
-    // 🅰️ 予約配信ロジック（そのまま維持）
+    // 返信先：イベントの問い合わせ先 → 送った人（ログインした本人）。info@event-manager.app は受け取れないので使わない
+    const replyTo = givenReplyTo(contactEmail, caller.email) || await fallbackReplyTo(tenantId, eventId) || NO_REPLY_ADDRESS;
+
+    // 🅰️ 予約配信ロジック（返信先も予約のときに決めて残す）
     if (scheduledAt) {
       await adminDb.collection('mail_queue').add({
         tenantId: tenantId || null, eventId: eventId || null,  // ★テナント分離用（配信履歴の絞り込みに必須）
         recipients, subject, body: bodyWithSurvey, senderName: headerForEmail, tenantName: senderForInbox,
         eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
+        replyTo,
         scheduledAt: new Date(scheduledAt), status: 'pending', createdAt: new Date(),
       });
-      return NextResponse.json({ success: true, message: 'Reservation saved' });
+      return NextResponse.json({ success: true, message: 'Reservation saved', replyTo });
     }
 
     // 🅱️ 即時配信ロジック
     const calendarUrl = createGoogleCalendarUrl(`【${headerForEmail}】${eventTitle}`, eventDate || "", "13:00", venueName || "");
+    const items: DeliveryItem[] = [];
 
     for (const recipient of recipients) {
       let personalBody = bodyWithSurvey;
@@ -179,28 +186,46 @@ export async function POST(request: Request) {
 </table>
 </body></html>`;
 
-      await sendEmail({
-        from: `"${senderForInbox}" <info@event-manager.app>`,
-        to: recipient.email,
-        subject: subject,
-        replyTo: contactEmail || "info@event-manager.app",
-        html: htmlContent,
-      });
+      // 1通ずつ送った結果を残す（途中の1通が送れなくても、残りの人には送る）
+      try {
+        const sent = await sendEmail({
+          from: `"${senderForInbox}" <info@event-manager.app>`,
+          to: recipient.email,
+          subject: subject,
+          replyTo,
+          html: htmlContent,
+        });
+        items.push(itemFromSend(recipient, sent));
+      } catch (e) {
+        console.error('お礼メールの送信エラー:', (e as any)?.message || e);
+        items.push(itemFromError(recipient, e));
+      }
 
       await new Promise(resolve => setTimeout(resolve, 700));
     }
+    const successCount = items.filter(i => !i.error).length;
+    const errorCount = items.length - successCount;
 
     // 📥 送信履歴として保存：即時送信も配信履歴(mail_queue)に残す（予約配信と同じ形・status='sent'）
     //    ※これが無かったため「今すぐ送信」したお礼・リマインドは履歴に出ていなかった
+    //    1通ずつの記録（相手のサーバーに届いたか）は履歴を書いてから残す
     try {
-      await adminDb.collection('mail_queue').add({
+      const histRef = adminDb.collection('mail_queue').doc();
+      const built = buildDeliveries({ tenantId: tenantId || null, source: 'mail_queue', sourceId: histRef.id, items, replyTo });
+      await histRef.set({
         tenantId: tenantId || null, eventId: eventId || null,
         recipients, subject, body: bodyWithSurvey, senderName: headerForEmail, tenantName: senderForInbox,
         eventTitle: eventTitle || null, eventDate: eventDate || null, venueName: venueName || null,
+        replyTo, result: { success: successCount, failed: errorCount }, delivery: built.summary,
         status: 'sent', sentAt: new Date(), createdAt: new Date(),
       });
+      await saveDeliveries(built);
     } catch (e) {
       console.warn('mail_queue(sent) 記録に失敗（メール送信自体は成功しています）:', e);
+    }
+
+    if (successCount === 0) {
+      return NextResponse.json({ success: false, successCount, errorCount, error: 'メールを送れませんでした（だれにも届いていません）' }, { status: 502 });
     }
 
     if (contactEmail) {
@@ -220,7 +245,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, successCount, errorCount, replyTo });
   } catch (error: any) {
     const denied = authErrorResponse(error);
     if (denied) return denied;

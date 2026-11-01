@@ -17,6 +17,7 @@ import EventForm from "@/components/EventForm";
 import Link from "next/link"; // ★ Linkコンポーネントを追加
 import StripeConnectButton from "../../components/admin/StripeConnectButton";
 import ReceiptDialog from "@/components/admin/ReceiptDialog"; // 参加者への領収証（PDF・メール）
+import { DeliveryLine, DeliveryDetail } from "@/components/admin/DeliveryStatus"; // 配信履歴の「相手に届いたか」
 import { where } from "firebase/firestore";
 
 // ★相対パスのまま維持
@@ -780,13 +781,16 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
         scheduledAt: mailScheduledTime ? new Date(mailScheduledTime).toISOString() : undefined,
         }),
       });
+      const r = await res.json().catch(() => ({} as any));
       if (res.ok) {
         alert(mailScheduledTime
           ? `${new Date(mailScheduledTime).toLocaleString('ja-JP')} に ${targets.length}名への配信を予約しました。`
-          : "送信が完了しました！");
+          : r.errorCount
+            ? `送信しました：${r.successCount}名（${r.errorCount}名には送れませんでした）。届いたかは「配信履歴」の詳細で見られます。`
+            : `送信しました：${r.successCount ?? targets.length}名。届いたかは「配信履歴」の詳細で見られます。`);
         setIsMailModalOpen(false);
         setMailScheduledTime("");
-      } else { alert("送信中にエラーが発生しました。"); }
+      } else { alert(r.error || "送信中にエラーが発生しました。"); }
     } catch (e) { alert("通信エラーが発生しました"); } finally { setSendingMail(false); }
   };
 
@@ -1527,6 +1531,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                   </div>
                   <p className="text-sm font-bold text-slate-800 truncate">{item.subject}</p>
                   <p className="text-[10px] text-slate-400">{item.eventTitle ? `${item.eventTitle} / ` : ''}{item.recipients?.length || 0}名宛</p>
+                  <DeliveryLine delivery={item.delivery} />
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => setPreviewMailQueue(item)} className="text-xs bg-white hover:bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 border border-slate-200">
@@ -1626,6 +1631,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                           </div>
                           <p className="text-xs font-bold text-slate-200 truncate">{item.subject}</p>
                           <p className="text-[10px] text-slate-500">{item.recipients?.length || 0}名宛</p>
+                          <DeliveryLine delivery={item.delivery} tone="dark" />
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button onClick={() => setPreviewMailQueue(item)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-slate-700"><Eye size={12}/> 詳細</button>
@@ -2387,6 +2393,7 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                            </div>
                            <p className="text-xs font-bold text-slate-200 truncate">{item.subject}</p>
                            <p className="text-[10px] text-slate-500">{item.recipients?.length || 0}名宛</p>
+                           <DeliveryLine delivery={item.delivery} tone="dark" />
                          </div>
                          <div className="flex items-center gap-1.5 shrink-0">
                            <button onClick={() => setPreviewMailQueue(item)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border border-slate-700"><Eye size={12}/> 詳細</button>
@@ -2436,7 +2443,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
              </div>
 
              <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-800">
-               <div className="text-xs text-slate-500">送信対象: <span className="text-white font-bold text-base">{targetCount}</span> 名</div>
+               <div className="text-xs text-slate-500 space-y-1">
+                 <div>送信対象: <span className="text-white font-bold text-base">{targetCount}</span> 名</div>
+                 {/* 返信先：イベントの問い合わせ先 → 送る人（サーバーの決め方と同じ） */}
+                 <div>返信先: <span className="text-slate-300">{currentEventForList?.contactEmail || user?.email || ''}</span></div>
+               </div>
                <div className="flex gap-3">
                  <button onClick={()=>{setIsMailModalOpen(false); setMailScheduledTime("");}} className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-sm">キャンセル</button>
                  <button onClick={sendMail} disabled={sendingMail || targetCount===0} className={`px-8 py-2.5 rounded-xl text-white font-bold hover:shadow-lg transition-all flex items-center gap-2 text-sm disabled:opacity-50 ${mailScheduledTime ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
@@ -2468,8 +2479,18 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                 <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">本文</p>
                 <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{previewMailQueue.body}</div>
               </div>
-              {previewMailQueue.recipients && (
+              {previewMailQueue.status === 'sent' ? (
+                <DeliveryDetail
+                  source="mail_queue"
+                  sourceId={previewMailQueue.id}
+                  delivery={previewMailQueue.delivery}
+                  replyTo={previewMailQueue.replyTo}
+                  recipients={previewMailQueue.recipients}
+                  tone="dark"
+                />
+              ) : previewMailQueue.recipients && (
                 <div>
+                  {previewMailQueue.replyTo && <p className="text-xs text-slate-300 mb-2"><span className="text-slate-500">返信先：</span>{previewMailQueue.replyTo}</p>}
                   <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">宛先（{previewMailQueue.recipients.length}名）</p>
                   <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
                     {previewMailQueue.recipients.map((r: any, idx: number) => (

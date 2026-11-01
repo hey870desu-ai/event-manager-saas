@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy, addDoc
 import { ArrowLeft, Mail, Users, Send, Filter, CheckCircle, RefreshCw, AlertTriangle, PlayCircle, FileText, Eye, X, Clock,Heart,FileDown,Trash2, Link2, Copy, Save, Edit3 } from "lucide-react";
 import Link from "next/link";
 import { fetchTenantData, type Tenant } from "@/lib/tenants";
+import { DeliveryLine, DeliveryDetail } from "@/components/admin/DeliveryStatus"; // 配信履歴の「相手に届いたか」
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
 
@@ -817,29 +818,15 @@ const handleSaveMemo = async (email: string, memo: string) => {
         senderName: tenantData?.name || "絆太郎",
         replyTo: user?.email,
         themeColor: tenantData?.themeColor,
+        record: !isTest, // 送った履歴（届いたかの記録つき）はサーバーが残す。テスト送信は残さない
         }),
       });
 
       const result = await res.json().catch(() => ({} as any));
 
       if (res.ok) {
-        // 即時送信のログを保存（テスト送信以外）
+        // 送った履歴はサーバーが残した（テスト送信以外）→ 一覧を読み直す
         if (!isTest && tenantData) {
-          await addDoc(collection(db, "tenants", tenantData.id, "scheduled_emails"), {
-            subject,
-            body,
-            recipients: finalRecipients,
-            recipientCount: finalRecipients.length,
-            successCount: result.successCount ?? finalRecipients.length,
-            errorCount: result.errorCount ?? 0,
-            senderName: tenantData?.name || "絆太郎",
-            replyTo: user?.email,
-            themeColor: tenantData?.themeColor || "#3b82f6",
-            scheduledAt: new Date().toISOString(),
-            status: 'sent',
-            sentAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-          });
           // 一覧を再取得
           const schedSnap = await getDocs(query(collection(db, "tenants", tenantData.id, "scheduled_emails"), orderBy("scheduledAt", "desc")));
           setScheduledList(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -1120,8 +1107,12 @@ const handleSaveMemo = async (email: string, memo: string) => {
                  </div>
               </div>
               <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                 <div className="text-xs text-slate-500 flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
-                    <AlertTriangle size={14} className="text-amber-500"/>{scheduledTime ? "予約後の変更・キャンセルは管理画面から可能です" : "一度送信すると取り消しはできません"}
+                 <div className="flex flex-col gap-2 items-start">
+                   <div className="text-xs text-slate-500 flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
+                      <AlertTriangle size={14} className="text-amber-500"/>{scheduledTime ? "予約後の変更・キャンセルは管理画面から可能です" : "一度送信すると取り消しはできません"}
+                   </div>
+                   {/* 返信先：送る人（ログインした本人）＝サーバーの決め方と同じ */}
+                   <div className="text-xs text-slate-500 px-1">返信先: <span className="text-slate-300">{user?.email || ''}</span></div>
                  </div>
                  <div className="flex gap-3 w-full md:w-auto flex-wrap">
                     <button onClick={handleSaveDraft} disabled={isSavingDraft || (!subject && !body)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded-lg border border-amber-500/30 w-full md:w-auto justify-center flex items-center gap-2 disabled:opacity-40">
@@ -1244,6 +1235,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                           </div>
                           <p className="text-sm font-bold text-white truncate">{item.subject}</p>
                           <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
+                          <DeliveryLine delivery={item.delivery} tone="dark" />
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => setPreviewScheduled(item)} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">
@@ -1282,6 +1274,7 @@ const handleSaveMemo = async (email: string, memo: string) => {
                           </div>
                           <p className="text-sm font-bold text-white truncate">{item.subject}</p>
                           <p className="text-[10px] text-slate-500">{item.recipientCount || item.recipients?.length || 0}名宛</p>
+                          <DeliveryLine delivery={item.delivery} tone="dark" />
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => setPreviewScheduled(item)} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">
@@ -1324,8 +1317,21 @@ const handleSaveMemo = async (email: string, memo: string) => {
                   {previewScheduled.body}
                 </div>
               </div>
-              {previewScheduled.recipients && (
+              {previewScheduled.status === 'sent' && previewScheduled.kind === 'newsletter' ? (
+                <p className="text-xs text-slate-400">写真入りのメルマガは、相手に届いたかをメルマガの画面の「配信履歴」で見られます。</p>
+              ) : previewScheduled.status === 'sent' ? (
+                <DeliveryDetail
+                  source="scheduled_emails"
+                  sourceId={previewScheduled.id}
+                  tenantId={tenantData?.id}
+                  delivery={previewScheduled.delivery}
+                  replyTo={previewScheduled.replyTo}
+                  recipients={previewScheduled.recipients}
+                  tone="dark"
+                />
+              ) : previewScheduled.recipients && (
                 <div>
+                  {previewScheduled.replyTo && <p className="text-xs text-slate-300 mb-2"><span className="text-slate-500">返信先：</span>{previewScheduled.replyTo}</p>}
                   <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">宛先（{previewScheduled.recipients.length}名）</p>
                   <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1">
                     {previewScheduled.recipients.slice(0, 30).map((r: any, idx: number) => (
