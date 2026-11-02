@@ -749,6 +749,7 @@ export default function Home() {
               title="Support"
               items={[
                 { label: "使い方のページ", href: "/guide" },
+                { label: "申込ページの見本", href: "/sample-event" },
                 { label: "お問い合わせ", href: "/contact" },
                 { label: "APIドキュメント", href: "#", disabled: true },
               ]}

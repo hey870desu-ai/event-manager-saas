@@ -41,13 +41,11 @@ export async function POST(request: Request) {
     // テナント情報を取得
     const tenantId = eventData?.tenantId;
     let ownerEmail = "";
-    let stripeConnectId = "";
     if (tenantId) {
       const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
       if (tenantSnap.exists) {
         const tData = tenantSnap.data();
         ownerEmail = tData?.email || tData?.ownerEmail || "";
-        stripeConnectId = tData?.stripeConnectId || "";
       }
     }
 
@@ -56,6 +54,23 @@ export async function POST(request: Request) {
     let refundAmount = 0;
     let refundRate = 0; // 0, 50, 100
     const isPaid = resData?.paymentStatus === 'paid' && resData?.stripeSessionId;
+    const paidByKonbini = resData?.paymentMethod === 'konbini';
+
+    // まだ払われていない決済（カードの画面を開いたまま・コンビニの支払番号を出したまま）は止める（取り消したあとに払われないように）
+    if (!isPaid && resData?.status === 'payment_pending' && resData?.stripeSessionId) {
+      try {
+        const cs = await stripe.checkout.sessions.retrieve(resData.stripeSessionId);
+        const piId = typeof cs.payment_intent === 'string' ? cs.payment_intent : cs.payment_intent?.id;
+        if (cs.status === 'open') {
+          await stripe.checkout.sessions.expire(cs.id);
+        } else if (piId) {
+          const pi = await stripe.paymentIntents.retrieve(piId);
+          if (pi.status === 'requires_action') await stripe.paymentIntents.cancel(piId);
+        }
+      } catch (e: any) {
+        console.warn('まだ払われていない決済を止められませんでした:', e?.message || e);
+      }
+    }
 
     if (isPaid) {
       // キャンセルポリシーから返金率を計算（申込フォームに出す決まりと同じ計算・日本時間の日付で数える。lib/cancel-policy）
@@ -65,23 +80,20 @@ export async function POST(request: Request) {
 
       if (refundRate > 0) {
         try {
-          const isEmergencyMode = (tenantId === "caredesignworks");
-          const sessionOptions = isEmergencyMode ? undefined : { stripeAccount: stripeConnectId };
-
-          const checkoutSession = await stripe.checkout.sessions.retrieve(
-            resData.stripeSessionId,
-            sessionOptions ? sessionOptions : undefined
-          );
-
-          const paymentIntentId = checkoutSession.payment_intent as string;
+          // 決済はすべて運営の Stripe にある（2026-11-03〜）。受け取り口座へ送った分は、返金と同じ割合で戻す（手数料は戻さない）
+          const checkoutSession = await stripe.checkout.sessions.retrieve(resData.stripeSessionId, { expand: ['payment_intent'] });
+          const pi: any = checkoutSession.payment_intent;
+          const paymentIntentId = typeof pi === 'string' ? pi : pi?.id;
+          const toExpress = !!pi && typeof pi !== 'string' && !!pi.transfer_data?.destination;
           const paidTotal = checkoutSession.amount_total || 0;
           const refundTarget = refundRate === 100 ? paidTotal : Math.floor(paidTotal * refundRate / 100);
 
           if (paymentIntentId && refundTarget > 0) {
-            const refund = await stripe.refunds.create(
-              { payment_intent: paymentIntentId, amount: refundTarget },
-              sessionOptions ? sessionOptions : undefined
-            );
+            const refund = await stripe.refunds.create({
+              payment_intent: paymentIntentId,
+              amount: refundTarget,
+              ...(toExpress ? { reverse_transfer: true, refund_application_fee: false } : {}),
+            });
             refunded = true;
             refundAmount = refund.amount || 0;
             console.log(`💰 返金完了: ¥${refundAmount} (${refundRate}%, PaymentIntent: ${paymentIntentId})`);
@@ -116,7 +128,9 @@ export async function POST(request: Request) {
       let refundMessage = '';
       if (isPaid) {
         if (refunded) {
-          refundMessage = `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-weight: bold;">お支払い済みの参加費のうち ¥${refundAmount.toLocaleString()}（${refundRate}%）を、ご利用のカードへ返金処理いたしました。反映まで数日かかる場合がございます。</p>`;
+          refundMessage = paidByKonbini
+            ? `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-weight: bold;">コンビニでお支払いいただいた参加費のうち ¥${refundAmount.toLocaleString()}（${refundRate}%）をお返しします。Stripe からお送りするメールで返金先の口座をご指定いただくと、お振込みでお返しします。</p>`
+            : `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; color: #166534; font-weight: bold;">お支払い済みの参加費のうち ¥${refundAmount.toLocaleString()}（${refundRate}%）を、ご利用のカードへ返金処理いたしました。反映まで数日かかる場合がございます。</p>`;
         } else if (refundRate === 0) {
           refundMessage = `<p style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; color: #991b1b;">キャンセルポリシーに基づき、返金対象外となります。ご了承ください。</p>`;
         } else {

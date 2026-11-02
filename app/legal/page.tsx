@@ -62,6 +62,7 @@ export default function LegalPage() {
                     スタンダード：月額 3,300円／年払い 33,000円<br />
                     <span className="text-sm text-slate-600 [word-break:auto-phrase]">（管理の人3人まで。4人目から1人につき月額 550円／年払い 5,500円）</span><br />
                     プロプラン：月額 11,000円／年払い 110,000円<br />
+                    参加費をカード・コンビニで受け取るとき：受け取った参加費の5%（決済の手数料を含む）<br />
                     （いずれも税込）<br />
                     <span className="text-sm text-slate-600 [word-break:auto-phrase]">年払いは、10か月分の金額で1年ご利用いただけます。</span>
                   </td>
@@ -70,8 +71,8 @@ export default function LegalPage() {
                 <tr className="border-b border-slate-100">
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">追加手数料等の<br/>追加料金</th>
                   <td className="py-5 px-6 text-slate-600 leading-relaxed">
-                    ご利用料金・イベントの参加費のほかに、手数料はいただきません。<br />
-                    クレジットカード決済・コンビニ決済の手数料もかかりません。<br />
+                    参加者の方：イベントの参加費のほかに、手数料はいただきません（クレジットカード決済・コンビニ決済の手数料もかかりません）。<br />
+                    主催者の方：ご利用料金のほかに、申込のときにカード・コンビニで受け取った参加費から、参加費の5%（決済の手数料を含む）を差し引いてお渡しします。<br />
                     インターネット接続料金、通信料金等はお客様のご負担となります。
                   </td>
                 </tr>
@@ -123,7 +124,7 @@ export default function LegalPage() {
             <h2 className="text-lg md:text-xl font-bold text-white">イベントの参加費のお支払いの流れ</h2>
           </div>
           <div className="p-6 md:p-8 text-sm md:text-base leading-relaxed space-y-5">
-            <p>イベントのページの申込フォームに入力して送ったあと、イベントごとに主催者が決めた方法でお支払いいただきます（当日会場でのお支払い、主催者が案内する方法での事前のお支払い、クレジットカード、コンビニ決済）。クレジットカードとコンビニ決済は、決済の画面（Stripe）でお支払いいただきます。イベントの参加費の販売業者は各イベントの主催者で、イベントのページから主催者の「特定商取引法に基づく表記」をご覧いただけます。</p>
+            <p>イベントのページの申込フォームに入力して送ったあと、イベントごとに主催者が決めた方法でお支払いいただきます（当日会場でのお支払い、主催者が案内する方法での事前のお支払い、クレジットカード、コンビニ決済）。クレジットカードとコンビニ決済は、決済の画面（Stripe）でお支払いいただきます。クレジットカード・コンビニ決済でお支払いいただいた参加費は、株式会社はなひろが主催者に代わって受け取り、主催者にお渡しします。イベントの参加費の販売業者は各イベントの主催者で、イベントのページから主催者の「特定商取引法に基づく表記」をご覧いただけます。</p>
             <div>
               <p className="font-bold mb-1">クレジットカード</p>
               <ol className="list-decimal pl-6 space-y-1">

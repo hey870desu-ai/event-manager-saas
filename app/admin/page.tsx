@@ -16,6 +16,7 @@ import { collection, query, onSnapshot, deleteDoc, doc, getDocs, setDoc, getDoc,
 import EventForm from "@/components/EventForm";
 import Link from "next/link"; // ★ Linkコンポーネントを追加
 import StripeConnectButton from "../../components/admin/StripeConnectButton";
+import CardPaymentSetup from "@/components/admin/CardPaymentSetup"; // 参加費の受け取り口座（Stripe の Express）
 import ReceiptDialog from "@/components/admin/ReceiptDialog"; // 参加者への領収証（PDF・メール）
 import { DeliveryLine, DeliveryDetail } from "@/components/admin/DeliveryStatus"; // 配信履歴の「相手に届いたか」
 import { where } from "firebase/firestore";
@@ -150,6 +151,10 @@ export default function AdminDashboard() {
   // Modals
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Stripe の受け取り口座の登録から戻ったとき（?cardpay=）は、設定を開いて様子を確かめる（CardPaymentSetup が受け取る）
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("cardpay")) setIsSettingsOpen(true);
+  }, []);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   
   // Mail Modal
@@ -2622,12 +2627,12 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
       <CreditCard size={16} className="text-indigo-500"/> 有料イベントの決済設定
     </h3>
     <p className="text-[10px] text-slate-500 mb-4">
-      有料のイベントは、Stripe とつながなくても開けます（当日払い・申込のあとの事前払い）。払い方は、イベントの編集の「参加費の払い方」で選びます。<br />
+      参加費は、当日に会場で・申込のあとに事前に（お使いの決済のリンク・振込）・申込のときにカードで（受け取り口座の登録が要ります）から、イベントごとに選べます。払い方は、イベントの編集の「参加費の払い方」で選びます。<br />
       <Link href="/admin/guide/payments" className="text-indigo-600 font-bold underline underline-offset-2">参加費の受け取り方（くわしい使い方）</Link>
     </p>
-    {/* カードの決済（Stripe）は見直し中。自分の Stripe をつないだ会社では決済が通らない作り（直接の決済と運営を通す決済の書き方が混ざっている）なので、
-        つないでいない会社には連携のボタンを出さない（2026-10-28）。つないでいる会社は今までどおり「Stripe連携済み」 */}
-    {(currentTenantData as any)?.stripeConnectId ? (
+    {/* カード払い（2026-11-03〜）：参加費は運営の Stripe で受け取り、会社ごとの受け取り口座（Stripe の Express）へ送る。
+        塙さんの会社（caredesignworks）だけは前からの形（運営の Stripe に直接入る）なので、前の連携の表示のまま */}
+    {currentUserTenant === "caredesignworks" && (currentTenantData as any)?.stripeConnectId ? (
       <StripeConnectButton
         tenantId={currentUserTenant}
         isConnected={!!(currentTenantData as any)?.stripeConnectId}
@@ -2641,7 +2646,11 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
         }}
       />
     ) : (
-      <p className="text-[10px] text-slate-500 bg-white border border-indigo-100 rounded-xl p-3">カードで払っていただく形（Stripe との連携）は、いま見直しています。</p>
+      <CardPaymentSetup
+        tenantId={currentUserTenant}
+        cardPayment={(currentTenantData as any)?.cardPayment}
+        legalInfo={{ companyName: legalCompanyName, representative: representative, address: legalAddress, phone: legalPhone, email: legalEmail }}
+      />
     )}
   </div>
 </div>

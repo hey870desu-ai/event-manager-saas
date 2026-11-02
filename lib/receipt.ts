@@ -4,7 +4,7 @@
 //   番号は会社ごと・年ごとの通し番号（2026-0001）。発行した時の主催者の名前・住所などを領収証の記録に残し、あとで設定を変えても前の領収証は変わらない
 //   インボイスの登録番号（T＋13けた）を設定した会社は、登録番号と 10% の消費税の額も載せる（参加費は税込として、うち消費税を出す）
 
-export const RECEIPT_METHODS = ["現金", "PayPay", "銀行振込", "クレジットカード", "その他"];
+export const RECEIPT_METHODS = ["現金", "PayPay", "銀行振込", "クレジットカード", "コンビニ払い", "その他"];
 
 export type ReceiptIssuer = { name: string; address: string; phone: string; regNo: string };
 
@@ -38,6 +38,7 @@ export const defaultReceiptNote = (eventTitle: string) => `「${String(eventTitl
 
 // お支払い方法のはじめの値：カードで払った申込はクレジットカード、当日払いのイベントは現金、事前払い（リンク・振込）は選んでもらう
 export function defaultReceiptMethod(ev: any, r: any) {
+  if (r?.paymentMethod === "konbini") return "コンビニ払い";
   if (r?.stripeSessionId) return "クレジットカード";
   if (ev?.payMode === "link") return "";
   return "現金";

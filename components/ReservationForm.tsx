@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import Link from "next/link";
 import PayLinkBox from "@/components/PayLinkBox";
 import { appliedTickets, isPayLinkEvent } from "@/lib/pay-link";
+import { cardPayModeFor } from "@/lib/card-pay";
 import { policyLines } from "@/lib/cancel-policy";
 
 type TenantData = {
@@ -58,6 +59,8 @@ export default function ReservationForm({
   const safeEventId = eventId || event?.id || (params?.event as string);
   // テナントはイベントの記録の持ち主を先に使う（URL のテナントが違っても、Firestore のルールで申込が止まらないように）
   const safeTenantId = event?.tenantId || tenantId || safeTenant?.id || (params?.tenant as string) || "demo";
+  // 申込のときにカードで払っていただくか（"card"）・受け付けられないか（"unavailable"）・ほかの払い方か（"none"）。lib/card-pay.ts
+  const cardMode = cardPayModeFor(event, safeTenant, safeTenantId);
   const themeColor = safeTenant?.themeColor || "#f97316";
   // カスタムフィールドのIDを安全な値に正規化（全角記号等が入っていた場合の対策）
   const customFields: CustomField[] = (event.customFields || []).map((f: any, i: number) => ({
@@ -178,9 +181,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         }
       }
 
-      const isStripeReady = !!safeTenant?.stripeConnectId;
-      // 「申込のあと、事前に払っていただく」（主催者の決済のリンク・振込）のイベントは、カードの決済の連携があっても使わない
-      const payByCard = isPaid && isStripeReady && !isPayLinkEvent(event);
+      // 申込のときにカードで払っていただくイベントで、受け取り口座が使えないときは申し込めない（申込だけ残らないよう、先に止める）
+      if (isPaid && cardMode === "unavailable") {
+        throw new Error("いまはカードでのお支払いを受け付けられません。お手数ですが、主催者にお問い合わせください。");
+      }
+      const payByCard = isPaid && cardMode === "card";
 
       // Firestoreに安全に保存できるようにデータを構築
       const safeStr = (v: any) => (v == null ? "" : String(v));
@@ -225,22 +230,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         const res = await fetch('/api/stripe/checkout-event', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eventId: safeEventId,
-            tenantId: safeTenantId,
-            amount: priceAmount,
-            eventTitle: `${event.title} (${selectedTicket.name})`,
-            email: reservationData.email,
-            reservationId: docRef.id,
-            stripeAccountId: safeTenant?.stripeConnectId 
-          }),
+          // 金額・送金先はサーバーが記録から決める（イベントと申込だけ渡す）
+          body: JSON.stringify({ eventId: safeEventId, reservationId: docRef.id }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({} as any));
         if (data.url) {
           window.location.href = data.url; 
           return;
         }
+        throw new Error(data.error || "お支払いの画面を開けませんでした。時間をおいて、もう一度お試しください。");
       } else {
         // 【Bパターン】無料イベント、もしくは「有料だけどStripe未連携（現金払い）」の場合
         // その場で即座にメールを飛ばすぞい！
@@ -612,15 +611,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                             {priceAmount.toLocaleString()}円（{selectedTicket?.name || "参加費"}）。
                             {isPayLinkEvent(event)
                               ? "お申し込みのあとに表示されるご案内に沿って、事前にお支払いください（受付のメールにもお送りします）。"
-                              : safeTenant?.stripeConnectId
-                              ? "このあとの決済の画面で、クレジットカードでお支払いください（お申し込みの時に決済されます）。"
+                              : cardMode === "card"
+                              ? "このあとの決済の画面でお支払いください（カードはお申し込みの時に決済されます。コンビニ払いを選んだときは、3日以内にコンビニでお支払いください）。"
                               : "開催当日、会場でお支払いください。"}
                           </p>
                         </div>
                         <div>
                           <p className="font-bold text-white mb-1">キャンセル</p>
                           <p className="leading-relaxed mb-1">受付のメールのキャンセルのリンクから手続きいただけます。</p>
-                          {(isPayLinkEvent(event) || safeTenant?.stripeConnectId) && (
+                          {(isPayLinkEvent(event) || cardMode === "card") && (
                             <ul className="text-xs text-slate-400 space-y-0.5 list-disc pl-5">
                               {policyLines(event?.cancelPolicy, String(event?.date || "")).map(line => <li key={line}>{line}</li>)}
                             </ul>

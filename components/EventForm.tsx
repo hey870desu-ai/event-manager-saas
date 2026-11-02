@@ -134,7 +134,7 @@ export default function EventForm({ event, onSuccess, isFreePlan= false }: Props
     contactPhone: "",
     replyMessage: "",       // 自動返信メールの追加メッセージ
     preSurveyUrl: "",       // 事前アンケートURL
-    payMode: "",            // 参加費の払い方：""＝当日会場（カードの決済をつないでいればカード）・"link"＝申込のあと、事前に払っていただく（リンク・振込）
+    payMode: "",            // 参加費の払い方：""＝当日会場（塙さんの会社は前からの形でカード）・"card"＝申込のときにカード（受け取り口座・2026-11-03〜）・"link"＝申込のあと、事前に払っていただく（リンク・振込）
     payNote: "",            // 事前に払っていただくときの案内（期限・振込先など）
   });
 
@@ -542,6 +542,10 @@ useEffect(() => {
     alert("組織情報の読み込みに失敗しました。画面を更新してもう一度お試しください。");
     return;
   }
+    // 「申込のときにカードで」：受け取り口座が使えるときだけ（使えないと申込ができない）
+    if (formData.payMode === "card" && !(tenantData as any)?.cardPayment?.ready && tenantData?.id !== "caredesignworks") {
+      alert("「申込のときにカードで」は、設定の「参加費の受け取り口座」の登録が済むと選べます。いまは別の払い方を選んでください。"); return;
+    }
     // 「申込のあと、事前に払っていただく」：リンクは https だけ。リンクの無いチケットは、払い方の案内（振込先など）が要る
     if (formData.payMode === "link") {
       const paid = tickets.filter(t => t.price > 0);
@@ -875,9 +879,21 @@ useEffect(() => {
   </div>
   <div className="space-y-2">
     <label className="flex items-start gap-2 text-sm text-slate-300 cursor-pointer">
-      <input type="radio" name="payModeChoice" checked={formData.payMode !== "link"} onChange={() => setFormData(prev => ({ ...prev, payMode: "" }))} className="mt-1" />
+      <input type="radio" name="payModeChoice" checked={!formData.payMode} onChange={() => setFormData(prev => ({ ...prev, payMode: "" }))} className="mt-1" />
       <span>当日、会場で払っていただく
-        <span className="block text-xs text-slate-500">カードの決済をつないでいるときは、申込のときにカードで払っていただきます</span>
+        {tenantData?.id === "caredesignworks" && (tenantData as any)?.stripeConnectId && (
+          <span className="block text-xs text-slate-500">この会社は前からの形で、申込のときにカードで払っていただきます</span>
+        )}
+      </span>
+    </label>
+    <label className={`flex items-start gap-2 text-sm cursor-pointer ${(tenantData as any)?.cardPayment?.ready || formData.payMode === "card" ? "text-slate-300" : "text-slate-500"}`}>
+      <input type="radio" name="payModeChoice" checked={formData.payMode === "card"} disabled={!(tenantData as any)?.cardPayment?.ready && formData.payMode !== "card"} onChange={() => setFormData(prev => ({ ...prev, payMode: "card" }))} className="mt-1" />
+      <span>申込のときに、カードで払っていただく
+        <span className="block text-xs text-slate-500">
+          {(tenantData as any)?.cardPayment?.ready
+            ? "受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に受け取り口座へ入ります。コンビニ払いは、Stripe の審査が済むと選べるようになります"
+            : "設定の「参加費の受け取り口座」を登録すると選べます"}
+        </span>
       </span>
     </label>
     <label className="flex items-start gap-2 text-sm text-slate-300 cursor-pointer">

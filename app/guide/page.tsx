@@ -126,7 +126,7 @@ export default function GuidePage() {
                 <tbody>
                   <tr><td className="p-3 border-b border-slate-200 align-top">当日、会場で</td><td className="p-3 border-b border-slate-200">申込のあと、当日に会場で払います。</td></tr>
                   <tr><td className="p-3 border-b border-slate-200 align-top">申込のあと、事前に</td><td className="p-3 border-b border-slate-200">申込の完了画面と受付のメールに、お支払いのリンク（Square・PayPay・STORES など、お使いの決済）や振込先が出ます。払われたかどうかは、参加者リストで「支払い済み」に印を付けます。</td></tr>
-                  <tr><td className="p-3 align-top">カードで</td><td className="p-3">申込のときにカードで払います（Stripe へのご登録が要ります）。</td></tr>
+                  <tr><td className="p-3 align-top">申込のときに、カードで</td><td className="p-3">申込のときにカードで払います（コンビニ払いも、準備が整いしだい選べるようになります）。主催者は、設定の「参加費の受け取り口座」を登録しておきます。受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に口座へ入ります。</td></tr>
                 </tbody>
               </table>
             </div>

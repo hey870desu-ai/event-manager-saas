@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { notifyOperator } from '@/lib/stripe-monthly';
+import { givenReplyTo, fallbackReplyTo, NO_REPLY_ADDRESS } from '@/lib/reply-to';
 import { monthsLabel } from '@/lib/plans';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -60,6 +61,25 @@ async function notifyOwnerUpgrade(tenantId: string, planName: string, customerEm
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
 });
+
+// 申込の人へのお知らせ（コンビニ払いの案内・期限切れの取り消し）。差出人は主催者の名前、返信先はイベントの問い合わせ先 → 会社
+const escHtml = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const jstDeadline = (d: Date) => {
+  const j = new Date(d.getTime() + 9 * 3600 * 1000);
+  return `${j.getUTCMonth() + 1}月${j.getUTCDate()}日（${'日月火水木金土'[j.getUTCDay()]}）${String(j.getUTCHours()).padStart(2, '0')}:${String(j.getUTCMinutes()).padStart(2, '0')}`;
+};
+async function mailParticipant(opts: { tenantId?: string; eventId: string; eData: any; to: string; subject: string; lines: string[] }) {
+  if (!opts.to) return;
+  try {
+    const t: any = opts.tenantId ? (await adminDb.collection('tenants').doc(opts.tenantId).get()).data() || {} : {};
+    const from = String(t.orgName || t.name || 'イベント事務局').replace(/["\r\n]/g, '');
+    const replyTo = givenReplyTo(opts.eData?.contactEmail) || await fallbackReplyTo(opts.tenantId, opts.eventId) || NO_REPLY_ADDRESS;
+    const html = `<div style="font-family:'Helvetica Neue',Arial,sans-serif;color:#334155;font-size:14px;line-height:1.9;max-width:560px;">${opts.lines.join('')}</div>`;
+    await resend.emails.send({ from: `"${from}" <info@event-manager.app>`, to: [opts.to], replyTo, subject: opts.subject, html });
+  } catch (e) {
+    console.error('❌ 申込の人へのメールを送れませんでした:', e);
+  }
+}
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -224,6 +244,66 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
   // ▼▼▼ 2. セミナーチケットの決済 ▼▼▼
   if (session.metadata?.reservationId && session.metadata?.eventId) {
 
+    // コンビニ払い：決済の画面は済んだが、まだ払われていない（completed で unpaid）→ 払い方のページと期限を残して案内のメール
+    // コンビニ払いの期限切れ（async_payment_failed）・決済の画面を開いたまま24時間（expired）→ まだ払われていない申込を取り消す
+    if ((event.type === 'checkout.session.completed' && session.payment_status === 'unpaid') ||
+        event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') {
+      const { eventId, reservationId, tenantId } = session.metadata;
+      try {
+        const ref = adminDb.collection('events').doc(eventId).collection('reservations').doc(reservationId);
+        const rData: any = (await ref.get()).data();
+        if (!rData || rData.status !== 'payment_pending') return NextResponse.json({ received: true });
+        const eData: any = (await adminDb.collection('events').doc(eventId).get()).data() || {};
+        const title = escHtml(eData.title || 'イベント');
+        const name = escHtml(rData.name || 'お客');
+        if (event.type === 'checkout.session.completed') {
+          let voucherUrl = '';
+          let expiresAt: Date | null = null;
+          try {
+            const piId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+            if (piId) {
+              const k: any = ((await stripe.paymentIntents.retrieve(piId)).next_action as any)?.konbini_display_details;
+              voucherUrl = /^https:\/\//.test(k?.hosted_voucher_url || '') ? k.hosted_voucher_url : '';
+              expiresAt = k?.expires_at ? new Date(k.expires_at * 1000) : null;
+            }
+          } catch (e) {
+            console.warn('コンビニの払い方のページを取れませんでした:', e);
+          }
+          await ref.update({ paymentMethod: 'konbini', stripeSessionId: session.id, konbiniVoucherUrl: voucherUrl || null, konbiniExpiresAt: expiresAt });
+          await mailParticipant({
+            tenantId, eventId, eData, to: rData.email, subject: `【お支払いのご案内】${eData.title || 'イベント'}`,
+            lines: [
+              `<p>${name} 様</p>`,
+              `<p>「${title}」へのお申し込みありがとうございます。コンビニでのお支払いをお待ちしています。</p>`,
+              expiresAt ? `<p style="font-weight:bold;">お支払いの期限：${jstDeadline(expiresAt)}</p>` : '',
+              voucherUrl ? `<p>支払番号などのお支払いの方法は、こちらのページにあります。<br><a href="${voucherUrl}">${voucherUrl}</a></p>` : '',
+              `<p>期限までにお支払いがない場合、お申し込みは取り消しになります。お支払いが確認できると、受付のメールをお送りします。</p>`,
+            ],
+          });
+        } else {
+          await ref.update({
+            status: 'cancelled',
+            cancelReason: event.type === 'checkout.session.async_payment_failed' ? 'konbini_expired' : 'checkout_expired',
+            cancelledAt: new Date(),
+          });
+          if (event.type === 'checkout.session.async_payment_failed') {
+            await mailParticipant({
+              tenantId, eventId, eData, to: rData.email, subject: `【お申し込みの取り消し】${eData.title || 'イベント'}`,
+              lines: [
+                `<p>${name} 様</p>`,
+                `<p>「${title}」のお支払いが、期限までに確認できなかったため、お申し込みを取り消しました。</p>`,
+                `<p>参加をご希望の場合は、お手数ですが、もう一度お申し込みください。</p>`,
+              ],
+            });
+          }
+        }
+      } catch (e) {
+        console.error('❌ コンビニ払い・期限切れの処理に失敗:', e);
+        return NextResponse.json({ error: 'update failed' }, { status: 500 }); // Stripe にやり直してもらう
+      }
+      return NextResponse.json({ received: true });
+    }
+
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
 
       if (session.payment_status === 'paid') {
@@ -241,6 +321,16 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
             return NextResponse.json({ received: true });
           }
           const rData = reservationSnap.data();
+
+          // 取り消したあとに払われた（コンビニの支払番号を止められなかったなど）→ 確定にはせず、運営者に返金を頼む
+          if (rData?.status === 'cancelled') {
+            console.error(`🚨 取り消した申込に支払いがありました: ${eventId}/${reservationId}`);
+            await notifyOperator(
+              `【絆太郎】取り消した申込に支払いがありました: ${rData?.eventTitle || eventId}`,
+              `イベント ${eventId} の申込 ${reservationId}（${rData?.name || ''}）は取り消し済みですが、${(session.amount_total || 0).toLocaleString()}円の支払いがありました（Stripe ${session.id}）。\nStripe の画面で返金してください。`
+            ).catch(() => {});
+            return NextResponse.json({ received: true });
+          }
 
           // 二重処理防止
           if (rData?.status === 'confirmed' || rData?.emailed) {
@@ -266,10 +356,12 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
             }
           }
 
-          // A. ステータスを「確定」に更新
+          // A. ステータスを「確定」に更新（コンビニ払いは async_payment_succeeded で来る）
+          const paidBy = event.type === 'checkout.session.async_payment_succeeded' ? 'konbini' : 'card';
           await reservationRef.update({
             status: 'confirmed',
             paymentStatus: 'paid',
+            paymentMethod: paidBy,
             paidAt: new Date(),
             paidAmount: paidAmount || null,
             stripeSessionId: session.id,
@@ -296,8 +388,10 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
           // C. メール送信（失敗してもWebhook自体は成功扱い）
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.event-manager.app';
 
-          const displayPrice = eData?.price
-            ? `¥${Number(eData.price).toLocaleString()} (クレジットカード決済済)`
+          // 金額は Stripe が実際に受け取った額（イベントの price は古い形で、チケットの金額と違うことがある）
+          const shownAmount = Number(paidAmount || eData?.price || 0);
+          const displayPrice = shownAmount > 0
+            ? `¥${shownAmount.toLocaleString()} (${paidBy === 'konbini' ? 'コンビニ払い済' : 'クレジットカード決済済'})`
             : "無料";
 
           try {

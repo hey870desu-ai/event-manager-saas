@@ -42,6 +42,11 @@ export const totalWithTax = (items: InvoiceItem[]) => withTax(items.reduce((acc,
 export const cardMonthlyTotal = (adminCount: number) =>
   withTax(PLANS.standard.price) + withTax(EXTRA_ADMIN_PRICE) * extraAdmins("standard", adminCount);
 
+// 参加費をカード・コンビニで受け取るときの手数料（2026-11-03 塙さん「それでお願いします」）：
+//   参加費の5%（Stripe の決済の手数料 3.6% を含む）を、主催者へ送る前に差し引く。参加者からは取らない
+export const CARD_FEE_RATE = 0.05;
+export const cardFeeFor = (amount: number) => Math.floor(Math.max(0, Number(amount) || 0) * CARD_FEE_RATE);
+
 // 年払い（2026-11-02 塙さん「それで行こう」）：10か月分で1年（2か月分おトク）。追加の管理者も同じ割引
 //   スタンダード 33,000円/年・4人目から1人 5,500円/年・プロ 110,000円/年（税込）
 //   年の途中で管理の人が増えたら、残りの期間の分をその場で決済する。減っても、途中でやめても返金しない
