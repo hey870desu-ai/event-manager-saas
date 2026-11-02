@@ -17,12 +17,19 @@ export type DeliverySource = 'mail_queue' | 'scheduled_emails' | 'newsletter_arc
 export const DELIVERY_SOURCES: DeliverySource[] = ['mail_queue', 'scheduled_emails', 'newsletter_archives'];
 
 // 1通の送った結果（宛先の順に並べて渡す）
-export type DeliveryItem = { email: string; name?: string; id?: string; provider?: string; error?: string; skipped?: string };
+// status は、あとから Resend の記録で入れるとき（さかのぼり）に決まっている言い方
+export type DeliveryItem = { email: string; name?: string; id?: string; provider?: string; error?: string; skipped?: string; status?: DeliveryStatus };
 
 const COL = 'mail_deliveries';
 const GIVE_UP_MS = 3 * 24 * 3600 * 1000; // 3日たっても決まらなければ「分からない」にしてやめる
 const PACE_MS = 250;
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Resend の時刻（"2026-11-01T11:00:03.123+00:00" や "2026-11-01 11:00:03.123+00"）をミリ秒に。読めなければ NaN
+export const parseResendTime = (s: unknown): number => {
+  const t = String(s ?? '').trim().replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+  return new Date(t).getTime();
+};
 
 // sendEmail・sendBatchEmail の結果を、1通の記録の形にする
 export const itemFromSend = (to: { email: string; name?: string }, r: SendEmailResult): DeliveryItem =>
@@ -37,7 +44,7 @@ export const itemsFromBatch = (to: { email: string; name?: string }[], results: 
   });
 
 const initialStatus = (it: DeliveryItem): DeliveryStatus =>
-  it.skipped ? 'skipped' : it.error ? 'failed' : it.id ? 'sent' : 'untracked';
+  it.status ? it.status : it.skipped ? 'skipped' : it.error ? 'failed' : it.id ? 'sent' : 'untracked';
 
 // 履歴の記録の場所
 export function historyRef(source: DeliverySource, tenantId: string | null, sourceId: string) {
@@ -54,8 +61,9 @@ export type BuiltDeliveries = {
 //   （先に1通ずつの記録を書くと、確かめの処理が先に走ったときに、履歴の記録が無くてまとめを書けないため）
 export function buildDeliveries(opts: {
   tenantId: string | null; source: DeliverySource; sourceId: string; items: DeliveryItem[]; replyTo?: string | null;
+  sentAt?: Date; checkedAt?: Date | null; // さかのぼりのときは、送った時刻と確かめた時刻を渡す
 }): BuiltDeliveries {
-  const now = new Date();
+  const now = opts.sentAt ?? new Date();
   const col = adminDb.collection(COL);
   const docs = opts.items.map((it, seq) => {
     const status = initialStatus(it);
@@ -66,11 +74,11 @@ export function buildDeliveries(opts: {
         email: String(it.email || ''), name: String(it.name || ''),
         resendId: it.id ?? null, provider: it.provider ?? null,
         error: it.error ? String(it.error).slice(0, 300) : null,
-        status, final: isFinalStatus(status), sentAt: now, checkedAt: null,
+        status, final: isFinalStatus(status), sentAt: now, checkedAt: opts.checkedAt ?? null,
       },
     };
   });
-  return { docs, summary: summarizeDeliveries(docs.map(d => d.data as any), { replyTo: opts.replyTo ?? null }) };
+  return { docs, summary: summarizeDeliveries(docs.map(d => d.data as any), { replyTo: opts.replyTo ?? null, checkedAt: opts.checkedAt ?? null }) };
 }
 
 export async function saveDeliveries(built: BuiltDeliveries) {
@@ -140,7 +148,7 @@ export async function pollDeliveries(opts: {
       if (error || !data?.data?.length) break;
       for (const e of data.data) if (byId.has(e.id)) found.set(e.id, e.last_event);
       const last = data.data[data.data.length - 1];
-      if (!data.has_more || new Date(last.created_at).getTime() < oldest - 60_000) break;
+      if (!data.has_more || parseResendTime(last.created_at) < oldest - 60_000) break;
       after = last.id;
       await sleep(PACE_MS);
     }
