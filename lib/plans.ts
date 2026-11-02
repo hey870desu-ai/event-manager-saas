@@ -42,6 +42,42 @@ export const totalWithTax = (items: InvoiceItem[]) => withTax(items.reduce((acc,
 export const cardMonthlyTotal = (adminCount: number) =>
   withTax(PLANS.standard.price) + withTax(EXTRA_ADMIN_PRICE) * extraAdmins("standard", adminCount);
 
+// 年払い（2026-11-02 塙さん「それで行こう」）：10か月分で1年（2か月分おトク）。追加の管理者も同じ割引
+//   スタンダード 33,000円/年・4人目から1人 5,500円/年・プロ 110,000円/年（税込）
+//   年の途中で管理の人が増えたら、残りの期間の分をその場で決済する。減っても、途中でやめても返金しない
+export const ANNUAL_MONTHS = 10;
+export type PaidPlan = 'standard' | 'pro';
+export const annualPrice = (plan: PaidPlan) => PLANS[plan].price * ANNUAL_MONTHS; // 税抜
+export const EXTRA_ADMIN_ANNUAL_PRICE = EXTRA_ADMIN_PRICE * ANNUAL_MONTHS;        // 税抜
+
+// カードの年額（税込）
+export const cardAnnualTotal = (plan: PaidPlan, adminCount: number) =>
+  withTax(annualPrice(plan)) + (plan === 'standard' ? withTax(EXTRA_ADMIN_ANNUAL_PRICE) * extraAdmins('standard', adminCount) : 0);
+
+// 年払いの1年の終わりの月（始まりの月から数えて12か月目）
+export const annualEndMonth = (startMonth: string) => {
+  const [y, m] = startMonth.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + 11, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+// "YYYY-MM" の月の末日（"YYYY-MM-DD"）
+export const lastDayOfMonth = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return `${ym}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+};
+const jpDate = (ymd: string) => { const [y, m, d] = ymd.split("-").map(Number); return `${y}年${m}月${d}日`; };
+// 年払いの期間の書き方（例：2026年12月1日〜2027年11月30日）
+export const annualPeriodText = (startMonth: string) => `${jpDate(`${startMonth}-01`)}〜${jpDate(lastDayOfMonth(annualEndMonth(startMonth)))}`;
+
+// 年払いの請求書の明細（税抜）。支払期限は始まりの月の末日（請求の記録の dueDate）
+export const annualInvoiceItems = (plan: string | undefined, adminCount: number, startMonth: string): InvoiceItem[] => {
+  if (plan !== "standard" && plan !== "pro") return [];
+  const items: InvoiceItem[] = [{ name: `システム利用料（${PLANS[plan].name}・年払い）`, detail: `期間: ${annualPeriodText(startMonth)}（12か月）`, price: annualPrice(plan), quantity: 1 }];
+  const extra = extraAdmins(plan, adminCount);
+  if (extra > 0) items.push({ name: `追加の管理者（${INCLUDED_ADMINS + 1}人目から・年払い）`, detail: `管理の人 ${adminCount}人`, price: EXTRA_ADMIN_ANNUAL_PRICE, quantity: extra });
+  return items;
+};
+
 // 日本時間で見た「次の月」を "YYYY-MM" で返す（毎月1日に決済する月額の、1回目の月の初期値）
 export const nextMonthJst = (now: Date = new Date()) => {
   const jst = new Date(now.getTime() + 9 * 3600 * 1000);

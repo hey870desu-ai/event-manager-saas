@@ -87,6 +87,8 @@ export async function POST(req: Request) {
   // ============================================================
   if (event.type === 'checkout.session.completed' && session.metadata?.type === 'kizuna_taro_monthly') {
     const { tenantId, startMonth, chargeNowMonths, chargeNowMonth, chargeNowAmount } = session.metadata;
+    const yearly = session.metadata.cycle === 'year'; // 年払い（2026-11-02〜）。前のリンクには無い＝月払い
+    const planName = session.metadata.plan === 'pro' ? 'プロプラン' : 'スタンダードプラン';
     // 申し込みのときに決済した月（chargeNowMonth は前の版のリンク・1か月だけ）
     const nowMonths = String(chargeNowMonths || chargeNowMonth || '').split(',').filter((m) => /^\d{4}-(0[1-9]|1[0-2])$/.test(m));
     const paidNow = nowMonths.length ? `${monthsLabel(nowMonths)}（${Number(chargeNowAmount || 0).toLocaleString('ja-JP')}円）` : '';
@@ -114,11 +116,17 @@ export async function POST(req: Request) {
         await adminDb.collection('tenants').doc(tenantId).update({
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: session.subscription as string,
-          stripeMonthly: { startMonth: startMonth || null, registeredAt: new Date(), ...(nowMonths.length ? { paidAtSignup: nowMonths } : {}) },
+          stripeMonthly: { startMonth: startMonth || null, cycle: yearly ? 'year' : 'month', registeredAt: new Date(), ...(nowMonths.length ? { paidAtSignup: nowMonths } : {}) },
           updatedAt: new Date(),
         });
         const month = Number((startMonth || '').slice(5)) || '';
-        await notifyOwnerUpgrade(tenantId, `スタンダードプラン（カード登録・${paidNow ? `${paidNow}は申し込みのときに決済・` : ''}${month}月1日から毎月1日に決済）`, session.customer_details?.email || null);
+        await notifyOwnerUpgrade(
+          tenantId,
+          yearly
+            ? `${planName}（カード登録・年払い・${paidNow ? `${paidNow}は申し込みのときに決済・` : ''}${month}月1日に1年分を決済・以降は毎年${month}月1日）`
+            : `${planName}（カード登録・${paidNow ? `${paidNow}は申し込みのときに決済・` : ''}${month}月1日から毎月1日に決済）`,
+          session.customer_details?.email || null
+        );
       } catch (e) {
         console.error('❌ Monthly card registration update failed:', e);
         return NextResponse.json({ error: 'update failed' }, { status: 500 }); // Stripe にやり直してもらう

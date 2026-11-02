@@ -11,6 +11,10 @@ import {
 import { JetBrains_Mono } from "next/font/google";
 import type { Metadata } from "next";
 import { SITE_URL, softwareJsonLd } from "@/lib/site";
+import { withTax, annualPrice } from "@/lib/plans";
+
+// 年払いの書き方（10か月分で1年・lib/plans.ts）
+const annualText = (plan: "standard" | "pro") => `年払いなら ¥${withTax(annualPrice(plan)).toLocaleString("ja-JP")} / 年（2か月分おトク）`;
 
 // 正式なアドレス（www つき）。タイトルと説明は layout.tsx のもの
 export const metadata: Metadata = {
@@ -690,6 +694,7 @@ export default function Home() {
                 name="スタンダード"
                 price="¥3,300"
                 priceUnit="/ 月額 (税込)"
+                annual={annualText("standard")}
                 desc="出会いを「資産」に変える。過去すべての参加者データを一元管理し、継続的な関係を築けます。"
                 features={[
                   { text: "全イベントの名簿を絆リスト化" },
@@ -708,6 +713,7 @@ export default function Home() {
                 name="プロプラン"
                 price="¥11,000"
                 priceUnit="/ 月額 (税込)"
+                annual={annualText("pro")}
                 desc="支部や拠点が複数ある法人に。拠点ごとのイベントと集計を、一つの画面で。"
                 features={[
                   { text: "支部・拠点を増やせる" },
@@ -1047,6 +1053,7 @@ function PricingCard({
   name,
   price,
   priceUnit,
+  annual,
   desc,
   features,
   ctaText,
@@ -1056,6 +1063,7 @@ function PricingCard({
   name: string;
   price: string;
   priceUnit: string;
+  annual?: string; // 年払いの金額（月額のプランだけ）
   desc: string;
   features: { text: string; disabled?: boolean }[];
   ctaText: string;
@@ -1113,6 +1121,7 @@ function PricingCard({
         </span>
         <span className="text-[11px] text-[#888]">{priceUnit}</span>
       </div>
+      {annual && <p className="-mt-2 mb-4 text-[12px] font-bold text-[#E8E8E8]">{annual}</p>}
       <p className="text-[13px] text-[#888] leading-relaxed mb-6 min-h-[3em] [word-break:auto-phrase] text-pretty">{desc}</p>
 
       <div className="space-y-3 mb-7 flex-1 border-t border-[#2A2A2A] pt-6">

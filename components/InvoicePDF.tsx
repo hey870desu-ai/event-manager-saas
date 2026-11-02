@@ -60,7 +60,10 @@ export const InvoicePage = ({ tenant, invoice, myCompany }: Props) => {
   const taxAmount = Math.floor(subTotal * 0.1);
   const totalAmount = subTotal + taxAmount;
 
-  const payLimitDate = new Date(parseInt(year), parseInt(month) + 1, 0); 
+  // 支払期限：記録に dueDate（"YYYY-MM-DD"・年払いは始まりの月の末日）があればそれ。無ければ請求の月の翌月末
+  const payLimitDate = /^\d{4}-\d{2}-\d{2}$/.test(invoice.dueDate || '')
+    ? new Date(Number(invoice.dueDate.slice(0, 4)), Number(invoice.dueDate.slice(5, 7)) - 1, Number(invoice.dueDate.slice(8, 10)))
+    : new Date(parseInt(year), parseInt(month) + 1, 0);
   const dueDateStr = `${payLimitDate.getFullYear()}年${payLimitDate.getMonth() + 1}月${payLimitDate.getDate()}日`;
   const today = new Date();
   const issueDateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;

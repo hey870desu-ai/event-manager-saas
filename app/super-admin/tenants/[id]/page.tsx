@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Building2, Save, ArrowLeft, User, Key, Receipt, MapPin, FileText, Trash2, Loader2, Store, Plus, CheckCircle2, AlertCircle, Edit, CreditCard, Copy, ExternalLink } from "lucide-react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/InvoicePDF";
-import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax, extraAdmins, monthlyInvoiceItems, totalWithTax, cardMonthlyTotal, nextMonthJst, prevMonthOf, isCountedAdmin, signupChargeableMonths, monthsLabel } from "@/lib/plans";
+import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, EXTRA_ADMIN_ANNUAL_PRICE, withTax, extraAdmins, annualPrice, monthlyInvoiceItems, annualInvoiceItems, annualEndMonth, lastDayOfMonth, totalWithTax, cardMonthlyTotal, cardAnnualTotal, nextMonthJst, prevMonthOf, isCountedAdmin, signupChargeableMonths, monthsLabel } from "@/lib/plans";
 
 
 const SUPER_ADMIN_EMAIL = "hey870desu@gmail.com";
@@ -20,6 +20,9 @@ type InvoiceRecord = {
   amount: number;     // 10780
   status: 'unbilled' | 'billed' | 'paid'; // ステータス
   items?: { name: string; detail?: string; price: number; quantity: number }[];
+  cycle?: 'year';     // 年払いの請求（month は始まりの月）
+  periodEnd?: string; // 年払いの終わりの月 "2027-11"
+  dueDate?: string;   // 支払期限 "2026-12-31"（年払いは始まりの月の末日）
   issuedAt?: any;
   createdAt?: any;
 };
@@ -43,11 +46,13 @@ export default function TenantDetailPage() {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
-  // カードの月額（毎月1日に決済）のリンク
+  // カードの月額（毎月1日に決済）・年払い（毎年、始まりの月の1日に決済）のリンク。プロは年払いだけ
   const [linkMonth, setLinkMonth] = useState(() => nextMonthJst());
+  const [linkCycle, setLinkCycle] = useState<'month' | 'year'>('month');
+  const [annualInvoiceMonth, setAnnualInvoiceMonth] = useState(() => nextMonthJst()); // 年払いの請求書の始まりの月
   const [creatingLink, setCreatingLink] = useState(false);
   const [chargeFrom, setChargeFrom] = useState(""); // 申し込みのときに決済する最初の月（空＝申し込みのときは決済しない）
-  const [cardLink, setCardLink] = useState<{ url: string; startMonth: string; adminCount: number; extraAdmins: number; monthlyTotal: number; chargeNowMonths?: string[]; chargeNowAmount?: number } | null>(null);
+  const [cardLink, setCardLink] = useState<{ url: string; startMonth: string; adminCount: number; extraAdmins: number; monthlyTotal: number; cycle?: 'month' | 'year'; annualTotal?: number; chargeNowMonths?: string[]; chargeNowAmount?: number } | null>(null);
   const [linkError, setLinkError] = useState("");
 
   useEffect(() => {
@@ -182,6 +187,10 @@ const handleSave = async () => {
   // 管理の人の数（運営のアカウントは数えない）。スタンダードは4人目から1人ずつ請求に足す
   const adminCount = admins.filter(a => isCountedAdmin(a.email)).length;
   const extraCount = extraAdmins(tenantData.plan, adminCount);
+  const isPro = tenantData.plan === 'pro';
+  const cycle: 'month' | 'year' = isPro ? 'year' : linkCycle; // プロのカードは年払いだけ
+  const monthlyRate = isPro ? withTax(PLANS.pro.price) : cardMonthlyTotal(adminCount); // 月払いの金額（申し込みのときに決済する月の分にも使う）
+  const annualTotal = cardAnnualTotal(isPro ? 'pro' : 'standard', adminCount);
   // 申し込みのときに決済できる分の選び方（1回目の月の前の月から、先月までさかのぼる）：[["2026-11"], ["2026-10", "2026-11"], …]
   const prepayChoices: string[][] = [];
   if (/^\d{4}-(0[1-9]|1[0-2])$/.test(linkMonth)) {
@@ -201,7 +210,7 @@ const handleSave = async () => {
       const res = await fetch("/api/admin/stripe-monthly-link", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tenantId, startMonth: linkMonth, chargeFromMonth: chargeFrom || null }),
+        body: JSON.stringify({ tenantId, startMonth: linkMonth, chargeFromMonth: chargeFrom || null, cycle }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "リンクを作れませんでした");
@@ -241,6 +250,31 @@ const handleSave = async () => {
       fetchInvoices(tenantId);
       alert(`${monthStr} 分の請求データを作成しました`); 
     } catch(e) { console.error(e); alert("作成失敗"); } finally { setCreatingInvoice(false); }
+  };
+
+  // ★ 年払いの請求（始まりの月から12か月分。支払期限は始まりの月の末日）
+  const handleCreateAnnualInvoice = async () => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(annualInvoiceMonth)) return alert("始まりの月を選んでください");
+    const items = annualInvoiceItems(tenantData.plan, adminCount, annualInvoiceMonth);
+    if (items.length === 0) return alert("年払いは、スタンダードとプロだけです");
+    const total = totalWithTax(items);
+    if (!confirm(`${annualInvoiceMonth}〜${annualEndMonth(annualInvoiceMonth)} の年払いの請求（${total.toLocaleString()}円・税込）を作りますか？`)) return;
+    setCreatingInvoice(true);
+    try {
+      await addDoc(collection(db, "tenants", tenantId, "invoices"), {
+        month: annualInvoiceMonth,
+        cycle: "year",
+        periodEnd: annualEndMonth(annualInvoiceMonth),
+        dueDate: lastDayOfMonth(annualInvoiceMonth),
+        items,
+        amount: total,
+        status: "unbilled",
+        createdAt: serverTimestamp()
+      });
+      await syncLatestStatus();
+      fetchInvoices(tenantId);
+      alert(`${annualInvoiceMonth} からの年払いの請求データを作成しました`);
+    } catch (e) { console.error(e); alert("作成失敗"); } finally { setCreatingInvoice(false); }
   };
 
   // ★ 明細編集用のState
@@ -435,18 +469,34 @@ const handleSave = async () => {
             </div>
           </section>
 
-          {/* カードの月額（毎月1日に決済）：Stripe の申し込みリンク */}
-          {tenantData.plan === 'standard' && (
+          {/* カードの決済（月払い＝毎月1日・年払い＝毎年、始まりの月の1日）：Stripe の申し込みリンク。プロは年払いだけ */}
+          {(tenantData.plan === 'standard' || isPro) && (
           <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-white font-bold mb-4 flex items-center gap-2 pb-2 border-b border-slate-800"><CreditCard className="text-indigo-400" size={20}/> カードの月額（毎月1日に決済）</h2>
+            <h2 className="text-white font-bold mb-4 flex items-center gap-2 pb-2 border-b border-slate-800"><CreditCard className="text-indigo-400" size={20}/> カードの決済（月払い・年払い）</h2>
             <div className="space-y-4 text-sm">
-              <div className="text-slate-300">
-                月額 <span className="font-bold text-white">{cardMonthlyTotal(adminCount).toLocaleString()}円</span>（税込）
-                <span className="text-xs text-slate-500">＝{withTax(PLANS.standard.price).toLocaleString()}円＋{withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円×{extraCount}人（管理の人 {adminCount}人）</span>
-              </div>
+              {!isPro && (
+                <div className="flex gap-2">
+                  {(['month', 'year'] as const).map((c) => (
+                    <button key={c} onClick={() => setLinkCycle(c)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${linkCycle === c ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}>
+                      {c === 'month' ? '月払い（毎月1日）' : '年払い（2か月分おトク）'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {cycle === 'year' ? (
+                <div className="text-slate-300">
+                  年額 <span className="font-bold text-white">{annualTotal.toLocaleString()}円</span>（税込）
+                  <span className="text-xs text-slate-500">＝{withTax(annualPrice(isPro ? 'pro' : 'standard')).toLocaleString()}円{isPro ? '' : `＋${withTax(EXTRA_ADMIN_ANNUAL_PRICE).toLocaleString()}円×${extraCount}人`}（管理の人 {adminCount}人）</span>
+                </div>
+              ) : (
+                <div className="text-slate-300">
+                  月額 <span className="font-bold text-white">{cardMonthlyTotal(adminCount).toLocaleString()}円</span>（税込）
+                  <span className="text-xs text-slate-500">＝{withTax(PLANS.standard.price).toLocaleString()}円＋{withTax(EXTRA_ADMIN_PRICE).toLocaleString()}円×{extraCount}人（管理の人 {adminCount}人）</span>
+                </div>
+              )}
               {tenantData.stripeSubscriptionId && (
                 <div className="text-xs text-amber-400">
-                  Stripe の月額の記録があります{tenantData.stripeMonthly?.startMonth ? `（${Number(String(tenantData.stripeMonthly.startMonth).slice(5))}月1日から毎月1日に決済）` : ""}。続いている月額があるときは、新しいリンクは作りません。
+                  Stripe の{tenantData.stripeMonthly?.cycle === 'year' ? '年払い' : '月額'}の記録があります{tenantData.stripeMonthly?.startMonth ? (tenantData.stripeMonthly?.cycle === 'year' ? `（毎年${Number(String(tenantData.stripeMonthly.startMonth).slice(5))}月1日に1年分を決済）` : `（${Number(String(tenantData.stripeMonthly.startMonth).slice(5))}月1日から毎月1日に決済）`) : ""}。続いている決済があるときは、新しいリンクは作りません。
                 </div>
               )}
               {tenantData.stripeMonthly?.seatsError && (
@@ -467,22 +517,27 @@ const handleSave = async () => {
                   <select value={chargeFrom} onChange={(e) => setChargeFrom(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none">
                     <option value="">なし</option>
                     {prepayChoices.map((months) => (
-                      <option key={months[0]} value={months[0]}>{monthsLabel(months)}（{(cardMonthlyTotal(adminCount) * months.length).toLocaleString()}円）</option>
+                      <option key={months[0]} value={months[0]}>{monthsLabel(months)}（{(monthlyRate * months.length).toLocaleString()}円）</option>
                     ))}
                   </select>
                   <span className="block text-xs text-slate-500 mt-1">1日の決済に間に合わず次の月からになったときや、前の月の分もいただくときに使います（先月・今月・来月の分だけ）</span>
                 </div>
               )}
               <div className="text-xs text-slate-500 leading-relaxed">
-                決済は毎月1日の朝（日本時間）です。登録のあとに管理の人が増えたり減ったりしたら、次の1日の決済から金額が変わります（日割りはしません）。Stripe の画面では、払う方がメールアドレスを入れます。
+                {cycle === 'year'
+                  ? '年払いは、1回目の月の1日の朝（日本時間）に1年分を決済し、以降は毎年その日に決済します。年の途中で管理の人が増えたら、次の更新日までの残りの期間の分をその場で決済します（減っても、途中でやめても返金しません）。申し込みのときに決済する分は、月払いの金額です。'
+                  : '決済は毎月1日の朝（日本時間）です。登録のあとに管理の人が増えたり減ったりしたら、次の1日の決済から金額が変わります（日割りはしません）。'}
+                Stripe の画面では、払う方がメールアドレスを入れます。
               </div>
               {linkError && <div className="text-xs text-red-400">{linkError}</div>}
               {cardLink && (
                 <div className="bg-slate-950 border border-indigo-500/30 rounded-lg p-4 space-y-3">
                   <div className="text-xs text-slate-300">
-                    月額 {cardLink.monthlyTotal.toLocaleString()}円（管理の人 {cardLink.adminCount}人・追加 {cardLink.extraAdmins}人）・{cardLink.chargeNowMonths?.length
-                      ? `${monthsLabel(cardLink.chargeNowMonths)}（${(cardLink.chargeNowAmount || 0).toLocaleString()}円）は申し込みのときに決済・${Number(cardLink.startMonth.slice(5))}月1日から毎月1日に決済`
-                      : `1回目の決済は${Number(cardLink.startMonth.slice(5))}月1日`}
+                    {cardLink.cycle === 'year'
+                      ? `年額 ${(cardLink.annualTotal || 0).toLocaleString()}円（管理の人 ${cardLink.adminCount}人・追加 ${cardLink.extraAdmins}人）・${cardLink.chargeNowMonths?.length ? `${monthsLabel(cardLink.chargeNowMonths)}（${(cardLink.chargeNowAmount || 0).toLocaleString()}円）は申し込みのときに決済・` : ''}${Number(cardLink.startMonth.slice(5))}月1日に1年分を決済（以降は毎年${Number(cardLink.startMonth.slice(5))}月1日）`
+                      : `月額 ${cardLink.monthlyTotal.toLocaleString()}円（管理の人 ${cardLink.adminCount}人・追加 ${cardLink.extraAdmins}人）・${cardLink.chargeNowMonths?.length
+                        ? `${monthsLabel(cardLink.chargeNowMonths)}（${(cardLink.chargeNowAmount || 0).toLocaleString()}円）は申し込みのときに決済・${Number(cardLink.startMonth.slice(5))}月1日から毎月1日に決済`
+                        : `1回目の決済は${Number(cardLink.startMonth.slice(5))}月1日`}`}
                   </div>
                   <input readOnly value={cardLink.url} onFocus={(e) => e.target.select()} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 font-mono outline-none" />
                   <div className="flex gap-2">
@@ -504,6 +559,16 @@ const handleSave = async () => {
                  {creatingInvoice ? <Loader2 className="animate-spin" size={14}/> : <Plus size={14}/>} 今月分を作成
                </button>
              </div>
+             {(tenantData.plan === 'standard' || isPro) && (
+               <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-slate-400">
+                 年払いの請求（12か月分・支払期限は始まりの月の末日）
+                 <input type="month" value={annualInvoiceMonth} onChange={(e) => setAnnualInvoiceMonth(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-white outline-none" />
+                 <span className="text-slate-500">{totalWithTax(annualInvoiceItems(tenantData.plan, adminCount, annualInvoiceMonth || nextMonthJst())).toLocaleString()}円（税込）</span>
+                 <button onClick={handleCreateAnnualInvoice} disabled={creatingInvoice || !annualInvoiceMonth} className="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors disabled:opacity-50">
+                   <Plus size={14}/> 年払いの請求を作成
+                 </button>
+               </div>
+             )}
 
              {invoices.length === 0 ? (
                <div className="text-center py-8 text-slate-500 text-sm">請求データがありません</div>
@@ -515,6 +580,7 @@ const handleSave = async () => {
                         <div className="bg-slate-900 px-3 py-2 rounded border border-slate-800 text-center min-w-[80px]">
                           <div className="text-[10px] text-slate-500 font-bold uppercase">Month</div>
                           <div className="text-white font-mono font-bold">{inv.month}</div>
+                          {inv.cycle === 'year' && <div className="text-[10px] text-yellow-400 font-bold">〜{inv.periodEnd}・年払い</div>}
                         </div>
                         <div>
                           <div className="text-lg font-bold text-white">¥{inv.amount.toLocaleString()}</div>

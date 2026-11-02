@@ -1,7 +1,7 @@
 // 📂 lib/site.ts
 // 📝 役割：検索とAIに向けて出すサイトの決まり（正式なアドレス・名前・会社・料金）。サイトマップ・robots・llms.txt・構造化データで使う
 //   ⚠ 正式なアドレスは www つき。event-manager.app（www なし）は Vercel で www へ転送している
-import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, withTax } from "@/lib/plans";
+import { PLANS, INCLUDED_ADMINS, EXTRA_ADMIN_PRICE, EXTRA_ADMIN_ANNUAL_PRICE, withTax, annualPrice } from "@/lib/plans";
 
 export const SITE_URL = "https://www.event-manager.app";
 export const SITE_NAME = "イベントシステム絆太郎（ばんたろう）";
@@ -20,8 +20,8 @@ const yen = (n: number) => n.toLocaleString("ja-JP");
 export const PRICE_LINES = [
   { name: PLANS.free.name, price: 0, unit: "", note: "イベント1件まで" },
   { name: PLANS.spot.name, price: withTax(PLANS.spot.price), unit: "1回", note: "1回のイベントごと" },
-  { name: PLANS.standard.name, price: withTax(PLANS.standard.price), unit: "月", note: `管理者${INCLUDED_ADMINS}人まで。${INCLUDED_ADMINS + 1}人目から1人につき月${yen(withTax(EXTRA_ADMIN_PRICE))}円` },
-  { name: PLANS.pro.name, price: withTax(PLANS.pro.price), unit: "月", note: "支部・拠点を増やせる。管理者の人数は数えない" },
+  { name: PLANS.standard.name, price: withTax(PLANS.standard.price), unit: "月", note: `管理者${INCLUDED_ADMINS}人まで。${INCLUDED_ADMINS + 1}人目から1人につき月${yen(withTax(EXTRA_ADMIN_PRICE))}円。年払いは年${yen(withTax(annualPrice("standard")))}円（${INCLUDED_ADMINS + 1}人目から1人につき年${yen(withTax(EXTRA_ADMIN_ANNUAL_PRICE))}円）` },
+  { name: PLANS.pro.name, price: withTax(PLANS.pro.price), unit: "月", note: `支部・拠点を増やせる。管理者の人数は数えない。年払いは年${yen(withTax(annualPrice("pro")))}円` },
 ];
 
 export const priceText = (p: (typeof PRICE_LINES)[number]) =>

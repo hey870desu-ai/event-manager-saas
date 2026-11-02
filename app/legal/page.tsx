@@ -59,10 +59,11 @@ export default function LegalPage() {
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">販売価格</th>
                   <td className="py-5 px-6">
                     スポット利用：1イベント 5,500円<br />
-                    スタンダード：月額 3,300円<br />
-                    <span className="text-sm text-slate-600 [word-break:auto-phrase]">（管理の人3人まで。4人目から1人につき月額 550円）</span><br />
-                    プロプラン：月額 11,000円<br />
-                    （いずれも税込）
+                    スタンダード：月額 3,300円／年払い 33,000円<br />
+                    <span className="text-sm text-slate-600 [word-break:auto-phrase]">（管理の人3人まで。4人目から1人につき月額 550円／年払い 5,500円）</span><br />
+                    プロプラン：月額 11,000円／年払い 110,000円<br />
+                    （いずれも税込）<br />
+                    <span className="text-sm text-slate-600 [word-break:auto-phrase]">年払いは、10か月分の金額で1年ご利用いただけます。</span>
                   </td>
                 </tr>
                 {/* 追加手数料と送料（Stripe のコンビニ決済の審査で「送料は無くても書く」と求められた・2026-10-29） */}
@@ -84,13 +85,16 @@ export default function LegalPage() {
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">お支払方法</th>
                   <td className="py-5 px-6 leading-relaxed">
                     クレジットカード決済<br />
+                    銀行振込（ご利用料金のみ。請求書をお送りします）<br />
                     コンビニ決済（イベントの参加費のみ。対応しているイベントだけ。ファミリーマート・ローソン・ミニストップ・セイコーマート）
                   </td>
                 </tr>
                 <tr className="border-b border-slate-100">
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">代金の支払時期</th>
                   <td className="py-5 px-6 text-slate-600 leading-relaxed">
-                    ご利用料金：初回お申込み時、及び以降毎月自動更新時に決済されます。<br />
+                    ご利用料金（月払い）：初回お申込み時、及び以降毎月自動更新時に決済されます。<br />
+                    ご利用料金（年払い）：ご利用開始月の1日に1年分を決済し、以降は毎年自動更新時に決済されます。年の途中で管理の人を増やした場合は、次の更新日までの残りの期間の分を、その時に決済します。<br />
+                    銀行振込：請求書に記載の期日（年払いはご利用開始月の末日）までにお振込みください。<br />
                     イベントの参加費：クレジットカードはお申込みの時。コンビニ決済はお申込みのあと3日以内（期限は決済の画面に表示します）。
                   </td>
                 </tr>
@@ -104,7 +108,7 @@ export default function LegalPage() {
                 <tr>
                   <th className="py-5 px-6 text-left bg-slate-50/50 font-bold text-slate-500">返品・キャンセル</th>
                   <td className="py-5 px-6 text-slate-600 leading-relaxed">
-                    ご利用料金：デジタルコンテンツの性質上、決済完了後の返金・返品はお受けできません。解約は随時可能ですが、次回の決済予定日までに解約手続きを行ってください。<br />
+                    ご利用料金：デジタルコンテンツの性質上、決済完了後の返金・返品はお受けできません。解約は随時可能ですが、次回の決済予定日までに解約手続きを行ってください。年払いを途中で解約された場合や、年の途中で管理の人を減らした場合も返金はいたしません（お支払い済みの期間の終わりまでご利用いただけます）。<br />
                     イベントの参加費：受付のメールのキャンセルのリンクから手続きいただけます。返金の有無と割合は、各イベントの申込フォームに記載のキャンセル・返金の決まりによります。コンビニ決済の返金は、Stripe からお送りするメールで返金先の口座をご指定いただき、お振込みでお返しします。
                   </td>
                 </tr>
