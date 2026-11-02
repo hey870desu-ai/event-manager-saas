@@ -15,6 +15,7 @@ const IMG: Record<string, [number, number]> = {
   "checkin": [600, 1298], "survey-qr": [816, 1228], "survey": [600, 1789], "survey-results": [1600, 1125],
   "report-top": [1400, 1518], "report-survey": [1400, 1096], "kizuna-list": [1600, 1188],
   "newsletter": [1600, 1375], "card-scan": [600, 1298], "analytics": [1600, 1125], "staff": [900, 1554],
+  "mail-delivery": [1520, 1084],
 };
 
 export function Img({ name, alt, className = "" }: { name: string; alt: string; className?: string }) {
