@@ -446,9 +446,11 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
 
     if (tenantId) {
       try {
-        // テナントがいま使っている月額と違うもの（二重の登録で止めた方など）が終わっても、プランは変えない
+        // テナントがいま使っている月額と同じものが終わったときだけ、フリーに戻す。
+        //   この Stripe は福ひろば・space（小口）と同じアカウント＝ほかのシステムの月額の知らせも届く（metadata.tenantId が同じ名前のことがある）。
+        //   二重の登録で止めた方や、テナントに月額の記録が無いときも、プランは変えない（2026-11-03）
         const current = (await adminDb.collection('tenants').doc(tenantId).get()).data()?.stripeSubscriptionId;
-        if (current && current !== subscription.id) {
+        if (current !== subscription.id) {
           console.log(`ℹ️ [Webhook] ${subscription.id} is not the current subscription of ${tenantId}. Plan unchanged.`);
         } else {
           await adminDb.collection('tenants').doc(tenantId).update({
@@ -475,12 +477,14 @@ if (event.type === 'checkout.session.completed' && session.metadata?.plan) {
       try {
         const snap = await adminDb.collection('tenants').where('stripeCustomerId', '==', customerId).limit(1).get();
         const tenant = snap.docs[0];
+        // 絆太郎のテナントのお客さまでなければ知らせない（同じ Stripe のほかのシステム＝福ひろば・space の決済の失敗）
+        if (!tenant) return NextResponse.json({ received: true });
         const next = invoice.next_payment_attempt
           ? `次は ${new Date(invoice.next_payment_attempt * 1000).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} にやり直します。`
           : 'Stripe はこれ以上やり直しません。';
         await notifyOperator(
-          `【絆太郎】カードの決済ができませんでした: ${tenant?.data().name || customerId}`,
-          `${tenant ? `${tenant.data().name}（${tenant.id}）` : `Stripe のお客さま ${customerId}`} の ${(invoice.amount_due || 0).toLocaleString()}円 の決済ができませんでした（${invoice.attempt_count || 1}回目）。${next}\n` +
+          `【絆太郎】カードの決済ができませんでした: ${tenant.data().name || tenant.id}`,
+          `${tenant.data().name}（${tenant.id}）の ${(invoice.amount_due || 0).toLocaleString()}円 の決済ができませんでした（${invoice.attempt_count || 1}回目）。${next}\n` +
           `${invoice.hosted_invoice_url ? `請求書: ${invoice.hosted_invoice_url}\n` : ''}カードの確かめを、お客さまにお願いしてください。`
         );
       } catch (e) {
