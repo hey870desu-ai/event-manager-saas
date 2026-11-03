@@ -199,12 +199,13 @@ export default function PaymentsGuidePage() {
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="font-bold text-slate-900 mb-1">カードで受け取るには</p>
             <p>右上の歯車（設定）の「参加費の受け取り口座」から、Stripe（決済の会社）の画面で、口座と代表者の本人確認などを登録します。登録が済むと、イベントの「参加費の払い方」で「申込のときに、カードで」を選べます。例えば参加費 5,000円なら、受け取り口座へは 4,750円が入ります。</p>
+            <p className="mt-2">登録の画面と、参加者が払う流れ（申込フォーム → Stripe の決済の画面 → 申込完了）は、<a href="/guide#cardpay" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold underline underline-offset-2">使い方のページ</a>に写真つきで載せています。</p>
           </div>
         </Block>
 
         <Block id="setup" n={2} title="設定のしかた"
           path="管理画面のイベントのカードを押す（新しく作るときは「＋新規イベント」）→「チケット・参加費設定」「参加費の払い方」「キャンセル・返金ポリシー」"
-          media={<div className="space-y-6"><Part name="editor-tickets" alt="チケットを一般・学生に分け、参加費の払い方で事前のお支払いを選び、お支払いのリンクと振込先の案内を入れた画面" /><div className="max-w-xl"><Part name="editor-cancel" alt="キャンセル・返金ポリシー。開催日の7日前まで100%、2日前まで50%を返金" /></div></div>}>
+          media={<div className="space-y-6"><Part name="editor-tickets" alt="チケットを一般・学生に分け、参加費の払い方の3つから事前のお支払いを選び、お支払いのリンクと振込先の案内を入れた画面" /><div className="max-w-xl"><Part name="editor-cancel" alt="キャンセル・返金ポリシー。開催日の7日前まで100%、2日前まで50%を返金" /></div></div>}>
           <ol className="list-decimal pl-6 space-y-3">
             <li>「チケット・参加費設定」で、チケットの名前と金額を入れます。一般・学生など、いくつでも分けられます。0円のチケットは「無料」と表示されます。</li>
             <li>有料のチケットがあると「参加費の払い方」が出ます。「当日、会場で払っていただく」「申込のときに、カードで払っていただく」「申込のあと、事前に払っていただく」から選びます。カードは、受け取り口座の登録が済むと選べます。</li>

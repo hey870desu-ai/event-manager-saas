@@ -1,11 +1,12 @@
 // 📂 app/guide/page.tsx
 // 📝 役割：絆太郎でできること・使い方（画面の写真つき）。準備 → 申込 → 当日 → 終わったあと → 次のご案内 の順に並べる
 //   写真は手元で、架空の主催者「ひだまりケア勉強会（見本）」と架空の参加者のデータで撮った（public/guide/*.webp）
+//   カード払いの参加者の画面（#cardpay）だけは、本番の「申込ページの見本」のイベントに見本の参加者を入れて撮った（2026-11-03）
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, CalendarPlus, ClipboardList, Mail, MousePointerClick, QrCode, Send, UserPlus } from "lucide-react";
-import { Part, Phone, Phones, Screen } from "@/components/guide/GuideShots";
+import { Part, Phone, Phones, Screen, Steps } from "@/components/guide/GuideShots";
 
 export const metadata: Metadata = {
   title: "できること・使い方",
@@ -20,7 +21,7 @@ function Feature({ id, title, path, children, media, side = false }: { id?: stri
   return (
     <div id={id} className={`scroll-mt-24 py-10 md:py-14 border-t border-slate-200 first:border-t-0 ${side ? "md:grid md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 md:items-start" : ""}`}>
       <div className={side ? "" : "max-w-3xl"}>
-        <h3 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-4">{title}</h3>
+        <h3 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-4 text-balance [word-break:auto-phrase]">{title}</h3>
         <div className="text-[15px] md:text-base text-slate-700 leading-[1.9] space-y-3">{children}</div>
         {path && (
           <p className="mt-4 flex items-start gap-2 text-sm text-slate-500">
@@ -82,7 +83,7 @@ export default function GuidePage() {
           <p className="mt-5 text-base md:text-lg text-slate-700 leading-[1.9] max-w-3xl">
             申込の受付から、当日の受付、アンケート、次のご案内まで。イベントの前から後までを、実際の画面の写真でご案内します。
           </p>
-          <p className="mt-3 text-sm text-slate-500">写真の主催者・講師・参加者は、すべて架空の見本です。</p>
+          <p className="mt-3 text-sm text-slate-500">写真の主催者・講師・参加者は、すべて架空の見本です。カード払いの参加者の画面は、トップページの「申込ページの見本」（運営会社の見本のイベント）に見本の参加者を入れて撮りました。</p>
 
           <nav aria-label="もくじ" className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {FLOW.map(f => (
@@ -118,7 +119,7 @@ export default function GuidePage() {
           </Feature>
 
           <Feature id="payment" title="参加費と、お支払いの方法" path="イベントの編集の「チケット・参加費設定」「参加費の払い方」「キャンセル・返金ポリシー」"
-            media={<div className="space-y-6"><Part name="editor-tickets" alt="チケットを一般・学生に分け、参加費の払い方で事前のお支払いを選び、お支払いのリンクと振込先の案内を入れた画面" /><div className="max-w-xl"><Part name="editor-cancel" alt="キャンセル・返金ポリシー。開催日の7日前まで100%、2日前まで50%を返金" /></div></div>}>
+            media={<div className="space-y-6"><Part name="editor-tickets" alt="チケットを一般・学生に分け、参加費の払い方の3つから事前のお支払いを選び、お支払いのリンクと振込先の案内を入れた画面" /><div className="max-w-xl"><Part name="editor-cancel" alt="キャンセル・返金ポリシー。開催日の7日前まで100%、2日前まで50%を返金" /></div></div>}>
             <p>「一般」「学生」のように、金額の違うチケットを作れます。払い方は、次の3つから選べます。</p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-sm border border-slate-200 bg-white">
@@ -126,11 +127,75 @@ export default function GuidePage() {
                 <tbody>
                   <tr><td className="p-3 border-b border-slate-200 align-top">当日、会場で</td><td className="p-3 border-b border-slate-200">申込のあと、当日に会場で払います。</td></tr>
                   <tr><td className="p-3 border-b border-slate-200 align-top">申込のあと、事前に</td><td className="p-3 border-b border-slate-200">申込の完了画面と受付のメールに、お支払いのリンク（Square・PayPay・STORES など、お使いの決済）や振込先が出ます。払われたかどうかは、参加者リストで「支払い済み」に印を付けます。</td></tr>
-                  <tr><td className="p-3 align-top">申込のときに、カードで</td><td className="p-3">申込のときにカードで払います（コンビニ払いも、準備が整いしだい選べるようになります）。主催者は、設定の「参加費の受け取り口座」を登録しておきます。受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に口座へ入ります。</td></tr>
+                  <tr><td className="p-3 align-top">申込のときに、カードで</td><td className="p-3">申込のときにカードで払います（コンビニ払いも、準備が整いしだい選べるようになります）。主催者は、設定の「参加費の受け取り口座」を登録しておきます。受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に口座へ入ります。<a href="#cardpay" className="underline underline-offset-4" style={{ color: ORANGE }}>写真つきの流れ</a></td></tr>
                 </tbody>
               </table>
             </div>
             <p>キャンセル・返金の決まり（例：7日前まで全額）を決めると、申込フォームに表示されます。</p>
+          </Feature>
+
+          <Feature id="cardpay" title="申込のときに、カードで払っていただく" path="右上の歯車（設定）の「参加費の受け取り口座」と、イベントの編集の「参加費の払い方」"
+            media={<div className="space-y-14">
+              <div className="space-y-6">
+                <p className="text-sm font-bold text-slate-500">主催者の準備</p>
+                <div className="grid gap-6 sm:grid-cols-2 items-start max-w-3xl">
+                  <Part name="card-setup" alt="設定の有料イベントの決済設定。参加費の受け取り口座（カード払い）が「まだ」で、受け取りの口座を登録するのボタン" marks={[[1, 88, 594, 392, 80]]} />
+                  <Part name="card-ready" alt="登録が済んだあとの参加費の受け取り口座。「使えます」と、入金の記録を見る（Stripe）のボタン" />
+                </div>
+                <div className="max-w-2xl"><Part name="editor-paycard" alt="イベントの編集の参加費の払い方。申込のときに、カードで払っていただくを選んだところ" marks={[[2, 12, 138, 1132, 116]]} /></div>
+                <div className="max-w-3xl text-[15px] md:text-base text-slate-700 leading-[1.9]">
+                  <Steps items={[
+                    [1, <>設定の「参加費の受け取り口座」で「受け取りの口座を登録する」を押し、Stripe（決済の会社）の画面で、口座と代表者の本人確認などを入れます。登録が済むと「使えます」になります。</>],
+                    [2, <>イベントの編集の「参加費の払い方」で「申込のときに、カードで払っていただく」を選びます。</>],
+                  ]} />
+                </div>
+              </div>
+
+              <div className="space-y-10">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">参加者の流れ</p>
+                  <p className="mt-2 text-sm text-slate-500 leading-relaxed">トップページのいちばん下の「<Link href="/sample-event" className="underline underline-offset-4" style={{ color: ORANGE }}>申込ページの見本</Link>」で、実際に申し込んで試せます（100円。受付のメールからキャンセルすると返金されます）。</p>
+                </div>
+                <div className="md:grid md:grid-cols-[auto_minmax(0,1fr)] md:gap-10 md:items-start space-y-6 md:space-y-0">
+                  <div className="flex flex-wrap justify-center gap-5"><Phone name="card-form-top" alt="スマホの申込フォーム（上）。チケットと、お名前・メールアドレス・電話番号・会社名" marks={[[1, 35, 226, 530, 117], [2, 35, 446, 530, 701]]} /><Phone name="card-form-bottom" alt="スマホの申込フォーム（下）。お支払いとキャンセルの案内、同意のチェック、申し込むボタン" marks={[[3, 35, 27, 530, 585], [4, 35, 652, 530, 184], [5, 35, 934, 530, 107]]} /></div>
+                  <div className="text-[15px] md:text-base text-slate-700 leading-[1.9]">
+                    <p className="font-bold text-slate-900 mb-3">申込フォーム</p>
+                    <Steps items={[
+                      [1, <>チケットを選びます。金額が出ます。</>],
+                      [2, <>お名前・メールアドレス・電話番号などを入れます。</>],
+                      [3, <>お支払いの方法と時期、キャンセル・返金の決まりが出ます。</>],
+                      [4, <>プライバシーポリシーへの同意にチェックを入れます。</>],
+                      [5, <>「100円で申し込む」（参加費の金額が出ます）を押すと、Stripe の決済の画面に移ります。</>],
+                    ]} />
+                  </div>
+                </div>
+                <div className="md:grid md:grid-cols-[auto_minmax(0,1fr)] md:gap-10 md:items-start space-y-6 md:space-y-0">
+                  <div className="w-full md:w-[520px]"><Part name="card-checkout" alt="Stripe の決済の画面。イベント名と金額、決済手段のカードとカード番号などの欄、支払うボタン" marks={[[1, 34, 72, 388, 88], [2, 575, 252, 396, 418], [3, 575, 677, 396, 72]]} /></div>
+                  <div className="text-[15px] md:text-base text-slate-700 leading-[1.9]">
+                    <p className="font-bold text-slate-900 mb-3">Stripe の決済の画面</p>
+                    <Steps items={[
+                      [1, <>申し込んだイベント・チケットと金額が出ます。</>],
+                      [2, <>カード番号・有効期限・セキュリティコード・カード名義を入れます。Apple Pay・Google Pay なども使えます（お使いの端末によって出ます）。</>],
+                      [3, <>「支払う」を押すと決済されます。</>],
+                    ]} />
+                    <p className="mt-3 text-sm text-slate-500">メールアドレスは、申込フォームで入れたものが入ります（写真では隠しています）。</p>
+                  </div>
+                </div>
+                <div className="md:grid md:grid-cols-[auto_minmax(0,1fr)] md:gap-10 md:items-start space-y-6 md:space-y-0">
+                  <div className="flex justify-center"><Phone name="card-thanks" alt="スマホの申込完了のページ。お申し込み完了と、受講票のQRコード（写真は見本）" marks={[[1, 44, 254, 511, 413]]} /></div>
+                  <div className="text-[15px] md:text-base text-slate-700 leading-[1.9]">
+                    <p className="font-bold text-slate-900 mb-3">申込完了</p>
+                    <Steps items={[
+                      [1, <>当日の受付で使う受講票のQRコードが出ます（写真のQRは見本です）。同時に受付のメールが届き、お支払いは「クレジットカード決済済」と出ます。</>],
+                    ]} />
+                    <p className="mt-3">キャンセルは、受付のメールのリンクから参加者がします。キャンセル・返金の決まりに沿って、カードへ自動で返金します。</p>
+                  </div>
+                </div>
+              </div>
+            </div>}>
+            <p>参加者は、申込のときに Stripe（決済の会社）の画面で、カードで払います。払い終わると申込が確定し、受付のメールが届きます。</p>
+            <p>受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に主催者の受け取り口座へ入ります。例えば参加費 5,000円なら、4,750円が入ります。参加者からは手数料をいただきません。</p>
+            <p>返金したときも、5%の手数料は戻りません。コンビニ払いは、準備が整いしだい選べるようになります。</p>
           </Feature>
 
           <Feature id="flyer" title="チラシを作る" path="イベントのカードの「チラシ」" side
