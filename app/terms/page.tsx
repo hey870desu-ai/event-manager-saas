@@ -85,7 +85,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="text-lg font-bold border-l-4 border-indigo-600 pl-3 mb-4 text-slate-900">第7条（免責事項）</h2>
-              <p>当社は、本サービスに関してユーザーに生じた損害について、当社の過失（重過失を除く）による場合は、ユーザーが過去1ヶ月間に当社に支払った利用代金を上限として賠償するものとします。ただし、不可抗力やユーザーの過失に起因する損害については一切の責任を負いません。</p>
+              <p>当社は、本サービスに関してユーザーに生じた損害について、当社の過失（重過失を除く）による場合は、損害が生じた月の利用料金の1か月分（年払いの場合は、年額の12分の1）を上限として賠償するものとします。ただし、不可抗力やユーザーの過失に起因する損害については一切の責任を負いません。</p>
             </section>
 
             <section>
@@ -95,6 +95,7 @@ export default function TermsPage() {
 
             <div className="pt-8 border-t border-slate-100 text-right text-slate-500 text-xs">
               <p>2026年2月20日 制定</p>
+              <p>2026年11月3日 改定</p>
             </div>
 
           </div>
