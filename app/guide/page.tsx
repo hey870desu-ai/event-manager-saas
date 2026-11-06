@@ -2,6 +2,8 @@
 // 📝 役割：絆太郎でできること・使い方（画面の写真つき）。準備 → 申込 → 当日 → 終わったあと → 次のご案内 の順に並べる
 //   写真は手元で、架空の主催者「ひだまりケア勉強会（見本）」と架空の参加者のデータで撮った（public/guide/*.webp）
 //   カード払いの参加者の画面（#cardpay）だけは、本番の「申込ページの見本」のイベントに見本の参加者を入れて撮った（2026-11-03）
+//   参加費の受け取り方は「自分の決済（Square・PayPay・振込）＝#ownpay」と「絆太郎のカード決済（Stripe）＝#cardpay」に分けて書く
+//   （2026-11-06 塙さん：自分の PayPay や Square と、絆太郎の Stripe を使うところを分けた方が分かりやすい）
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -31,6 +33,25 @@ function Feature({ id, title, path, children, media, side = false }: { id?: stri
         )}
       </div>
       <div className={side ? "mt-8 md:mt-0" : "mt-8"}>{media}</div>
+    </div>
+  );
+}
+
+// 参加費の受け取り方の箱（自分の決済／絆太郎のカード決済）。項目ごとに「名前」と「中身」
+function PayWay({ title, note, rows, href, more }: { title: string; note: string; rows: [string, ReactNode][]; href: string; more: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm leading-relaxed">
+      <p className="text-base font-bold text-slate-900">{title}</p>
+      <p className="mt-1 text-slate-500">{note}</p>
+      <dl className="mt-4 space-y-3">
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt className="text-xs text-slate-500">{k}</dt>
+            <dd className="mt-0.5 text-slate-700">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <a href={href} className="mt-4 inline-flex items-center gap-1 underline underline-offset-4" style={{ color: ORANGE }}>{more}<ArrowRight size={14} aria-hidden /></a>
     </div>
   );
 }
@@ -120,21 +141,46 @@ export default function GuidePage() {
 
           <Feature id="payment" title="参加費と、お支払いの方法" path="イベントの編集の「チケット・参加費設定」「参加費の払い方」「キャンセル・返金ポリシー」"
             media={<div className="space-y-6"><Part name="editor-tickets" alt="チケットを一般・学生に分け、参加費の払い方の3つから事前のお支払いを選び、お支払いのリンクと振込先の案内を入れた画面" /><div className="max-w-xl"><Part name="editor-cancel" alt="キャンセル・返金ポリシー。開催日の7日前まで100%、2日前まで50%を返金" /></div></div>}>
-            <p>「一般」「学生」のように、金額の違うチケットを作れます。払い方は、次の3つから選べます。</p>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm border border-slate-200 bg-white">
-                <thead className="bg-slate-50 text-left"><tr><th className="p-3 border-b border-slate-200 w-[34%]">払い方</th><th className="p-3 border-b border-slate-200">参加者の流れ</th></tr></thead>
-                <tbody>
-                  <tr><td className="p-3 border-b border-slate-200 align-top">当日、会場で</td><td className="p-3 border-b border-slate-200">申込のあと、当日に会場で払います。</td></tr>
-                  <tr><td className="p-3 border-b border-slate-200 align-top">申込のあと、事前に</td><td className="p-3 border-b border-slate-200">申込の完了画面と受付のメールに、お支払いのリンク（Square・PayPay・STORES など、お使いの決済）や振込先が出ます。払われたかどうかは、参加者リストで「支払い済み」に印を付けます。</td></tr>
-                  <tr><td className="p-3 align-top">申込のときに、カードで</td><td className="p-3">申込のときにカードで払います（コンビニ払いも、準備が整いしだい選べるようになります）。主催者は、設定の「参加費の受け取り口座」を登録しておきます。受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に口座へ入ります。<a href="#cardpay" className="underline underline-offset-4" style={{ color: ORANGE }}>写真つきの流れ</a></td></tr>
-                </tbody>
-              </table>
+            <p>「一般」「学生」のように、金額の違うチケットを作れます。</p>
+            <p>参加費の受け取り方は、大きく2通りです。お金が絆太郎を通るかどうかで分かれます。</p>
+            <div className="grid gap-4 sm:grid-cols-2 items-start">
+              <PayWay title="自分の決済で受け取る" note="お金は絆太郎を通りません" href="#ownpay" more="くわしく" rows={[
+                ["使うもの", "当日の現金、お持ちの Square・PayPay・STORES などの支払いのリンク、振込"],
+                ["準備", "Square・PayPay などは、主催者が各社で登録します。絆太郎での登録はいりません。"],
+                ["「参加費の払い方」で選ぶもの", "「当日、会場で払っていただく」か「申込のあと、事前に払っていただく」"],
+                ["入金", "主催者の決済サービスや口座に、直接入ります。"],
+                ["払われたかの確かめ", "主催者が確かめます。事前のときは、参加者リストで「支払い済み」に印を付けます。"],
+                ["絆太郎の手数料", "かかりません（決済サービスの手数料は、各社の決まりのとおりです）。"],
+                ["キャンセルの返金", "主催者が、決済サービスの返金の機能や振込で返します。"],
+              ]} />
+              <PayWay title="絆太郎のカード決済で受け取る" note="お金は絆太郎を通ります" href="#cardpay" more="写真つきの流れ" rows={[
+                ["使うもの", "絆太郎のカード決済（Stripe）。参加者は申込のときにカードで払います。"],
+                ["準備", "右上の歯車（設定）の「参加費の受け取り口座」で、Stripe の口座と本人確認を登録します。"],
+                ["「参加費の払い方」で選ぶもの", "「申込のときに、カードで払っていただく」"],
+                ["入金", "絆太郎が受け取り、毎週金曜日に受け取り口座へ入ります。"],
+                ["払われたかの確かめ", "自動で「決済済み」になります。"],
+                ["絆太郎の手数料", "参加費の5%（決済の手数料を含む）。参加者からはいただきません。"],
+                ["キャンセルの返金", "受付のメールからキャンセルすると、カードへ自動で返金します。"],
+              ]} />
             </div>
+            <p className="rounded-lg border border-slate-200 bg-white p-4 text-sm leading-relaxed">Square や PayPay を登録しても、絆太郎のカード決済にはなりません。絆太郎のカード決済は、設定の「参加費の受け取り口座」から登録します。</p>
             <p>キャンセル・返金の決まり（例：7日前まで全額）を決めると、申込フォームに表示されます。</p>
           </Feature>
 
-          <Feature id="cardpay" title="申込のときに、カードで払っていただく" path="右上の歯車（設定）の「参加費の受け取り口座」と、イベントの編集の「参加費の払い方」"
+          <Feature id="ownpay" title="自分の Square・PayPay・振込で受け取る" path="イベントの編集の「参加費の払い方」（「申込のあと、事前に払っていただく」）" side
+            media={<Phones><Phone name="apply-complete" alt="申込の完了画面。参加証のQRコード、参加費のお支払いのお願い、事前アンケートのボタン" /></Phones>}>
+            <p>お金は絆太郎を通らず、お使いの決済サービスや口座に直接入ります。絆太郎の手数料はかかりません。</p>
+            <Steps items={[
+              [1, <>Square・PayPay・STORES などに登録して、支払いのリンクを作っておきます（振込だけなら、いりません）。</>],
+              [2, <>イベントの編集の「参加費の払い方」で「申込のあと、事前に払っていただく」を選び、チケットごとに支払いのリンクを入れます。「お支払いの案内」には、期限や振込先を書きます。</>],
+              [3, <>申込の完了画面と受付のメールに、お支払いのお願いとリンクが出ます。</>],
+              [4, <>入金を確かめたら、参加者リストで「未確認」を押して「支払い済み」にします。</>],
+            ]} />
+            <p>当日に会場で受け取るときは、「当日、会場で払っていただく」を選びます。現金や、お持ちの Square などで受け取っても、お金は絆太郎を通りません。</p>
+            <p>キャンセルのときは、主催者から、決済サービスの返金の機能や振込で返してください。</p>
+          </Feature>
+
+          <Feature id="cardpay" title="絆太郎のカード決済（Stripe）で受け取る" path="右上の歯車（設定）の「参加費の受け取り口座」と、イベントの編集の「参加費の払い方」"
             media={<div className="space-y-14">
               <div className="space-y-6">
                 <p className="text-sm font-bold text-slate-500">主催者の準備</p>
@@ -193,7 +239,8 @@ export default function GuidePage() {
                 </div>
               </div>
             </div>}>
-            <p>参加者は、申込のときに Stripe（決済の会社）の画面で、カードで払います。払い終わると申込が確定し、受付のメールが届きます。</p>
+            <p>Square・PayPay などとは別の、絆太郎のカード決済です。設定の「参加費の受け取り口座」で、Stripe（決済の会社）の口座を登録して使います。</p>
+            <p>参加者は、申込のときに Stripe の画面で、カードで払います。払い終わると申込が確定し、受付のメールが届きます。</p>
             <p>受け取った参加費から5%（決済の手数料を含む）を引いて、毎週金曜日に主催者の受け取り口座へ入ります。例えば参加費 5,000円なら、4,750円が入ります。参加者からは手数料をいただきません。</p>
             <p>返金したときも、5%の手数料は戻りません。コンビニ払いは、準備が整いしだい選べるようになります。</p>
           </Feature>
