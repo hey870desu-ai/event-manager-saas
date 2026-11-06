@@ -1460,7 +1460,8 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
                    <button 
   onClick={(e) => {
     e.stopPropagation();
-    if (ev.status !== 'published') {
+    // 受付終了のイベントも、ページは見られる（2026-11-06〜）
+    if (!isPublished && !isClosed) {
       alert("このイベントは現在「下書き」状態です。公開設定に変更するまで、参加者はこのURLにアクセスしても閲覧できません。");
       return;
     }
@@ -1468,13 +1469,13 @@ const handleInviteStaff = async (e: React.FormEvent, rawEmail: string, targetNam
     window.open(`${baseUrl}/t/${safeStr(ev.tenantId)||"default"}/e/${ev.id}`, '_blank');
   }}
   className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border shadow-sm font-bold text-xs ${
-    ev.status === 'published' 
-    ? "bg-white hover:bg-slate-100 text-slate-600 border-slate-300" 
+    isPublished || isClosed
+    ? "bg-white hover:bg-slate-100 text-slate-600 border-slate-300"
     : "bg-slate-50 text-slate-400 border-dashed border-slate-300 cursor-not-allowed"
   }`}
 >
-  {ev.status === 'published' ? <ExternalLink size={18}/> : <Lock size={18}/>}
-  <span className="hidden lg:inline">{ev.status === 'published' ? '公開P' : '非公開中'}</span>
+  {isPublished || isClosed ? <ExternalLink size={18}/> : <Lock size={18}/>}
+  <span className="hidden lg:inline">{isPublished || isClosed ? '公開P' : '非公開中'}</span>
 </button>
                 </div>
               </div>

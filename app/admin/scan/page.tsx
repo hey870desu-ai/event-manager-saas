@@ -87,7 +87,7 @@ export default function AdminScanPage() {
     const unsub = onSnapshot(eventsQuery, (snap) => {
       const list = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
-        .filter(e => e.status === 'published')
+        .filter(e => e.status === 'published' || e.status === 'closed') // 受付終了（申込を止めた）イベントも、当日の受付はする
         .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       setEvents(list);
       // 今日のイベントがあれば自動選択

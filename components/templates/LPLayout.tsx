@@ -43,6 +43,8 @@ export default function LPLayout({ event, tenant, eventId, tenantId }: Props) {
   const scrollToForm = () => {
     document.getElementById('entry-form')?.scrollIntoView({ behavior: 'smooth' });
   };
+  // 受付終了（2026-11-06〜）：ページは見せて、「今すぐ申し込む」は出さない
+  const closed = event.status === 'closed';
 
   useEffect(() => {
     const handleScroll = () => setShowSticky(window.scrollY > 400);
@@ -136,13 +138,17 @@ export default function LPLayout({ event, tenant, eventId, tenantId }: Props) {
 
           {/* CTAボタン */}
           <div className="text-center">
+            {closed ? (
+              <p className="inline-flex items-center gap-3 px-10 py-5 bg-slate-500 text-white text-lg font-black rounded-full">受付は終了しました</p>
+            ) : (
             <button
               onClick={scrollToForm}
               className="inline-flex items-center gap-3 px-10 py-5 bg-orange-500 hover:bg-orange-600 text-white text-lg font-black rounded-full shadow-[0_8px_30px_rgba(249,115,22,0.4)] hover:shadow-[0_8px_40px_rgba(249,115,22,0.6)] transition-all hover:scale-105 active:scale-95"
             >
               今すぐ申し込む <ChevronDown size={20} />
             </button>
-            {event.capacity && (
+            )}
+            {event.capacity && !closed && (
               <div className="mt-4 inline-flex items-center gap-2 text-orange-200 text-sm font-bold">
                 <AlertCircle size={14} /> 定員{event.capacity}名・先着順
               </div>
@@ -329,7 +335,7 @@ export default function LPLayout({ event, tenant, eventId, tenantId }: Props) {
       </footer>
 
       {/* ===== モバイル固定CTAボタン ===== */}
-      {showSticky && (
+      {showSticky && !closed && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-3 bg-white/90 backdrop-blur-md border-t border-slate-200 md:hidden">
           <button onClick={scrollToForm} className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
             <Zap size={20} /> 今すぐ申し込む

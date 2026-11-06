@@ -735,8 +735,12 @@ useEffect(() => {
            <select name="status" value={formData.status} onChange={handleChange} className={`w-full border border-slate-700 rounded-lg p-3 font-bold outline-none cursor-pointer transition-colors ${formData.status === 'published' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/50' : 'bg-slate-950 text-slate-400'}`}>
              <option value="draft">下書き (準備中)</option>
              <option value="published">🚀 公開する</option>
-             <option value="closed">🔒 受付終了</option>
+             <option value="closed">🔒 受付終了（申込だけ止める）</option>
            </select>
+           {/* 受付終了でも、イベントのページは見られる・検索にも出る（2026-11-06 利用者さんの声）。申込のボタンだけ止まる */}
+           {formData.status === 'closed' && (
+             <p className="mt-2 text-xs text-slate-400 leading-relaxed">イベントのページは、そのまま見られます（検索にも出ます）。申込のボタンだけ「受付は終了しました」になります。</p>
+           )}
            {/* 公開中のイベントのページは、ふつうは Google などの検索にも出る（2026-10-28）。会員だけの研修などは、ここで外す */}
            <label className="mt-3 flex items-start gap-2 cursor-pointer">
              <input type="checkbox" name="searchHidden" checked={formData.searchHidden} onChange={handleCheckbox} className="mt-0.5 w-4 h-4 rounded accent-indigo-500 shrink-0" />

@@ -46,11 +46,13 @@ export default async function ApplyFormPage({ params }: Props) {
             <CheckCircle size={40} />
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-4">受付は終了しました</h2>
-          <div className="text-slate-500 font-medium leading-relaxed space-y-2">
+          <div className="text-slate-500 font-medium leading-relaxed space-y-2 [word-break:auto-phrase]">
             <p className="text-lg font-bold text-slate-700">{eventData.title}</p>
             <p>このイベントの受付は終了いたしました。</p>
             <p>たくさんのお申し込み、ありがとうございました。</p>
           </div>
+          {/* 受付終了でも、イベントのページは見られる（2026-11-06〜） */}
+          <a href={`/t/${tenantId}/e/${eventId}`} className="mt-6 inline-block text-sm font-bold text-slate-600 underline underline-offset-4">イベントの内容を見る</a>
         </div>
       </div>
     );

@@ -34,6 +34,8 @@ export async function POST(request: Request) {
     const eventSnap = await adminDb.collection('events').doc(eventId).get();
     if (!eventSnap.exists) return NextResponse.json({ error: 'イベントが見つかりません' }, { status: 404 });
     const ev: any = eventSnap.data();
+    // 受付終了・下書きのイベントでは、決済の画面を作らない（2026-11-06〜 受付終了でもページは見られるため、念のため）
+    if (ev?.status !== 'published') return NextResponse.json({ error: 'このイベントのお申し込みの受付は終了しています' }, { status: 400 });
     const resRef = eventSnap.ref.collection('reservations').doc(reservationId);
     const resSnap = await resRef.get();
     const rsv: any = resSnap.exists ? resSnap.data() : null;

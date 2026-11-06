@@ -103,6 +103,8 @@ export default function ReservationForm({
 
   // --- 🏆 【4段目】「判定」を下すぞい ---
   const isFull = event.capacity && currentCount >= event.capacity;
+  // 受付終了（2026-11-06〜）：イベントのページは見られるまま、申込だけできない
+  const isClosed = event?.status === "closed";
 
   // チケット関係の計算
   const tickets = (event.tickets && event.tickets.length > 0) 
@@ -126,6 +128,7 @@ export default function ReservationForm({
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isClosed) return; // 受付終了のイベントには申し込めない
 
     // 🚨 【LINE対策：最強の初動】
     // await（待ち）が発生する前に、全ての値を普通の「文字列」として変数に閉じ込めるっぺ！
@@ -295,6 +298,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   };
 
   if (!mounted) return null;
+
+  // 受付終了：「参加する」とフォームの代わりに、受付終了の表示だけ出す（色は満員のときのボタンと同じ）
+  if (isClosed) {
+    return (
+      <div role="status" className="w-full flex flex-col items-center justify-center gap-1 px-8 py-5 text-white font-bold rounded-2xl text-center" style={{ background: "#64748b" }}>
+        <span className="text-xl tracking-wide">受付は終了しました</span>
+        <span className="text-sm font-medium opacity-90">このイベントのお申し込みの受付は終了しています</span>
+      </div>
+    );
+  }
 
   return (
     <>

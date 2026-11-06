@@ -5,9 +5,9 @@ import { Metadata } from "next";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import EventClient from "./EventClient";
-// 検索に出す決まり（公開中で「検索に出さない」でないもの）と Google のイベント用のデータ
-import { eventJsonLd, eventPageUrl, isEventIndexable } from "@/lib/event-seo";
-import { Lock, CheckCircle } from "lucide-react";
+// 検索に出す決まり（公開中・受付終了で「検索に出さない」でないもの）と Google のイベント用のデータ
+import { eventJsonLd, eventPageUrl, isEventIndexable, isEventViewable } from "@/lib/event-seo";
+import { Lock } from "lucide-react";
 
 type Props = {
   params: { tenant: string; event: string };
@@ -42,13 +42,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!eventSnap.exists()) return defaultMetadata;
 
     const event = eventSnap.data();
-    // 🔒 下書き状態なら、SNS用の情報を「準備中」にすげ替えるっぺ！
-   if (event.status !== 'published') {
+    // 🔒 下書き状態なら、SNS用の情報を「準備中」にすげ替えるっぺ！（受付終了はページを見せるので、ふつうの情報にする・2026-11-06）
+   if (!isEventViewable(event)) {
    return {
     title: "準備中 | 絆太郎",
     description: "このイベントは現在、公開準備中だっぺ！",
     openGraph: { title: "Coming Soon", images: [] },
-    // 下書き・受付終了の画面は検索に載せない
+    // 下書きの画面は検索に載せない
     robots: { index: false, follow: false },
   };
 }
@@ -64,7 +64,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     // ★ここが修正点：タイトルに「会社名」を入れる
     const pageTitle = `${event.title} | ${tenantName}`;
-    const description = `【参加受付中】開催日: ${event.date} / 会場: ${event.venueName || "オンライン"}。詳細・お申し込みはこちら。`;
+    const description = event.status === 'closed'
+      ? `【受付終了】開催日: ${event.date} / 会場: ${event.venueName || "オンライン"}。イベントの内容はこちら。`
+      : `【参加受付中】開催日: ${event.date} / 会場: ${event.venueName || "オンライン"}。詳細・お申し込みはこちら。`;
 
     return {
       title: pageTitle,
@@ -121,30 +123,10 @@ export default async function EventPage({ params }: Props) {
     console.error("データ取得エラー:", error);
   }
 
-  // 🔒 受付終了の場合
-  if (eventData?.status === 'closed') {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
-        <div className="max-w-sm">
-          <div className="w-20 h-20 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={40} />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-4">受付は終了しました</h2>
-          <div className="text-slate-500 font-medium leading-relaxed space-y-2">
-            <p className="text-lg font-bold text-slate-700">{eventData.title}</p>
-            <p>このイベントの受付は終了いたしました。</p>
-            <p>たくさんのお申し込み、ありがとうございました。</p>
-          </div>
-          <div className="mt-8 pt-8 border-t border-slate-200">
-            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase">BanTaro Event Manager</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // 受付終了（closed）は、ふつうのページを見せる。申込のボタンだけ「受付は終了しました」になる（ReservationForm・2026-11-06 利用者さんの声）
 
   // 🔒 下書き(draft)・非公開・取得不可（新ルールでdraftは未認証read不可→null）の場合は「準備中」を表示
-  if (!eventData || eventData.status !== 'published') {
+  if (!isEventViewable(eventData)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
         <div className="max-w-sm">

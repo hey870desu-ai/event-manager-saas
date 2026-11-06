@@ -1,12 +1,16 @@
 // 📂 lib/event-seo.ts
 // 📝 役割：お客様（テナント）のイベントのページを検索に出すための決まり（2026-10-28 塙さん「検索に出す設定でいいよ」）
-//   - 検索に出すのは「公開中」で、編集画面の「検索に出さない」に印が無いイベントだけ
+//   - 検索に出すのは「公開中」と「受付終了」で、編集画面の「検索に出さない」に印が無いイベントだけ
+//     （2026-11-06〜 受付終了のイベントも、ページはそのまま見られる。申込のボタンだけ止まる）
 //   - Google のイベント用のデータ（schema.org の Event）を作る。Zoom の URL など参加者だけに知らせるものは入れない
 import { SITE_URL } from "@/lib/site";
 
 export const eventPageUrl = (tenantId: string, eventId: string) => `${SITE_URL}/t/${tenantId}/e/${eventId}`;
 
-export const isEventIndexable = (event: any) => !!event && event.status === "published" && event.searchHidden !== true;
+// ページを見せるイベント（公開中・受付終了）。下書きは見せない
+export const isEventViewable = (event: any) => !!event && (event.status === "published" || event.status === "closed");
+
+export const isEventIndexable = (event: any) => isEventViewable(event) && event.searchHidden !== true;
 
 // "2026-11-15" と "14:00" → "2026-11-15T14:00:00+09:00"（形が違えば undefined）
 export function jstDateTime(date?: string, time?: string) {
@@ -67,7 +71,7 @@ export function eventJsonLd(event: any, tenant: any, tenantId: string, eventId: 
       name: t.name || "参加費",
       price: String(Number(t.price)),
       priceCurrency: "JPY",
-      availability: "https://schema.org/InStock",
+      availability: event.status === "closed" ? "https://schema.org/SoldOut" : "https://schema.org/InStock", // 受付終了は「売り切れ」
       url,
     }));
 

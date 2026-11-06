@@ -20,11 +20,11 @@ const iso = (d?: string) => {
   return Number.isNaN(t.getTime()) ? undefined : t.toISOString();
 };
 
-// 公開中のイベント（今日以降）。鍵の無い手元のビルドでは空になる
+// 公開中・受付終了のイベント（今日以降）。鍵の無い手元のビルドでは空になる
 async function upcomingEvents(): Promise<Entry[]> {
   try {
     const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    const snap = await adminDb.collection("events").where("status", "==", "published").get();
+    const snap = await adminDb.collection("events").where("status", "in", ["published", "closed"]).get();
     return (snap.docs || [])
       .map((d: any) => ({ id: d.id, ...d.data() }))
       .filter((e: any) => isEventIndexable(e) && e.tenantId && typeof e.date === "string" && e.date >= today)
